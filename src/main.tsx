@@ -36,6 +36,8 @@ import {
   category,
   countVotes,
   defaultSettings,
+  dossierGaps,
+  modes,
   phaseNames,
   presenter,
   voteBlocker,
@@ -54,53 +56,11 @@ import '@fontsource/eb-garamond/400.css';
 import '@fontsource/eb-garamond/400-italic.css';
 import '@fontsource/special-elite/400.css';
 import './style.css';
-const blank: Participant = { id: '', name: '', role: '', title: '', deckUrl: '', spectator: false };
+import { Button, Mark, Stamp, firstName } from './ui';
+import { Entry } from './invite';
+import { DossierHome, InvitePanel } from './dossier';
+const blank: Participant = { id: '', name: '', role: '', title: '', deckUrl: '', mode: null, spectator: false };
 const iconSize = 19;
-/** A worn ink stamp; decorative only. */
-function Stamp({ children, sub }: { children: ReactNode; sub?: string }) {
-  return (
-    <span className="stamp" aria-hidden="true">
-      {children}
-      {sub && <small>{sub}</small>}
-    </span>
-  );
-}
-function Mark({ large = false }: { large?: boolean }) {
-  return (
-    <div className={'mark ' + (large ? 'large' : '')}>
-      <Eye strokeWidth={1.3} />
-      <span />
-      <span />
-      <span />
-    </div>
-  );
-}
-function Button({
-  children,
-  onClick,
-  secondary = false,
-  disabled = false,
-  ...rest
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  secondary?: boolean;
-  disabled?: boolean;
-  type?: 'submit' | 'button';
-  className?: string;
-  'aria-label'?: string;
-}) {
-  return (
-    <button
-      {...rest}
-      disabled={disabled}
-      onClick={onClick}
-      className={'button ' + (secondary ? 'secondary ' : '') + (rest.className ?? '')}
-    >
-      {children}
-    </button>
-  );
-}
 function App() {
   const [actor, setActor] = useState<Actor | null>(null),
     [state, setState] = useState<State | null>(null),
@@ -143,8 +103,8 @@ function App() {
     window.addEventListener('offline', off);
     return () => window.removeEventListener('offline', off);
   }, []);
-  async function perform(a: Action) {
-    if (!actor || busy) return;
+  async function perform(a: Action): Promise<boolean> {
+    if (!actor || busy) return false;
     setBusy(true);
     setError('');
     try {
@@ -153,8 +113,10 @@ function App() {
       setSelected(null);
       setEditing(null);
       setConfirm(null);
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -566,6 +528,7 @@ function App() {
                   </div>
                 </>
               )}
+              {tab === 'fascicoli' && <InvitePanel />}
               {tab === 'fascicoli' && (
                 <section className="panel">
                   <div className="panel-heading">
@@ -590,8 +553,8 @@ function App() {
                     all
                   />
                   <p className="footnote">
-                    I nomi iniziali sono esempi. Puoi modificarli tra un turno e l’altro. “Solo pubblico” crea
-                    un’identità senza presentazione.
+                    Gli ospiti si iscrivono da soli con il link d’invito e completano il fascicolo dal telefono. Tu puoi
+                    correggere tutto da qui.
                     {api.live
                       ? ' Se qualcuno ha scelto il nome sbagliato, usa “Libera” e fallo rientrare.'
                       : ' Nella versione collegata potrai liberare un nome scelto per errore.'}
@@ -651,13 +614,22 @@ function App() {
       {selected && (
         <Modal title="Apriamo questo fascicolo?" onClose={() => setSelected(null)}>
           <p className="eyebrow">IL PROSSIMO RELATORE</p>
-          <h3 className="modal-talk">{selected.title}</h3>
+          <h3 className="modal-talk">{selected.title || 'Titolo non ancora pervenuto'}</h3>
           <p>
             {selected.name} · {selected.role}
           </p>
           <p className="footnote">
-            La presentazione Slides si gestisce separatamente per ora. I telefoni seguiranno lo stato della serata.
+            {selected.mode === 'paper'
+              ? 'Presentazione dal vivo: niente slide, sul proiettore resta il titolo.'
+              : selected.mode === 'slides' && selected.deckUrl
+                ? 'Presentazione con slide. Per ora il deck si apre a mano sul computer del proiettore.'
+                : selected.mode === 'slides'
+                  ? 'Ha scelto le slide ma non ha lasciato il link: fatti dare il deck prima di iniziare.'
+                  : 'Non ha ancora detto come presenta. Chiediglielo prima di iniziare.'}
           </p>
+          {dossierGaps(selected).length > 0 && (
+            <p className="award-reason">Fascicolo incompleto: manca {dossierGaps(selected).join(', ')}.</p>
+          )}
           <Button disabled={busy} onClick={() => void perform({ type: 'start', participantId: selected.id })}>
             Inizia con {selected.name}
             <Play size={17} />
@@ -737,8 +709,14 @@ function People({
                   {active && <span className="tiny-status">In corso</span>}
                   {done && <Check size={14} />}
                 </h3>
-                <p>{p.spectator ? 'Osservatore indipendente' : p.role}</p>
-                <span>{p.title || 'Solo pubblico'}</span>
+                <p>{p.role || 'Titolo da congresso mancante'}</p>
+                <span>
+                  {p.mode === 'none' ? 'Solo pubblico' : p.title || 'Rivelazione senza titolo'}
+                  {p.mode && p.mode !== 'none' && (
+                    <em className="mode-tag">{modes.find((m) => m.key === p.mode)?.short}</em>
+                  )}
+                  {dossierGaps(p).length > 0 && <em className="mode-tag todo">Fascicolo incompleto</em>}
+                </span>
               </div>
               {all ? (
                 <div className="row-actions">
@@ -750,7 +728,7 @@ function People({
                   <button
                     className="icon-button"
                     aria-label={'Modifica ' + p.name}
-                    disabled={s.phase !== 'waiting'}
+                    disabled={s.phase === 'results' || presenter(s)?.id === p.id}
                     onClick={() => onEdit(p)}
                   >
                     <Pencil size={17} />
@@ -772,135 +750,6 @@ function People({
     </div>
   );
 }
-function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
-  const [gm, setGm] = useState(false),
-    [code, setCode] = useState(''),
-    [names, setNames] = useState<Participant[]>([]),
-    [id, setId] = useState(''),
-    [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      if (!names.length) {
-        setNames(await api.unlockNames(code, gm));
-      } else {
-        if (!gm && !id) throw new Error('Scegli il tuo nome.');
-        onEnter(await api.login(code, id, gm));
-      }
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="entry">
-      <div className="entry-brand">
-        <Mark />
-        <span>SERATA COMPLOTTI</span>
-        <span className="mono">CONGRESSO N. 001</span>
-      </div>
-      <div className="entry-layout">
-        <section className="entry-intro">
-          <p className="eyebrow">NON CREDERE A TUTTO. TRANNE ALL’INVITO.</p>
-          <h1>
-            Le coincidenze
-            <br />
-            non esistono.
-            <br />
-            <em>Questa serata sì.</em>
-          </h1>
-          <p>
-            Un congresso clandestino di menti aperte.
-            <br />
-            Porta le tue prove. Lascia a casa le certezze.
-          </p>
-        </section>
-        <form className="entry-card" onSubmit={submit}>
-          <Stamp>Top secret</Stamp>
-          <span className="mono">{gm ? 'ACCESSO REGIA' : 'IDENTIFICAZIONE DEL SOGGETTO'}</span>
-          <h2>{gm ? 'Entra in regia.' : names.length ? 'Come ti chiami?' : 'Ti stavamo aspettando.'}</h2>
-          <p>
-            {gm
-              ? names.length
-                ? 'Se presenti o voti anche tu, scegli il tuo nome.'
-                : 'La conduzione è nelle tue mani.'
-              : 'Una password. Il tuo nome. Sei dei nostri.'}
-          </p>
-          <label>
-            Password {gm ? 'della regia' : 'della serata'}
-            <input
-              type="password"
-              autoComplete="current-password"
-              required
-              value={code}
-              disabled={names.length > 0}
-              onChange={(e) => setCode(e.target.value)}
-            />
-          </label>
-          {names.length > 0 && (
-            <label>
-              Il tuo nome
-              <select required={!gm} value={id} onChange={(e) => setId(e.target.value)}>
-                <option value="">{gm ? 'Solo regia: non presento e non voto' : 'Scegli dalla lista'}</option>
-                {names.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {error && (
-            <p role="alert" className="field-error">
-              {error}
-            </p>
-          )}
-          <Button type="submit" disabled={busy}>
-            {busy
-              ? 'Un momento…'
-              : gm
-                ? names.length
-                  ? 'Entra in regia'
-                  : 'Continua'
-                : names.length
-                  ? 'Entra nel congresso'
-                  : 'Apri il fascicolo'}
-            <ArrowRight size={18} />
-          </Button>
-          <button
-            type="button"
-            className="text-button entry-switch"
-            onClick={() => {
-              setGm(!gm);
-              setNames([]);
-              setCode('');
-              setError('');
-            }}
-          >
-            {gm ? 'Sono un partecipante' : 'Accesso riservato alla regia'}
-            <LockKeyhole size={13} />
-          </button>
-          {!api.live && (
-            <div className="demo-credentials">
-              <strong>DEMO LOCALE</strong>
-              <p>
-                Ospiti: <code>complotti</code>
-                <br />
-                Regia: <code>regia-demo</code>
-              </p>
-              <small>Solo dati di prova, salvati in questo browser.</small>
-            </div>
-          )}
-        </form>
-      </div>
-      <div className="entry-footer">NESSUNA TEORIA È STATA VERIFICATA DURANTE LA REALIZZAZIONE DI QUESTA SERATA.</div>
-    </div>
-  );
-}
 function Guest({
   s,
   actor,
@@ -910,7 +759,7 @@ function Guest({
   s: State;
   actor: Actor;
   busy: boolean;
-  perform: (a: Action) => Promise<void>;
+  perform: (a: Action) => Promise<boolean>;
 }) {
   const p = presenter(s),
     r = activeRound(s),
@@ -926,11 +775,14 @@ function Guest({
   const blocker = voteBlocker(s, actor.participantId);
   if (s.phase === 'voting' && r && !blocker)
     return <Voting key={r.id} s={s} actor={actor} busy={busy} perform={perform} />;
+  // Before the first talk the page is the guest's registration dossier.
+  if (s.phase === 'waiting' && s.rounds.length === 0)
+    return <DossierHome s={s} actor={actor} busy={busy} perform={perform} />;
   return (
     <>
       <div className="guest-welcome">
         <span className="eyebrow">BENVENUTO NEL CONGRESSO</span>
-        <span className="guest-id">{me?.name}</span>
+        <span className="guest-id">{me ? firstName(me.name) : ''}</span>
       </div>
       <section className="guest-stage">
         <span className="phase-badge">{phaseNames[s.phase]}</span>
@@ -954,19 +806,22 @@ function Guest({
               : s.phase === 'questions'
                 ? 'Alza la mano e fai la tua domanda dal vivo. Il voto arriverà dopo.'
                 : r?.presenterId === actor.participantId
-                  ? 'Stai presentando. Il collegamento alle slide verrà aggiunto in seguito.'
+                  ? me?.mode === 'paper'
+                    ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore c’è il tuo titolo.'
+                    : 'Stai presentando. Il telecomando delle slide arriverà qui.'
                   : 'Tra poco potrai esprimere il tuo verdetto.'}
         </p>
         {p && (
           <div className="guest-dossier">
             <span className="mono">FASCICOLO ATTIVO</span>
-            <h2>{p.title}</h2>
+            <h2>{p.title || 'Titolo top secret'}</h2>
             <span>
-              {p.name} · {p.role}
+              {p.name}
+              {p.role ? `, ${p.role.toLowerCase()}` : ''}
             </span>
           </div>
         )}
-        {r?.presenterId === actor.participantId && s.phase === 'presenting' && (
+        {r?.presenterId === actor.participantId && s.phase === 'presenting' && me?.mode !== 'paper' && (
           <div className="slide-placeholder">
             <Button secondary disabled>
               <ArrowLeft size={18} />
@@ -980,6 +835,7 @@ function Guest({
           </div>
         )}
       </section>
+      {s.phase === 'waiting' && <DossierHome s={s} actor={actor} busy={busy} perform={perform} compact />}
     </>
   );
 }
@@ -992,7 +848,7 @@ function Voting({
   s: State;
   actor: Actor;
   busy: boolean;
-  perform: (a: Action) => Promise<void>;
+  perform: (a: Action) => Promise<boolean>;
 }) {
   const r = activeRound(s)!,
     p = presenter(s)!,
@@ -1147,7 +1003,7 @@ function Results({ s }: { s: State }) {
     </div>
   );
 }
-function AwardSettings({ s, busy, perform }: { s: State; busy: boolean; perform: (a: Action) => Promise<void> }) {
+function AwardSettings({ s, busy, perform }: { s: State; busy: boolean; perform: (a: Action) => Promise<boolean> }) {
   const current = s.settings;
   const save = (patch: Partial<Settings>) => void perform({ type: 'settings', settings: { ...current, ...patch } });
   const move = (i: number, by: number) => {
@@ -1239,7 +1095,7 @@ function GmOwnTurn({
   s: State;
   actor: Actor;
   busy: boolean;
-  perform: (a: Action) => Promise<void>;
+  perform: (a: Action) => Promise<boolean>;
 }) {
   const r = activeRound(s),
     me = s.participants.find((p) => p.id === actor.participantId)!;
@@ -1312,9 +1168,13 @@ function Projector({ s }: { s: State }) {
             <i />
             <span>CONGRESSO N. 001</span>
           </div>
-          <p>{p ? `${p.name}, ${p.role.toLowerCase()}` : 'Il congresso sta per cominciare.'}</p>
+          <p>{p ? `${p.name}${p.role ? ', ' + p.role.toLowerCase() : ''}` : 'Il congresso sta per cominciare.'}</p>
           {s.phase === 'presenting' && (
-            <p className="projector-note">Le slide si aprono separatamente in questa alpha.</p>
+            <p className="projector-note">
+              {p?.mode === 'paper'
+                ? 'Presentazione dal vivo. Guardate il relatore, non lo schermo.'
+                : 'Le slide si aprono separatamente in questa alpha.'}
+            </p>
           )}
           {s.phase === 'voting' && <span className="phase-badge">Vota dal tuo telefono</span>}
         </>
@@ -1368,26 +1228,40 @@ function Editor({
           onSave(p);
         }}
       >
-        {[
-          ['name', 'Nome'],
-          ['role', 'Ruolo complottista'],
-          ['title', 'Titolo della presentazione'],
-          ['deckUrl', 'Link Google Slides (facoltativo)'],
-        ].map(([k, label]) => (
-          <label key={k}>
-            {label}
-            <input
-              required={k === 'name' || k === 'role' || (k === 'title' && !p.spectator)}
-              type={k === 'deckUrl' ? 'url' : 'text'}
-              value={p[k as keyof Participant] as string}
-              onChange={(e) => setP({ ...p, [k]: e.target.value })}
-            />
-          </label>
-        ))}
-        <label className="checkbox">
-          <input type="checkbox" checked={p.spectator} onChange={(e) => setP({ ...p, spectator: e.target.checked })} />
-          Solo pubblico, senza presentazione
+        <label>
+          Nome e cognome
+          <input required value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
         </label>
+        <label>
+          Titolo da congresso
+          <input value={p.role} onChange={(e) => setP({ ...p, role: e.target.value })} />
+        </label>
+        <label>
+          Come presenta
+          <select
+            value={p.mode ?? ''}
+            onChange={(e) => setP({ ...p, mode: (e.target.value || null) as Participant['mode'] })}
+          >
+            <option value="">Non ancora deciso</option>
+            {modes.map((m) => (
+              <option key={m.key} value={m.key}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {p.mode !== 'none' && (
+          <label>
+            Titolo della rivelazione
+            <input value={p.title} onChange={(e) => setP({ ...p, title: e.target.value })} />
+          </label>
+        )}
+        {p.mode === 'slides' && (
+          <label>
+            Link Google Slides
+            <input type="url" value={p.deckUrl} onChange={(e) => setP({ ...p, deckUrl: e.target.value })} />
+          </label>
+        )}
         <Button type="submit" disabled={busy}>
           Salva fascicolo
           <Check size={17} />

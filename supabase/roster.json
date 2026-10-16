@@ -5,7 +5,8 @@
     "role": "Studioso dei finti uccelli",
     "title": "PICCIONI FBI",
     "deckUrl": "",
-    "spectator": false
+    "spectator": false,
+    "mode": "slides"
   },
   {
     "id": "giulia",
@@ -13,7 +14,8 @@
     "role": "Cartografa delle verità scomode",
     "title": "LA TERRA È UN PROGETTO PILOTA",
     "deckUrl": "",
-    "spectator": false
+    "spectator": false,
+    "mode": "paper"
   },
   {
     "id": "marco",
@@ -21,7 +23,8 @@
     "role": "Esperto di segnali sospetti",
     "title": "IL WI-FI CI LEGGE NEL PENSIERO",
     "deckUrl": "",
-    "spectator": false
+    "spectator": false,
+    "mode": "paper"
   },
   {
     "id": "sara",
@@ -29,7 +32,8 @@
     "role": "Archivista delle coincidenze",
     "title": "NON È MAI SOLO UNA COINCIDENZA",
     "deckUrl": "",
-    "spectator": false
+    "spectator": false,
+    "mode": "paper"
   },
   {
     "id": "gianluca",
@@ -37,7 +41,8 @@
     "role": "Direttore del congresso",
     "title": "IL DOSSIER MANCANTE",
     "deckUrl": "",
-    "spectator": false
+    "spectator": false,
+    "mode": "paper"
   },
   {
     "id": "pubblico",
@@ -45,6 +50,7 @@
     "role": "Osservatore indipendente",
     "title": "",
     "deckUrl": "",
-    "spectator": true
+    "spectator": true,
+    "mode": "none"
   }
 ]

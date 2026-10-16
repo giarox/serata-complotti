@@ -75,14 +75,14 @@ begin
  return s;
 end; $$;
 create or replace function public.party_action(command jsonb) returns void language plpgsql security definer set search_path=public,pg_temp as $$
-declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb;
+declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb; pid text; nm text; md text; prev jsonb;
 begin
  actor:=public.party_actor(); if actor is null then raise exception 'Entra nel congresso.'; end if;
  select state into s from public.party_store where id=true for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
  if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','settings') then raise exception 'Operazione non riconosciuta.'; end if;
- if kind<>'vote' and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
+ if kind not in ('vote','participant') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
   select v into p from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId';
@@ -140,13 +140,30 @@ begin
   then raise exception 'Regole dei premi non valide.'; end if;
   s:=s||jsonb_build_object('settings',jsonb_build_object('maxAwards',cfg->'maxAwards','awardOrder',cfg->'awardOrder','spectatorsVote',cfg->'spectatorsVote'));
  elsif kind='participant' then
-  if phase<>'waiting' then raise exception 'Modifica i fascicoli tra un turno e l’altro.'; end if;
+  -- Guests may edit only their own dossier; the GM may edit or add anyone.
   p:=command->'participant';
-  if coalesce(length(trim(p->>'id')),0)=0 or coalesce(length(trim(p->>'name')),0)=0 or coalesce(length(trim(p->>'role')),0)=0 or jsonb_typeof(p->'spectator') is distinct from 'boolean' then raise exception 'Inserisci nome e ruolo.'; end if;
-  if not (p->>'spectator')::boolean and coalesce(length(trim(p->>'title')),0)=0 then raise exception 'Inserisci il titolo.'; end if;
-  if length(coalesce(p->>'deckUrl',''))>0 and p->>'deckUrl' !~ '^https://docs[.]google[.]com/presentation/' then raise exception 'Usa un link HTTPS di Google Slides.'; end if;
-  if exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=p->>'id') then
-   select jsonb_agg(case when v->>'id'=p->>'id' then p else v end order by ord) into rounds from jsonb_array_elements(s->'participants') with ordinality t(v,ord);
+  if p is null or jsonb_typeof(p)<>'object' then raise exception 'Fascicolo non valido.'; end if;
+  pid:=p->>'id';
+  if pid is null or length(pid)=0 or length(pid)>80 then raise exception 'Fascicolo non valido.'; end if;
+  select v into prev from jsonb_array_elements(s->'participants') v where v->>'id'=pid;
+  if actor->>'role'<>'gm' and (prev is null or pid is distinct from actor->>'participantId') then raise exception 'Questo fascicolo non è tuo.'; end if;
+  nm:=regexp_replace(trim(coalesce(p->>'name','')),'\s+',' ','g');
+  if length(nm)<2 or length(nm)>60 then raise exception 'Il nome deve esserci (e non essere un romanzo).'; end if;
+  if length(coalesce(p->>'role',''))>80 or length(coalesce(p->>'title',''))>120 then raise exception 'Troppo lungo: i veri complotti stanno in una riga.'; end if;
+  md:=p->>'mode';
+  if md is not null and md not in ('slides','paper','none') then raise exception 'Modo di presentare sconosciuto.'; end if;
+  if md='slides' and length(trim(coalesce(p->>'deckUrl','')))>0 and trim(p->>'deckUrl') !~ '^https://docs[.]google[.]com/presentation/' then raise exception 'Quello non sembra un link di Google Slides. Deve iniziare con https://docs.google.com/presentation/'; end if;
+  if prev is not null then
+   if phase='results' then raise exception 'La serata è finita: i fascicoli sono agli atti.'; end if;
+   if r is not null and not (r->>'closed')::boolean and r->>'presenterId'=pid then raise exception 'Stai presentando: il fascicolo si modifica dopo.'; end if;
+   if actor->>'role'<>'gm' and exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=pid and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Hai già presentato: il fascicolo è agli atti.'; end if;
+   if md='none' and exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=pid and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Ha già presentato: non può diventare solo pubblico.'; end if;
+  end if;
+  if exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'<>pid and lower(v->>'name')=lower(nm)) then raise exception 'Questo nome è già nel registro.'; end if;
+  p:=jsonb_build_object('id',pid,'name',nm,'role',trim(coalesce(p->>'role','')),'title',trim(coalesce(p->>'title','')),
+    'deckUrl',case when md='slides' then trim(coalesce(p->>'deckUrl','')) else '' end,'mode',to_jsonb(md),'spectator',coalesce(md='none',false));
+  if prev is not null then
+   select jsonb_agg(case when v->>'id'=pid then p else v end order by ord) into rounds from jsonb_array_elements(s->'participants') with ordinality t(v,ord);
   else rounds:=(s->'participants')||jsonb_build_array(p); end if;
   s:=jsonb_set(s,'{participants}',rounds);
  end if;
@@ -154,8 +171,34 @@ begin
  update public.party_store set state=s where id=true;
  update public.party_signal set revision=(s->>'revision')::bigint where id=true;
 end; $$;
-revoke all on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb) from public,anon;
-grant execute on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb) to authenticated;
+-- Self-registration from the invite: event password + first and last name.
+create or replace function public.party_register(passcode text, full_name text) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+declare st public.party_store; existing public.party_members; nm text; pid text; s jsonb;
+begin
+ if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
+ select * into st from public.party_store where id=true for update;
+ if not found then raise exception 'Congresso non configurato.'; end if;
+ if passcode is null or length(passcode)>200 or extensions.crypt(passcode,st.guest_hash) is distinct from st.guest_hash then raise exception 'Password non corretta.'; end if;
+ select * into existing from public.party_members where user_id=auth.uid();
+ if found then return public.party_actor(); end if;
+ nm:=regexp_replace(trim(coalesce(full_name,'')),'\s+',' ','g');
+ if length(nm)<3 or length(nm)>60 or position(' ' in nm)=0 then raise exception 'Scrivi nome e cognome, per favore. Anche finti, ma due.'; end if;
+ s:=st.state;
+ if s->>'phase'='results' then raise exception 'La serata è finita: il registro è chiuso.'; end if;
+ if exists(select 1 from jsonb_array_elements(s->'participants') v where lower(v->>'name')=lower(nm)) then
+  raise exception 'Nel registro c’è già un %. Se sei tu, tocca “Sono già nel registro”.', nm;
+ end if;
+ pid:=left(trim(both '-' from regexp_replace(translate(lower(nm),'àáâäèéêëìíîïòóôöùúûüç','aaaaeeeeiiiioooouuuuc'),'[^a-z0-9]+','-','g')),30);
+ pid:=coalesce(nullif(pid,''),'agente')||'-'||substr(md5(gen_random_uuid()::text),1,4);
+ s:=jsonb_set(s,'{participants}',(s->'participants')||jsonb_build_array(jsonb_build_object('id',pid,'name',nm,'role','','title','','deckUrl','','mode',null,'spectator',false)));
+ s:=jsonb_set(s,'{revision}',to_jsonb((s->>'revision')::int+1));
+ update public.party_store set state=s where id=true;
+ update public.party_signal set revision=(s->>'revision')::bigint where id=true;
+ insert into public.party_members(user_id,role,person_id) values(auth.uid(),'guest',pid);
+ return public.party_actor();
+end; $$;
+revoke all on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text) from public,anon;
+grant execute on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text) to authenticated;
 -- Only a harmless revision number is broadcast; no scores, names or passwords.
 do $$ begin
  if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='party_signal') then

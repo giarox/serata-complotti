@@ -1284,7 +1284,9 @@ select:focus {
 .modal input,
 .modal select,
 .entry-card input,
-.entry-card select {
+.entry-card select,
+.wizard input,
+.letter input {
   background: #f3ead7;
   border: 0;
   border-bottom: 2px solid #8a7752;
@@ -1881,6 +1883,482 @@ select:focus {
   border-color: var(--brass-dim);
 }
 
+/* Invite: the secret letter */
+.invite .entry-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 30px;
+}
+.gm-door {
+  color: var(--brass-dim) !important;
+  font-size: 11px !important;
+}
+.invite-layout {
+  max-width: 760px;
+  width: 100%;
+  margin: 40px auto 0;
+}
+.invite-intro {
+  text-align: center;
+  margin-bottom: 44px;
+}
+.invite-intro .eyebrow {
+  justify-content: center;
+  color: #d0684f;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.invite-intro h1 {
+  font-size: clamp(56px, 11vw, 110px);
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+  background: linear-gradient(180deg, var(--brass-hi), #8f6e40);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.invite-lede {
+  font-size: 22px;
+  font-style: italic;
+  color: var(--bone);
+  margin-top: 18px;
+}
+.letter {
+  position: relative;
+  background: var(--fibres), linear-gradient(175deg, #e9dfc8, var(--paper) 50%, #d4c4a1);
+  color: var(--ink);
+  padding: 46px 48px 36px;
+  border-radius: 2px;
+  box-shadow:
+    0 30px 70px #000000c8,
+    0 2px 0 #8d7a58;
+  transform: rotate(-0.4deg);
+}
+.letter:before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 18%;
+  width: 130px;
+  height: 30px;
+  background: #efe7d2b3;
+  transform: rotate(-4deg);
+}
+.letter > .stamp {
+  position: absolute;
+  top: 26px;
+  right: 22px;
+  font-size: 38px;
+}
+.letter-open {
+  font-size: 21px;
+  line-height: 1.55;
+  max-width: 470px;
+  margin-bottom: 30px;
+}
+.letter h2 {
+  font-size: 26px;
+  margin: 28px 0 14px;
+  padding-top: 18px;
+  border-top: 1px dashed #a9976f;
+}
+.clues {
+  list-style: none;
+  counter-reset: clue;
+  padding: 0;
+  margin: 0;
+}
+.clues li {
+  counter-increment: clue;
+  position: relative;
+  padding: 0 0 14px 44px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.clues li:before {
+  content: counter(clue);
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--stamp);
+  border-radius: 50%;
+  color: var(--stamp);
+  font: 600 17px/26px var(--display);
+  text-align: center;
+  transform: rotate(-8deg);
+}
+.clues strong,
+.needs strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+.needs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.needs li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 10px 0;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.needs li > svg {
+  flex-shrink: 0;
+  color: #fff;
+  background: var(--stamp);
+  border-radius: 2px;
+  padding: 2px;
+  margin-top: 3px;
+}
+.needs .box,
+.checklist .box {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #8a7752;
+  border-radius: 2px;
+  margin-top: 3px;
+}
+.needs .now {
+  background: #f1e8d3;
+  margin: 0 -12px;
+  padding: 12px;
+}
+.letter-note {
+  font-family: var(--type);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 22px 0 6px;
+}
+.letter .button,
+.step-card .button,
+.wizard .button:not(.secondary),
+.dossier-sheet .button {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+  box-shadow: none;
+}
+.letter-cta {
+  width: 100%;
+  margin-top: 18px;
+  min-height: 62px;
+  font-size: 22px !important;
+}
+.letter-returning {
+  display: flex;
+  margin: 16px auto 0;
+  color: #6f5536 !important;
+  font-size: 13px !important;
+  text-align: center;
+}
+.step-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 60px auto 0;
+}
+.step-card > .button {
+  width: 100%;
+  margin-top: 24px;
+}
+
+/* The guest's dossier */
+.dossier-home > .eyebrow {
+  color: #d0684f;
+  margin-bottom: 12px;
+}
+.dossier-home > h1 {
+  color: var(--brass);
+  font-size: 50px;
+}
+.dossier-lede {
+  font-size: 19px;
+  color: var(--bone);
+  margin: 14px 0 30px;
+  max-width: 560px;
+}
+.dossier-home.compact {
+  margin-top: 30px;
+}
+.dossier-sheet {
+  position: relative;
+  background: var(--fibres), var(--paper);
+  color: var(--ink);
+  padding: 30px 28px 26px;
+  border-radius: 2px;
+  box-shadow: 0 20px 44px #000000b8;
+}
+.dossier-sheet > .stamp {
+  position: absolute;
+  top: 18px;
+  right: 12px;
+  font-size: 32px;
+}
+.stamp.ok {
+  color: #2f6b3a;
+}
+.pending-label {
+  position: absolute;
+  top: 22px;
+  right: 18px;
+  font: 13px var(--type);
+  color: var(--stamp);
+  border: 1.5px dashed currentColor;
+  padding: 5px 9px 3px;
+  transform: rotate(4deg);
+}
+.dossier-sheet > .mono {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.dossier-sheet h2 {
+  font-size: 36px;
+  margin-top: 10px;
+  padding-right: 120px;
+}
+.dossier-role {
+  font-size: 19px;
+  font-style: italic;
+  color: var(--ink-soft);
+  margin: 4px 0 18px;
+}
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+.checklist li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px dashed #a9976f;
+  padding: 10px 0;
+  font-size: 18px;
+  min-height: 58px;
+}
+.checklist li > span:not(.box) {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.checklist small {
+  display: block;
+  font: 12px var(--type);
+  color: var(--ink-soft);
+}
+.checklist li.ok > svg {
+  flex-shrink: 0;
+  color: #fff;
+  background: #2f6b3a;
+  border-radius: 2px;
+  padding: 2px;
+}
+.checklist li.todo {
+  color: var(--stamp);
+}
+.checklist .icon-button {
+  color: var(--ink);
+  width: 44px;
+  height: 44px;
+}
+.checklist .icon-button:hover {
+  background: #0000001a;
+}
+.dossier-cta {
+  width: 100%;
+  min-height: 58px;
+  font-size: 20px !important;
+}
+.what-next {
+  margin-top: 34px;
+  padding: 22px 0 0;
+  border-top: 1px dashed var(--rule);
+}
+.what-next h3 {
+  font-size: 24px;
+  color: var(--brass);
+  margin-bottom: 10px;
+}
+.what-next p {
+  font-size: 18px;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+
+/* Guided steps */
+.wizard {
+  background: var(--fibres), var(--paper);
+  color: var(--ink);
+  padding: 26px 26px 20px;
+  border-radius: 2px;
+  box-shadow: 0 20px 44px #000000b8;
+}
+.wizard-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.wizard-progress span {
+  flex: 1;
+  height: 5px;
+  background: #cbbb98;
+  border-radius: 1px;
+}
+.wizard-progress span.done {
+  background: var(--ink-soft);
+}
+.wizard-progress span.current {
+  background: var(--stamp);
+}
+.wizard-progress small {
+  font: 12px var(--type);
+  color: var(--ink-soft);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.wizard fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.wizard legend {
+  font: 600 32px/1.05 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0;
+  margin-bottom: 10px;
+}
+.wizard fieldset > p {
+  font-size: 18px;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.wizard label {
+  color: var(--ink-soft);
+  margin-top: 8px;
+}
+.wizard input {
+  font-size: 19px;
+  min-height: 52px;
+}
+.wizard > .button {
+  width: 100%;
+  margin-top: 24px;
+  min-height: 58px;
+  font-size: 20px;
+}
+.inspire {
+  margin-top: 14px;
+  color: var(--ink) !important;
+  border-color: #8a7752 !important;
+}
+.inspire:hover {
+  background: #0000000f !important;
+}
+.mode-choices {
+  display: grid;
+  gap: 10px;
+}
+.mode-choice {
+  text-align: left;
+  border: 2px solid #b5a37d;
+  background: #efe5cf;
+  border-radius: 2px;
+  padding: 14px 16px;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink);
+}
+.mode-choice strong {
+  font: 600 21px var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.mode-choice span {
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+.mode-choice.chosen {
+  border-color: var(--stamp);
+  background: #f6ead8;
+  box-shadow: inset 6px 0 0 var(--stamp);
+}
+.hint {
+  font-family: var(--type);
+  font-size: 13px !important;
+  line-height: 1.6;
+  background: #e8dc9f;
+  padding: 10px 12px;
+  margin: 14px 0 0 !important;
+  color: #4a3d2a !important;
+}
+.howto {
+  margin: 0 0 12px;
+  padding-left: 22px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+.howto strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+.wizard-secondary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+.wizard .text-button {
+  color: #6f5536;
+  font-size: 13px;
+  min-height: 44px;
+}
+
+/* GM: invite link and people tags */
+.invite-panel {
+  margin-bottom: 26px;
+}
+.invite-panel .panel-heading > svg {
+  color: var(--brass-dim);
+}
+.invite-link {
+  font: 13px var(--type);
+  color: var(--brass-hi);
+  background: #0f0d0a;
+  border: 1px dashed var(--rule);
+  padding: 10px 12px;
+  margin-top: 14px;
+  overflow-wrap: anywhere;
+}
+.mode-tag {
+  display: inline-block;
+  font-style: normal;
+  margin-left: 8px;
+  padding: 0 5px;
+  border: 1px solid var(--brass-dim);
+  color: var(--brass);
+  font-size: 10px;
+}
+.mode-tag.todo {
+  border-color: #b06a52;
+  color: #e08a70;
+}
+
 /* Responsive */
 @media (min-width: 1500px) {
   .content {
@@ -2271,6 +2749,60 @@ select:focus {
   }
   .award-winner strong {
     font-size: 30px;
+  }
+}
+@media (max-width: 650px) {
+  .invite-layout {
+    margin-top: 26px;
+  }
+  .invite-intro {
+    margin-bottom: 36px;
+  }
+  .invite-lede {
+    font-size: 19px;
+  }
+  .letter {
+    padding: 104px 20px 26px;
+    transform: none;
+  }
+  .letter > .stamp {
+    top: 14px;
+    right: 10px;
+    font-size: 26px;
+  }
+  .letter-open {
+    font-size: 19px;
+  }
+  .clues li,
+  .needs li,
+  .howto {
+    font-size: 17px;
+  }
+  .letter-cta {
+    font-size: 19px !important;
+  }
+  .step-card {
+    margin-top: 34px;
+  }
+  .dossier-home > h1 {
+    font-size: 40px;
+  }
+  .dossier-sheet {
+    padding: 26px 18px 20px;
+  }
+  .dossier-sheet h2 {
+    font-size: 30px;
+    padding-right: 0;
+    margin-top: 44px;
+  }
+  .dossier-sheet > .stamp {
+    font-size: 24px;
+  }
+  .wizard {
+    padding: 22px 16px 16px;
+  }
+  .wizard legend {
+    font-size: 28px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

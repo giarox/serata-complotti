@@ -1,4 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+/** A guest already on the list opens the invite link on a new phone. */
+async function returning(page: Page, id: string) {
+  await page.goto('/#invito=complotti');
+  await page.getByRole('button', { name: /Sono già nel registro/ }).click();
+  await page.getByLabel('Il tuo nome').selectOption(id);
+  await page.getByRole('button', { name: 'Sono io' }).click();
+}
 test('GM, presenter, voter and projector complete two rounds', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
@@ -7,17 +14,9 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await page.getByRole('button', { name: 'Entra in regia', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tieni insieme il complotto.' })).toBeVisible();
   const voter = await context.newPage();
-  await voter.goto('/');
-  await voter.getByLabel('Password della serata').fill('complotti');
-  await voter.getByRole('button', { name: 'Apri il fascicolo' }).click();
-  await voter.getByLabel('Il tuo nome').selectOption('giulia');
-  await voter.getByRole('button', { name: 'Entra nel congresso' }).click();
+  await returning(voter, 'giulia');
   const speaker = await context.newPage();
-  await speaker.goto('/');
-  await speaker.getByLabel('Password della serata').fill('complotti');
-  await speaker.getByRole('button', { name: 'Apri il fascicolo' }).click();
-  await speaker.getByLabel('Il tuo nome').selectOption('paolo');
-  await speaker.getByRole('button', { name: 'Entra nel congresso' }).click();
+  await returning(speaker, 'paolo');
   for (const name of ['Paolo', 'Marco']) {
     const row = page.locator('.person-row').filter({ has: page.getByRole('heading', { name, exact: true }) });
     await row.getByRole('button', { name: 'Scegli' }).click();
@@ -72,7 +71,7 @@ test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Entra in regia', exact: true }).click();
   await page.getByRole('button', { name: 'Fascicoli', exact: true }).click();
   await page.getByRole('button', { name: 'Modifica Paolo' }).click();
-  await page.getByLabel('Nome', { exact: true }).fill('Paolo Demo');
+  await page.getByLabel('Nome e cognome').fill('Paolo Demo');
   await page.getByRole('button', { name: 'Salva fascicolo' }).click();
   await expect(page.getByRole('heading', { name: 'Paolo Demo', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -105,4 +104,56 @@ test('GM with a name votes from the regia and sees the provisional award rules',
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
   await expect(page.getByText('IL PREMIO VA A').first()).toBeVisible();
   await expect(page.locator('.award-settings')).toHaveCount(0);
+});
+test('a friend registers from the invite link and completes the dossier step by step', async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#invito=complotti');
+  await expect(page.getByRole('heading', { name: 'Sei stato selezionato.' })).toBeVisible();
+  expect(page.url()).not.toContain('complotti');
+  await page.getByRole('button', { name: 'Accetto la missione' }).click();
+  await page.getByLabel('Nome', { exact: true }).fill('Anna');
+  await page.getByLabel('Cognome').fill('Rossi');
+  await page.getByRole('button', { name: 'Mettimi nel registro' }).click();
+  await expect(page.getByRole('heading', { name: 'Benvenuto nel registro, Anna.' })).toBeVisible();
+  await expect(page.getByText('Pratica incompleta')).toBeVisible();
+  await page.getByRole('button', { name: 'Completa il fascicolo' }).click();
+  await page.getByRole('button', { name: 'Ispirami' }).click();
+  await expect(page.getByLabel('Titolo')).not.toHaveValue('');
+  await page.getByLabel('Titolo').fill('Esperta di scie sospette');
+  await page.getByRole('button', { name: 'Avanti' }).click();
+  await page.getByRole('radio', { name: /Sì, con le slide/ }).click();
+  await page.getByRole('button', { name: 'Avanti' }).click();
+  await page.getByLabel('Titolo').fill('LE SCIE PARLANO');
+  await page.getByRole('button', { name: 'Avanti' }).click();
+  await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
+  await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
+  await expect(page.getByRole('alert')).toContainText('Google Slides');
+  await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
+  await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
+  await expect(page.getByText('Il tuo fascicolo è completo.', { exact: false })).toBeVisible();
+  await expect(page.locator('.dossier-sheet .stamp')).toContainText('Ammesso');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // Switching to paper drops the link step.
+  await page.getByRole('button', { name: 'Modifica: Presenti?' }).click();
+  await page.getByRole('radio', { name: /alla vecchia maniera/ }).click();
+  await page.getByRole('button', { name: 'Avanti' }).click();
+  await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
+  await expect(page.getByText('Link Google Slides')).toHaveCount(0);
+  // The GM sees her in the list, ready to be chosen.
+  const gm = await context.newPage();
+  await gm.goto('/');
+  await gm.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
+  await gm.getByLabel('Password della regia').fill('regia-demo');
+  await gm.getByRole('button', { name: 'Continua', exact: true }).click();
+  await gm.getByRole('button', { name: 'Entra in regia', exact: true }).click();
+  const row = gm.locator('.person-row').filter({ has: gm.getByRole('heading', { name: 'Anna Rossi', exact: true }) });
+  await expect(row).toContainText('LE SCIE PARLANO');
+  await expect(row).toContainText('Dal vivo');
+  // A typo in the password from a link without the key.
+  const other = await context.newPage();
+  await other.goto('/');
+  await other.getByRole('button', { name: 'Accetto la missione' }).click();
+  await other.getByLabel('Parola d’ordine').fill('sbagliata');
+  await other.getByRole('button', { name: 'Avanti' }).click();
+  await expect(other.getByRole('alert')).toContainText('non apre niente');
 });

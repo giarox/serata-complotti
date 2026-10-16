@@ -1,10 +1,16 @@
 export type Phase = 'waiting' | 'presenting' | 'questions' | 'voting' | 'results';
+/** How someone presents: Google Slides, paper/props/voice, or not at all. null = not decided yet. */
+export type Mode = 'slides' | 'paper' | 'none';
 export type Participant = {
   id: string;
+  /** First and last name, as typed at registration. */
   name: string;
+  /** The silly congress title, e.g. "Studioso dei finti uccelli". */
   role: string;
   title: string;
   deckUrl: string;
+  mode: Mode | null;
+  /** Kept in sync with mode === 'none' (older data and the vote rules use it). */
   spectator: boolean;
 };
 export type Round = { id: string; presenterId: string; closed: boolean; cancelled?: boolean };
@@ -46,6 +52,7 @@ export type Action =
   | { type: 'reveal' }
   | { type: 'nextAward' }
   | { type: 'participant'; participant: Participant }
+  | { type: 'register'; id: string; name: string }
   | { type: 'release'; participantId: string }
   | { type: 'settings'; settings: Settings };
 export const categories = [
@@ -88,12 +95,74 @@ export const phaseNames: Record<Phase, string> = {
   voting: 'Votazione aperta',
   results: 'Il verdetto',
 };
+export const modes: { key: Mode; label: string; short: string; hint: string }[] = [
+  {
+    key: 'slides',
+    label: 'Sì, con le slide',
+    short: 'Slide',
+    hint: 'Una presentazione Google Slides. Animazioni e video compresi.',
+  },
+  {
+    key: 'paper',
+    label: 'Sì, alla vecchia maniera',
+    short: 'Dal vivo',
+    hint: 'Fogli, cartelloni, ritagli, oggetti sospetti o solo la tua voce.',
+  },
+  {
+    key: 'none',
+    label: 'No, vengo solo a giudicare',
+    short: 'Pubblico',
+    hint: 'Niente palco: ascolti, fai domande scomode e voti.',
+  },
+];
+export const presents = (p: Participant) => p.mode === 'slides' || p.mode === 'paper';
+export const slidesUrlPattern = /^https:\/\/docs\.google\.com\/presentation\//;
+/** What is still missing before the evening, in plain words. Empty = dossier complete. */
+export function dossierGaps(p: Participant): string[] {
+  const gaps: string[] = [];
+  if (!p.role.trim()) gaps.push('il tuo titolo da congresso');
+  if (!p.mode) gaps.push('se e come presenti');
+  if (presents(p) && !p.title.trim()) gaps.push('il titolo della tua rivelazione');
+  if (p.mode === 'slides' && !p.deckUrl) gaps.push('il link della presentazione');
+  return gaps;
+}
+export function cleanName(raw: string) {
+  return raw.trim().replace(/\s+/g, ' ');
+}
+/** A readable unique id from the name, e.g. "paolo-pesaresi-k3x9". */
+export function makeId(name: string, random = Math.random().toString(36).slice(2, 6)) {
+  const slug = cleanName(name)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30);
+  return (slug || 'agente') + '-' + random;
+}
+function normalizeParticipant(p: Participant): Participant {
+  const mode: Mode | null = p.mode ?? (p.spectator ? 'none' : p.title ? (p.deckUrl ? 'slides' : 'paper') : null);
+  return { ...p, role: p.role ?? '', title: p.title ?? '', deckUrl: p.deckUrl ?? '', mode, spectator: mode === 'none' };
+}
+/** Why this participant's dossier cannot be changed right now by this actor, or null. */
+export function editBlocker(s: State, actor: Actor, id: string): string | null {
+  if (s.phase === 'results') return 'La serata è finita: i fascicoli sono agli atti.';
+  const r = activeRound(s);
+  if (r && !r.closed && r.presenterId === id) return 'Stai presentando: il fascicolo si modifica dopo.';
+  if (actor.role !== 'gm' && s.rounds.some((x) => x.presenterId === id && !x.cancelled))
+    return 'Hai già presentato: il fascicolo è agli atti.';
+  return null;
+}
 export const activeRound = (s: State) => s.rounds.find((r) => r.id === s.activeRoundId);
 export const presenter = (s: State) => s.participants.find((p) => p.id === activeRound(s)?.presenterId);
 export const countVotes = (s: State) => s.voteCount ?? s.votes.filter((v) => v.roundId === s.activeRoundId).length;
 /** Fills in fields added after a state was first saved (older demo data, or a live state without settings). */
 export function normalize(s: State): State {
-  return { ...s, settings: { ...defaultSettings(), ...(s.settings ?? {}) } };
+  return {
+    ...s,
+    participants: (s.participants ?? []).map(normalizeParticipant),
+    settings: { ...defaultSettings(), ...(s.settings ?? {}) },
+  };
 }
 export function validBallot(b: Ballot) {
   return (
@@ -138,6 +207,7 @@ export function initialState(): State {
         role: 'Studioso dei finti uccelli',
         title: 'PICCIONI FBI',
         deckUrl: '',
+        mode: 'slides',
         spectator: false,
       },
       {
@@ -146,6 +216,7 @@ export function initialState(): State {
         role: 'Cartografa delle verità scomode',
         title: 'LA TERRA È UN PROGETTO PILOTA',
         deckUrl: '',
+        mode: 'paper',
         spectator: false,
       },
       {
@@ -154,6 +225,7 @@ export function initialState(): State {
         role: 'Esperto di segnali sospetti',
         title: 'IL WI-FI CI LEGGE NEL PENSIERO',
         deckUrl: '',
+        mode: 'paper',
         spectator: false,
       },
       {
@@ -162,6 +234,7 @@ export function initialState(): State {
         role: 'Archivista delle coincidenze',
         title: 'NON È MAI SOLO UNA COINCIDENZA',
         deckUrl: '',
+        mode: 'paper',
         spectator: false,
       },
       {
@@ -170,6 +243,7 @@ export function initialState(): State {
         role: 'Direttore del congresso',
         title: 'IL DOSSIER MANCANTE',
         deckUrl: '',
+        mode: 'paper',
         spectator: false,
       },
       {
@@ -178,6 +252,7 @@ export function initialState(): State {
         role: 'Osservatore indipendente',
         title: '',
         deckUrl: '',
+        mode: 'none',
         spectator: true,
       },
     ],
@@ -185,7 +260,11 @@ export function initialState(): State {
 }
 export function applyAction(source: State, actor: Actor, action: Action): State {
   const s = normalize(structuredClone(source));
-  if (action.type !== 'vote' && actor.role !== 'gm') throw new Error('Solo la regia può fare questa operazione.');
+  const guestAllowed =
+    action.type === 'vote' ||
+    action.type === 'register' ||
+    (action.type === 'participant' && action.participant.id === actor.participantId);
+  if (!guestAllowed && actor.role !== 'gm') throw new Error('Solo la regia può fare questa operazione.');
   if (action.type === 'start') {
     if (s.phase !== 'waiting') throw new Error('Concludi il turno prima di iniziarne un altro.');
     const p = s.participants.find((p) => p.id === action.participantId);
@@ -247,16 +326,48 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       awardOrder: [...action.settings.awardOrder],
       spectatorsVote: action.settings.spectatorsVote,
     };
+  } else if (action.type === 'register') {
+    if (actor.role !== 'guest' || actor.participantId) throw new Error('Sei già nel registro.');
+    const name = cleanName(action.name);
+    if (name.length < 3 || name.length > 60 || !name.includes(' '))
+      throw new Error('Scrivi nome e cognome, per favore. Anche finti, ma due.');
+    if (s.phase === 'results') throw new Error('La serata è finita: il registro è chiuso.');
+    if (s.participants.some((p) => p.name.toLowerCase() === name.toLowerCase()))
+      throw new Error(`Nel registro c’è già un ${name}. Se sei tu, tocca “Sono già nel registro”.`);
+    if (s.participants.some((p) => p.id === action.id)) throw new Error('Riprova, il codice agente era già preso.');
+    s.participants.push({ id: action.id, name, role: '', title: '', deckUrl: '', mode: null, spectator: false });
   } else if (action.type === 'participant') {
-    const p = action.participant;
-    if (!p.name.trim() || !p.role.trim() || (!p.spectator && !p.title.trim()))
-      throw new Error('Inserisci nome, ruolo e titolo.');
-    if (p.deckUrl && !/^https:\/\/docs\.google\.com\/presentation\//.test(p.deckUrl))
-      throw new Error('Usa un link HTTPS di Google Slides.');
-    if (s.phase !== 'waiting') throw new Error('Modifica i fascicoli tra un turno e l’altro.');
+    const p = normalizeParticipant({ ...action.participant, name: cleanName(action.participant.name) });
+    const existing = s.participants.find((x) => x.id === p.id);
+    if (!existing && actor.role !== 'gm') throw new Error('Questo fascicolo non è tuo.');
+    if (p.name.length < 2 || p.name.length > 60) throw new Error('Il nome deve esserci (e non essere un romanzo).');
+    if (p.role.length > 80 || p.title.length > 120)
+      throw new Error('Troppo lungo: i veri complotti stanno in una riga.');
+    if (p.mode !== null && !modes.some((m) => m.key === p.mode)) throw new Error('Modo di presentare sconosciuto.');
+    if (p.mode === 'slides' && p.deckUrl && !slidesUrlPattern.test(p.deckUrl.trim()))
+      throw new Error(
+        'Quello non sembra un link di Google Slides. Deve iniziare con https://docs.google.com/presentation/',
+      );
+    if (existing) {
+      const blocker = editBlocker(s, actor, p.id);
+      if (blocker) throw new Error(blocker);
+      if (p.mode === 'none' && s.rounds.some((r) => r.presenterId === p.id && !r.cancelled))
+        throw new Error('Ha già presentato: non può diventare solo pubblico.');
+    }
+    if (s.participants.some((x) => x.id !== p.id && x.name.toLowerCase() === p.name.toLowerCase()))
+      throw new Error('Questo nome è già nel registro.');
+    const clean: Participant = {
+      id: p.id,
+      name: p.name,
+      role: p.role.trim(),
+      title: p.title.trim(),
+      deckUrl: p.mode === 'slides' ? p.deckUrl.trim() : '',
+      mode: p.mode,
+      spectator: p.mode === 'none',
+    };
     const i = s.participants.findIndex((x) => x.id === p.id);
-    if (i >= 0) s.participants[i] = p;
-    else s.participants.push(p);
+    if (i >= 0) s.participants[i] = clean;
+    else s.participants.push(clean);
   }
   delete s.voteCount;
   delete s.claimed;

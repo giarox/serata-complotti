@@ -23,27 +23,32 @@ export async function hashPasswords(...passwords) {
 }
 
 export function validateRoster(roster) {
-  if (!Array.isArray(roster) || roster.length === 0)
-    throw new Error('roster.json deve contenere una lista di persone.');
+  if (!Array.isArray(roster))
+    throw new Error('roster.json deve contenere una lista (anche vuota: si iscrivono dall’invito).');
   const ids = new Set();
   for (const p of roster) {
-    for (const k of ['id', 'name', 'role'])
+    for (const k of ['id', 'name'])
       if (typeof p[k] !== 'string' || !p[k].trim()) throw new Error(`Manca "${k}" in ${JSON.stringify(p)}`);
-    if (typeof p.spectator !== 'boolean') throw new Error(`"spectator" deve essere true o false per ${p.name}`);
-    if (!p.spectator && !String(p.title ?? '').trim()) throw new Error(`Manca il titolo del talk per ${p.name}`);
+    const mode = p.mode ?? (p.spectator ? 'none' : null);
+    if (mode !== null && !['slides', 'paper', 'none'].includes(mode))
+      throw new Error(`"mode" non valido per ${p.name}`);
     if (p.deckUrl && !/^https:\/\/docs\.google\.com\/presentation\//.test(p.deckUrl))
       throw new Error(`Link Slides non valido per ${p.name}`);
     if (ids.has(p.id)) throw new Error(`id duplicato: ${p.id}`);
     ids.add(p.id);
   }
-  return roster.map((p) => ({
-    id: p.id,
-    name: p.name,
-    role: p.role,
-    title: p.title ?? '',
-    deckUrl: p.deckUrl ?? '',
-    spectator: p.spectator,
-  }));
+  return roster.map((p) => {
+    const mode = p.mode ?? (p.spectator ? 'none' : null);
+    return {
+      id: p.id,
+      name: p.name,
+      role: p.role ?? '',
+      title: p.title ?? '',
+      deckUrl: mode === 'slides' ? (p.deckUrl ?? '') : '',
+      mode,
+      spectator: mode === 'none',
+    };
+  });
 }
 
 const literal = (value) => `'${String(value).replaceAll("'", "''")}'`;

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { applyAction, initialState, normalize, snapshot, type State, type Action, type Actor } from './domain';
+import { applyAction, initialState, makeId, normalize, snapshot, type State, type Action, type Actor } from './domain';
 const env = (import.meta as unknown as { env: Record<string, string> }).env;
 export const live = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
 const client = live ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY) : null;
@@ -48,6 +48,22 @@ export async function login(code: string, participantId: string, gm: boolean): P
     person_id: participantId || null,
     as_gm: gm,
   });
+  if (error) throw new Error(error.message);
+  return data;
+}
+/** Self-registration from the invite: event password + first and last name. */
+export async function register(code: string, fullName: string): Promise<Actor> {
+  if (!client) {
+    if (code !== 'complotti') throw new Error('Password non corretta.');
+    const id = makeId(fullName);
+    const guest: Actor = { role: 'guest' };
+    await navigator.locks.request('complotti-demo', () =>
+      writeDemo(applyAction(readDemo(), guest, { type: 'register', id, name: fullName })),
+    );
+    return { role: 'guest', participantId: id };
+  }
+  await entryList();
+  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName });
   if (error) throw new Error(error.message);
   return data;
 }

@@ -251,3 +251,103 @@ describe('GM as participant, spectators, settings and releasing a name', () => {
     expect(await join(realGiulia, GUEST, 'giulia')).toEqual({ role: 'guest', participantId: 'giulia' });
   });
 });
+
+describe('self-registration and own dossier', () => {
+  const registerAs = (uid: string, passcode: string, name: string) =>
+    as<{ role: string; participantId: string }>(uid, 'select public.party_register($1, $2) as r', [passcode, name]);
+  type P = {
+    id: string;
+    name: string;
+    role: string;
+    title: string;
+    deckUrl: string;
+    mode: string | null;
+    spectator: boolean;
+  };
+  const people = async (uid: string) =>
+    (await as<{ participants: P[] }>(uid, 'select public.party_snapshot() as r')).participants;
+
+  it('registers with the event password and first + last name only', async () => {
+    const anna = await user();
+    await expect(registerAs(anna, 'sbagliata', 'Anna Rossi')).rejects.toThrow('Password non corretta');
+    await expect(registerAs(anna, GUEST, 'Anna')).rejects.toThrow('nome e cognome');
+    const actor = await registerAs(anna, GUEST, '  Anna   Rossi ');
+    expect(actor.role).toBe('guest');
+    expect(actor.participantId).toMatch(/^anna-rossi-[0-9a-f]{4}$/);
+    const me = (await people(anna)).find((p) => p.id === actor.participantId)!;
+    expect(me).toMatchObject({ name: 'Anna Rossi', role: '', mode: null, spectator: false });
+    // Registering again from the same phone returns the same identity.
+    expect(await registerAs(anna, GUEST, 'Altro Nome')).toEqual(actor);
+    await expect(registerAs(await user(), GUEST, 'anna rossi')).rejects.toThrow('Sono già nel registro');
+  });
+
+  it('lets guests edit only their own dossier, with server-side checks', async () => {
+    const anna = await user();
+    const { participantId: id } = await registerAs(anna, GUEST, 'Anna Rossi');
+    const base = {
+      id,
+      name: 'Anna Rossi',
+      role: 'Esperta di scie',
+      title: 'LE SCIE',
+      deckUrl: '',
+      mode: 'slides',
+      spectator: false,
+    };
+    await act(anna, {
+      type: 'participant',
+      participant: { ...base, deckUrl: 'https://docs.google.com/presentation/d/abc/edit' },
+    });
+    let me = (await people(anna)).find((p) => p.id === id)!;
+    expect(me).toMatchObject({
+      role: 'Esperta di scie',
+      mode: 'slides',
+      deckUrl: 'https://docs.google.com/presentation/d/abc/edit',
+    });
+    await expect(
+      act(anna, { type: 'participant', participant: { ...base, deckUrl: 'https://evil.example/x' } }),
+    ).rejects.toThrow('Google Slides');
+    await act(anna, {
+      type: 'participant',
+      participant: { ...base, mode: 'paper', deckUrl: 'https://docs.google.com/presentation/d/abc' },
+    });
+    me = (await people(anna)).find((p) => p.id === id)!;
+    expect(me).toMatchObject({ mode: 'paper', deckUrl: '', spectator: false });
+    await expect(
+      act(anna, {
+        type: 'participant',
+        participant: {
+          id: 'giulia',
+          name: 'Giulia',
+          role: 'Hackerata',
+          title: '',
+          deckUrl: '',
+          mode: 'none',
+          spectator: true,
+        },
+      }),
+    ).rejects.toThrow('non è tuo');
+    await expect(act(anna, { type: 'participant', participant: { ...base, id: 'nuovo-id' } })).rejects.toThrow(
+      'non è tuo',
+    );
+  });
+
+  it('freezes a dossier after its owner presented, but not for the GM', async () => {
+    const anna = await user();
+    const { participantId: id } = await registerAs(anna, GUEST, 'Anna Rossi');
+    const base = { id, name: 'Anna Rossi', role: 'R', title: 'T', deckUrl: '', mode: 'paper', spectator: false };
+    await act(anna, { type: 'participant', participant: base });
+    await act(gm, { type: 'start', participantId: id });
+    await expect(act(anna, { type: 'participant', participant: { ...base, title: 'X' } })).rejects.toThrow(
+      'Stai presentando',
+    );
+    const roundId = (await snap(gm)).activeRoundId!;
+    await act(gm, { type: 'phase', phase: 'questions', roundId });
+    await act(gm, { type: 'phase', phase: 'voting', roundId });
+    await act(gm, { type: 'phase', phase: 'waiting', roundId });
+    await expect(act(anna, { type: 'participant', participant: { ...base, title: 'X' } })).rejects.toThrow(
+      'già presentato',
+    );
+    await act(gm, { type: 'participant', participant: { ...base, title: 'Corretto dal GM' } });
+    expect((await people(gm)).find((p) => p.id === id)!.title).toBe('Corretto dal GM');
+  });
+});
