@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, LockKeyhole } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, LockKeyhole } from 'lucide-react';
 import type { Actor, Participant } from './domain';
 import * as api from './api';
 import { Button, Mark, Stamp } from './ui';
+import { DossierFields, dossierProblem, emptyDossier } from './dossier';
 
-type Step = 'invite' | 'key' | 'name' | 'returning' | 'gm';
+type Step = 'book' | 'returning' | 'gm';
 const KEY = 'complotti-invite-key';
 
 /** The invite link carries the event password: …/#invito=PAROLA. Read it once, then hide it from the address bar. */
@@ -23,122 +24,53 @@ function readInviteKey(): string {
     return '';
   }
 }
+function rememberKey(code: string) {
+  try {
+    sessionStorage.setItem(KEY, code);
+  } catch {
+    /* private mode: fine */
+  }
+}
+const friendly = (m: string) =>
+  m.includes('Password') ? 'Parola d’ordine sbagliata. Ricontrolla il messaggio d’invito.' : m;
 
 export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
-  const [step, setStep] = useState<Step>('invite'),
-    [after, setAfter] = useState<'name' | 'returning'>('name'),
+  const [step, setStep] = useState<Step>('book'),
     [code, setCode] = useState(''),
-    [names, setNames] = useState<Pick<Participant, 'id' | 'name'>[]>([]),
-    [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
-  useEffect(() => setCode(readInviteKey()), []);
-
-  async function go(fn: () => Promise<void>) {
-    setBusy(true);
-    setError('');
-    try {
-      await fn();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  /** Validate the password (from the link or typed) and move on. */
-  function unlock(target: 'name' | 'returning', typed = code) {
-    setAfter(target);
-    if (!typed) return setStep('key');
-    void go(async () => {
-      try {
-        setNames(await api.unlockNames(typed));
-      } catch (e) {
-        setStep('key');
-        throw new Error(
-          (e as Error).message.includes('Password')
-            ? 'Questa parola d’ordine non apre niente. Ricontrolla il messaggio d’invito.'
-            : (e as Error).message,
-        );
-      }
-      try {
-        sessionStorage.setItem(KEY, typed);
-      } catch {
-        /* private mode: fine */
-      }
-      setStep(target);
-    });
-  }
-  const back = (to: Step = 'invite') => {
-    setError('');
-    setStep(to);
-  };
-
+    [fromLink, setFromLink] = useState(false);
+  useEffect(() => {
+    const k = readInviteKey();
+    setCode(k);
+    setFromLink(!!k);
+  }, []);
   return (
     <div className="entry invite">
       <div className="entry-brand">
         <Mark />
         <span>SERATA COMPLOTTI</span>
-        <span className="mono">CONGRESSO N. 001</span>
       </div>
-      {step === 'invite' && (
-        <InviteLetter
-          onAccept={() => unlock('name')}
-          onReturning={() => unlock('returning')}
-          busy={busy}
-          error={error}
+      {step === 'book' && (
+        <Booking
+          code={code}
+          setCode={setCode}
+          fromLink={fromLink}
+          onEnter={onEnter}
+          onReturning={() => setStep('returning')}
         />
       )}
-      {step === 'key' && (
-        <form
-          className="entry-card step-card"
-          onSubmit={(e) => {
-            e.preventDefault();
-            unlock(after, code.trim());
-          }}
-        >
-          <span className="mono">CONTROLLO DI SICUREZZA</span>
-          <h2>Qual è la parola d’ordine?</h2>
-          <p>Era scritta nel messaggio d’invito. Se non ce l’hai, chiedila a chi ti ha invitato. A bassa voce.</p>
-          <label>
-            Parola d’ordine
-            <input
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-          </label>
-          {error && (
-            <p role="alert" className="field-error">
-              {error}
-            </p>
-          )}
-          {!api.live && (
-            <div className="demo-credentials">
-              <strong>DEMO LOCALE</strong>
-              <p>
-                Parola d’ordine: <code>complotti</code>
-              </p>
-            </div>
-          )}
-          <Button type="submit" disabled={busy || !code.trim()}>
-            {busy ? 'Verifica in corso…' : 'Avanti'}
-            <ArrowRight size={18} />
-          </Button>
-          <button type="button" className="text-button entry-switch" onClick={() => back()}>
-            <ArrowLeft size={14} /> Torna all’invito
-          </button>
-        </form>
+      {step === 'returning' && (
+        <ReturningStep
+          code={code}
+          setCode={setCode}
+          fromLink={fromLink}
+          onEnter={onEnter}
+          onBack={() => setStep('book')}
+        />
       )}
-      {step === 'name' && <NameStep code={code} onEnter={onEnter} onBack={() => back()} />}
-      {step === 'returning' && <ReturningStep code={code} names={names} onEnter={onEnter} onBack={() => back()} />}
-      {step === 'gm' && <GmStep onEnter={onEnter} onBack={() => back()} />}
+      {step === 'gm' && <GmStep onEnter={onEnter} onBack={() => setStep('book')} />}
       <div className="entry-footer">
-        <span>NESSUNA TEORIA È STATA VERIFICATA DURANTE LA REALIZZAZIONE DI QUESTA SERATA.</span>
         {step !== 'gm' && (
-          <button type="button" className="text-button gm-door" onClick={() => back('gm')}>
+          <button type="button" className="text-button gm-door" onClick={() => setStep('gm')}>
             <LockKeyhole size={12} /> Accesso riservato alla regia
           </button>
         )}
@@ -147,161 +79,153 @@ export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
   );
 }
 
-function InviteLetter({
-  onAccept,
-  onReturning,
-  busy,
-  error,
-}: {
-  onAccept: () => void;
-  onReturning: () => void;
-  busy: boolean;
-  error: string;
-}) {
+function KeyField({ code, setCode }: { code: string; setCode: (c: string) => void }) {
   return (
-    <div className="invite-layout">
-      <section className="invite-intro">
-        <p className="eyebrow">Comunicazione riservata. Distruggere dopo la lettura.</p>
-        <h1>Sei stato selezionato.</h1>
-        <p className="invite-lede">Non chiederci come ti abbiamo trovato. Sappiamo che hai fatto le tue ricerche.</p>
-      </section>
-      <article className="letter">
-        <Stamp sub="Solo per menti aperte">Top secret</Stamp>
-        <p className="letter-open">
-          Il <strong>Congresso Clandestino dei Ricercatori Indipendenti</strong> si riunisce a porte chiuse. Ci saranno
-          menti aperte, un proiettore e nessuna fonte attendibile.
-        </p>
-        <h2>Come funziona la serata</h2>
-        <ol className="clues">
-          <li>
-            <strong>Chi vuole sale sul palco e svela la sua teoria.</strong> Con le slide, con dei fogli, con un
-            cartellone o solo con la voce. Nessun ordine: si va a coraggio.
-          </li>
-          <li>
-            <strong>Il pubblico fa domande.</strong> Chi presenta risponde improvvisando, come i veri esperti in TV.
-          </li>
-          <li>
-            <strong>Si vota dal telefono.</strong> Quattro premi in palio, tra cui l’ambitissimo Supercazzola. I
-            risultati restano segreti fino alla fine. Ovviamente.
-          </li>
-        </ol>
-        <h2>Per entrare nel registro</h2>
-        <ul className="needs">
-          <li className="now">
-            <Check size={18} />
-            <span>
-              <strong>Adesso: nome e cognome.</strong> Basta questo, ci vogliono dieci secondi.
-            </span>
-          </li>
-          <li>
-            <span className="box" />
-            <span>
-              <strong>Prima della serata: un titolo da congresso ridicolo.</strong> Per esempio:{' '}
-              <em>Dott. Paolo Pesaresi, studioso dei finti uccelli</em>.
-            </span>
-          </li>
-          <li>
-            <span className="box" />
-            <span>
-              <strong>Se presenti: il titolo della tua rivelazione e come la presenti.</strong> Slide di Google (ti
-              serve il link) oppure alla vecchia maniera, con fogli e oggetti.
-            </span>
-          </li>
-        </ul>
-        <p className="letter-note">
-          Il resto lo completi quando vuoi, da questa stessa pagina. Niente app, niente account: questo telefono si
-          ricorderà di te.
-        </p>
-        {error && (
-          <p role="alert" className="field-error">
-            {error}
-          </p>
-        )}
-        <Button className="letter-cta" onClick={onAccept} disabled={busy}>
-          {busy ? 'Un momento…' : 'Accetto la missione'}
-          <ArrowRight size={18} />
-        </Button>
-        <button type="button" className="text-button letter-returning" onClick={onReturning} disabled={busy}>
-          Sono già nel registro (nuovo telefono o pagina chiusa)
-        </button>
-      </article>
-    </div>
+    <label className="key-field">
+      Parola d’ordine <span className="req">la trovi nel messaggio d’invito</span>
+      <input
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+      />
+      {!api.live && <span className="field-hint">Demo: complotti</span>}
+    </label>
   );
 }
 
-function NameStep({ code, onEnter, onBack }: { code: string; onEnter: (a: Actor) => void; onBack: () => void }) {
-  const [first, setFirst] = useState(''),
-    [last, setLast] = useState(''),
+/** The whole invite is one form: book a speaker slot with an alias, add the rest whenever. */
+function Booking({
+  code,
+  setCode,
+  fromLink,
+  onEnter,
+  onReturning,
+}: {
+  code: string;
+  setCode: (c: string) => void;
+  fromLink: boolean;
+  onEnter: (a: Actor) => void;
+  onReturning: () => void;
+}) {
+  const [draft, setDraft] = useState<Participant>(emptyDossier()),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!first.trim() || !last.trim()) return setError('Servono sia il nome sia il cognome.');
+  async function book(spectator: boolean) {
+    const problem = dossierProblem(draft);
+    if (problem) return setError(problem);
+    if (!code.trim()) return setError('Manca la parola d’ordine. È nel messaggio d’invito.');
     setBusy(true);
     setError('');
     try {
-      onEnter(await api.register(code, `${first.trim()} ${last.trim()}`));
+      const actor = await api.register(code.trim(), draft.name.trim());
+      rememberKey(code.trim());
+      const details = spectator ? { ...draft, mode: 'none' as const } : draft;
+      const hasDetails =
+        spectator || details.role.trim() || details.title.trim() || details.mode || details.deckUrl.trim();
+      if (hasDetails && actor.participantId)
+        await api.action(actor, {
+          type: 'participant',
+          participant: { ...details, id: actor.participantId, name: draft.name.trim() },
+        });
+      onEnter(actor);
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendly((e as Error).message));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <form className="entry-card step-card" onSubmit={submit}>
-      <span className="mono">ISCRIZIONE AL REGISTRO</span>
-      <h2>Come ti chiami davvero?</h2>
-      <p>Lo vedranno tutti sul proiettore. Il titolo ridicolo arriva dopo, promesso.</p>
-      <label>
-        Nome
-        <input autoFocus autoComplete="given-name" required value={first} onChange={(e) => setFirst(e.target.value)} />
-      </label>
-      <label>
-        Cognome
-        <input autoComplete="family-name" required value={last} onChange={(e) => setLast(e.target.value)} />
-      </label>
-      {error && (
-        <p role="alert" className="field-error">
-          {error}
+    <div className="invite-layout">
+      <section className="invite-intro">
+        <p className="eyebrow">Comunicazione riservata</p>
+        <h1>Sei stato selezionato.</h1>
+        <p className="invite-lede">
+          Il congresso cerca relatori. Blocca il tuo posto adesso: i dettagli li aggiungi quando sei pronto. Tutto il
+          resto lo scoprirai in serata.
         </p>
-      )}
-      <Button type="submit" disabled={busy}>
-        {busy ? 'Ti stiamo schedando…' : 'Mettimi nel registro'}
-        <ArrowRight size={18} />
-      </Button>
-      <button type="button" className="text-button entry-switch" onClick={onBack}>
-        <ArrowLeft size={14} /> Torna all’invito
-      </button>
-    </form>
+      </section>
+      <form
+        className="booking letter on-paper"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void book(false);
+        }}
+      >
+        <Stamp sub="Non divulgare">Top secret</Stamp>
+        <span className="mono">MODULO DI PRENOTAZIONE</span>
+        <h2>Blocca il tuo posto da relatore</h2>
+        {!fromLink && <KeyField code={code} setCode={setCode} />}
+        <DossierFields value={draft} onChange={setDraft} />
+        {error && (
+          <p role="alert" className="field-error">
+            {error}
+          </p>
+        )}
+        <Button type="submit" className="booking-cta" disabled={busy}>
+          {busy ? 'Ti stiamo schedando…' : 'Blocca il mio posto'}
+          <ArrowRight size={18} />
+        </Button>
+        <div className="booking-secondary">
+          <button type="button" className="text-button" disabled={busy} onClick={() => void book(true)}>
+            <Eye size={14} /> Non presento, vengo solo a giudicare
+          </button>
+          <button type="button" className="text-button" disabled={busy} onClick={onReturning}>
+            Ho già prenotato
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
 function ReturningStep({
   code,
-  names,
+  setCode,
+  fromLink,
   onEnter,
   onBack,
 }: {
   code: string;
-  names: Pick<Participant, 'id' | 'name'>[];
+  setCode: (c: string) => void;
+  fromLink: boolean;
   onEnter: (a: Actor) => void;
   onBack: () => void;
 }) {
-  const [id, setId] = useState(''),
+  const [names, setNames] = useState<Pick<Participant, 'id' | 'name'>[]>([]),
+    [id, setId] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function load(c: string) {
     setBusy(true);
     setError('');
     try {
-      onEnter(await api.login(code, id, false));
+      setNames(await api.unlockNames(c.trim()));
+      rememberKey(c.trim());
+    } catch (e) {
+      setError(friendly((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    if (code) void load(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!names.length) return void load(code);
+    setBusy(true);
+    setError('');
+    try {
+      onEnter(await api.login(code.trim(), id, false));
     } catch (e) {
       const m = (e as Error).message;
       setError(
         m.includes('già in uso')
-          ? 'Questo nome risulta aperto su un altro telefono. Chiedi alla regia di liberarlo.'
-          : m,
+          ? 'Questo alias è aperto su un altro telefono. Chiedi alla regia di liberarlo.'
+          : friendly(m),
       );
     } finally {
       setBusy(false);
@@ -310,30 +234,33 @@ function ReturningStep({
   return (
     <form className="entry-card step-card" onSubmit={submit}>
       <span className="mono">RIENTRO AGENTE</span>
-      <h2>Bentornato. Chi sei?</h2>
-      <p>Scegli il tuo nome dalla lista. Se non ci sei, torna indietro e iscriviti.</p>
-      <label>
-        Il tuo nome
-        <select required value={id} onChange={(e) => setId(e.target.value)}>
-          <option value="">Scegli dalla lista</option>
-          {names.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <h2>Bentornato. Qual è il tuo alias?</h2>
+      <p>Nuovo telefono o pagina chiusa? Scegli il tuo alias e riprendi il fascicolo.</p>
+      {(!fromLink || !names.length) && !names.length && <KeyField code={code} setCode={setCode} />}
+      {names.length > 0 && (
+        <label>
+          Il tuo alias
+          <select required value={id} onChange={(e) => setId(e.target.value)}>
+            <option value="">Scegli dalla lista</option>
+            {names.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {error && (
         <p role="alert" className="field-error">
           {error}
         </p>
       )}
-      <Button type="submit" disabled={busy || !id}>
-        {busy ? 'Controllo impronte…' : 'Sono io'}
+      <Button type="submit" disabled={busy || (names.length > 0 && !id)}>
+        {busy ? 'Controllo impronte…' : names.length ? 'Sono io' : 'Mostra gli alias'}
         <ArrowRight size={18} />
       </Button>
       <button type="button" className="text-button entry-switch" onClick={onBack}>
-        <ArrowLeft size={14} /> Torna all’invito
+        <ArrowLeft size={14} /> Torna alla prenotazione
       </button>
     </form>
   );
@@ -397,7 +324,7 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
         <ArrowRight size={18} />
       </Button>
       <button type="button" className="text-button entry-switch" onClick={onBack}>
-        <ArrowLeft size={14} /> Torna all’invito
+        <ArrowLeft size={14} /> Torna alla prenotazione
       </button>
       {!api.live && (
         <div className="demo-credentials">

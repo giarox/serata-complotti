@@ -267,10 +267,11 @@ describe('self-registration and own dossier', () => {
   const people = async (uid: string) =>
     (await as<{ participants: P[] }>(uid, 'select public.party_snapshot() as r')).participants;
 
-  it('registers with the event password and first + last name only', async () => {
+  it('registers with the event password and a free alias', async () => {
     const anna = await user();
     await expect(registerAs(anna, 'sbagliata', 'Anna Rossi')).rejects.toThrow('Password non corretta');
-    await expect(registerAs(anna, GUEST, 'Anna')).rejects.toThrow('nome e cognome');
+    await expect(registerAs(anna, GUEST, 'A')).rejects.toThrow('alias');
+    await expect(registerAs(anna, GUEST, 'x'.repeat(41))).rejects.toThrow('alias');
     const actor = await registerAs(anna, GUEST, '  Anna   Rossi ');
     expect(actor.role).toBe('guest');
     expect(actor.participantId).toMatch(/^anna-rossi-[0-9a-f]{4}$/);

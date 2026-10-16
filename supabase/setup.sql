@@ -148,7 +148,7 @@ begin
   select v into prev from jsonb_array_elements(s->'participants') v where v->>'id'=pid;
   if actor->>'role'<>'gm' and (prev is null or pid is distinct from actor->>'participantId') then raise exception 'Questo fascicolo non è tuo.'; end if;
   nm:=regexp_replace(trim(coalesce(p->>'name','')),'\s+',' ','g');
-  if length(nm)<2 or length(nm)>60 then raise exception 'Il nome deve esserci (e non essere un romanzo).'; end if;
+  if length(nm)<2 or length(nm)>40 then raise exception 'Serve un alias da 2 a 40 caratteri.'; end if;
   if length(coalesce(p->>'role',''))>80 or length(coalesce(p->>'title',''))>120 then raise exception 'Troppo lungo: i veri complotti stanno in una riga.'; end if;
   md:=p->>'mode';
   if md is not null and md not in ('slides','paper','none') then raise exception 'Modo di presentare sconosciuto.'; end if;
@@ -159,7 +159,7 @@ begin
    if actor->>'role'<>'gm' and exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=pid and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Hai già presentato: il fascicolo è agli atti.'; end if;
    if md='none' and exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=pid and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Ha già presentato: non può diventare solo pubblico.'; end if;
   end if;
-  if exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'<>pid and lower(v->>'name')=lower(nm)) then raise exception 'Questo nome è già nel registro.'; end if;
+  if exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'<>pid and lower(v->>'name')=lower(nm)) then raise exception 'Questo alias è già preso.'; end if;
   p:=jsonb_build_object('id',pid,'name',nm,'role',trim(coalesce(p->>'role','')),'title',trim(coalesce(p->>'title','')),
     'deckUrl',case when md='slides' then trim(coalesce(p->>'deckUrl','')) else '' end,'mode',to_jsonb(md),'spectator',coalesce(md='none',false));
   if prev is not null then
@@ -171,7 +171,7 @@ begin
  update public.party_store set state=s where id=true;
  update public.party_signal set revision=(s->>'revision')::bigint where id=true;
 end; $$;
--- Self-registration from the invite: event password + first and last name.
+-- Self-registration from the invite: event password + a free alias (code name).
 create or replace function public.party_register(passcode text, full_name text) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
 declare st public.party_store; existing public.party_members; nm text; pid text; s jsonb;
 begin
@@ -182,11 +182,11 @@ begin
  select * into existing from public.party_members where user_id=auth.uid();
  if found then return public.party_actor(); end if;
  nm:=regexp_replace(trim(coalesce(full_name,'')),'\s+',' ','g');
- if length(nm)<3 or length(nm)>60 or position(' ' in nm)=0 then raise exception 'Scrivi nome e cognome, per favore. Anche finti, ma due.'; end if;
+ if length(nm)<2 or length(nm)>40 then raise exception 'Serve un alias da 2 a 40 caratteri. Inventa pure.'; end if;
  s:=st.state;
  if s->>'phase'='results' then raise exception 'La serata è finita: il registro è chiuso.'; end if;
  if exists(select 1 from jsonb_array_elements(s->'participants') v where lower(v->>'name')=lower(nm)) then
-  raise exception 'Nel registro c’è già un %. Se sei tu, tocca “Sono già nel registro”.', nm;
+  raise exception 'L’alias “%” è già preso. Inventane un altro, oppure tocca “Sono già nel registro” se sei tu.', nm;
  end if;
  pid:=left(trim(both '-' from regexp_replace(translate(lower(nm),'àáâäèéêëìíîïòóôöùúûüç','aaaaeeeeiiiioooouuuuc'),'[^a-z0-9]+','-','g')),30);
  pid:=coalesce(nullif(pid,''),'agente')||'-'||substr(md5(gen_random_uuid()::text),1,4);

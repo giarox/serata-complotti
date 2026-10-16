@@ -19,14 +19,21 @@ const edit = (s: State, actor: Actor, p: Participant) => applyAction(s, actor, {
 
 describe('self-registration from the invite', () => {
   it('needs first and last name, and starts an empty dossier', () => {
-    expect(() => register(initialState(), 'Paolo')).toThrow('nome e cognome');
+    expect(() => register(initialState(), 'X')).toThrow('alias');
+    expect(() => register(initialState(), 'x'.repeat(41))).toThrow('alias');
+    expect(me(register(initialState(), 'La Talpa', 'talpa'), 'talpa').name).toBe('La Talpa');
+    expect(me(register(initialState(), 'Gola', 'gola'), 'gola').name).toBe('Gola');
     expect(() => register(initialState(), '   ')).toThrow();
     const s = register(initialState(), '  Anna   Rossi ', 'anna-rossi-0001');
     expect(me(s, 'anna-rossi-0001')).toMatchObject({ name: 'Anna Rossi', role: '', mode: null, spectator: false });
-    expect(dossierGaps(me(s, 'anna-rossi-0001'))).toEqual(['il tuo titolo da congresso', 'se e come presenti']);
+    expect(dossierGaps(me(s, 'anna-rossi-0001'))).toEqual([
+      'titolo da congresso',
+      'titolo della rivelazione',
+      'come presenti',
+    ]);
   });
 
-  it('refuses a duplicate name and points to “Sono già nel registro”', () => {
+  it('refuses a duplicate alias and points to “Sono già nel registro”', () => {
     const s = register(initialState(), 'Anna Rossi');
     expect(() => register(s, 'anna rossi')).toThrow('Sono già nel registro');
   });
@@ -46,11 +53,9 @@ describe('the dossier', () => {
     const { s } = setup();
     const base = me(s, 'anna');
     expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'none' })).toEqual([]);
-    expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'paper' })).toEqual([
-      'il titolo della tua rivelazione',
-    ]);
+    expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'paper' })).toEqual(['titolo della rivelazione']);
     expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'slides', title: 'LE SCIE' })).toEqual([
-      'il link della presentazione',
+      'link delle slide',
     ]);
   });
 

@@ -3,7 +3,7 @@ export type Phase = 'waiting' | 'presenting' | 'questions' | 'voting' | 'results
 export type Mode = 'slides' | 'paper' | 'none';
 export type Participant = {
   id: string;
-  /** First and last name, as typed at registration. */
+  /** The alias chosen at registration: a code name, real identity optional. */
   name: string;
   /** The silly congress title, e.g. "Studioso dei finti uccelli". */
   role: string;
@@ -98,19 +98,19 @@ export const phaseNames: Record<Phase, string> = {
 export const modes: { key: Mode; label: string; short: string; hint: string }[] = [
   {
     key: 'slides',
-    label: 'Sì, con le slide',
+    label: 'Con le slide',
     short: 'Slide',
-    hint: 'Una presentazione Google Slides. Animazioni e video compresi.',
+    hint: 'Google Slides, animazioni e video compresi.',
   },
   {
     key: 'paper',
-    label: 'Sì, alla vecchia maniera',
+    label: 'Alla vecchia maniera',
     short: 'Dal vivo',
-    hint: 'Fogli, cartelloni, ritagli, oggetti sospetti o solo la tua voce.',
+    hint: 'Fogli, cartelloni, oggetti sospetti o solo la voce.',
   },
   {
     key: 'none',
-    label: 'No, vengo solo a giudicare',
+    label: 'Solo pubblico',
     short: 'Pubblico',
     hint: 'Niente palco: ascolti, fai domande scomode e voti.',
   },
@@ -120,10 +120,11 @@ export const slidesUrlPattern = /^https:\/\/docs\.google\.com\/presentation\//;
 /** What is still missing before the evening, in plain words. Empty = dossier complete. */
 export function dossierGaps(p: Participant): string[] {
   const gaps: string[] = [];
-  if (!p.role.trim()) gaps.push('il tuo titolo da congresso');
-  if (!p.mode) gaps.push('se e come presenti');
-  if (presents(p) && !p.title.trim()) gaps.push('il titolo della tua rivelazione');
-  if (p.mode === 'slides' && !p.deckUrl) gaps.push('il link della presentazione');
+  if (p.mode === 'none') return gaps;
+  if (!p.role.trim()) gaps.push('titolo da congresso');
+  if (!p.title.trim()) gaps.push('titolo della rivelazione');
+  if (!p.mode) gaps.push('come presenti');
+  if (p.mode === 'slides' && !p.deckUrl) gaps.push('link delle slide');
   return gaps;
 }
 export function cleanName(raw: string) {
@@ -329,18 +330,19 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
   } else if (action.type === 'register') {
     if (actor.role !== 'guest' || actor.participantId) throw new Error('Sei già nel registro.');
     const name = cleanName(action.name);
-    if (name.length < 3 || name.length > 60 || !name.includes(' '))
-      throw new Error('Scrivi nome e cognome, per favore. Anche finti, ma due.');
+    if (name.length < 2 || name.length > 40) throw new Error('Serve un alias da 2 a 40 caratteri. Inventa pure.');
     if (s.phase === 'results') throw new Error('La serata è finita: il registro è chiuso.');
     if (s.participants.some((p) => p.name.toLowerCase() === name.toLowerCase()))
-      throw new Error(`Nel registro c’è già un ${name}. Se sei tu, tocca “Sono già nel registro”.`);
+      throw new Error(
+        `L’alias “${name}” è già preso. Inventane un altro, oppure tocca “Sono già nel registro” se sei tu.`,
+      );
     if (s.participants.some((p) => p.id === action.id)) throw new Error('Riprova, il codice agente era già preso.');
     s.participants.push({ id: action.id, name, role: '', title: '', deckUrl: '', mode: null, spectator: false });
   } else if (action.type === 'participant') {
     const p = normalizeParticipant({ ...action.participant, name: cleanName(action.participant.name) });
     const existing = s.participants.find((x) => x.id === p.id);
     if (!existing && actor.role !== 'gm') throw new Error('Questo fascicolo non è tuo.');
-    if (p.name.length < 2 || p.name.length > 60) throw new Error('Il nome deve esserci (e non essere un romanzo).');
+    if (p.name.length < 2 || p.name.length > 40) throw new Error('Serve un alias da 2 a 40 caratteri.');
     if (p.role.length > 80 || p.title.length > 120)
       throw new Error('Troppo lungo: i veri complotti stanno in una riga.');
     if (p.mode !== null && !modes.some((m) => m.key === p.mode)) throw new Error('Modo di presentare sconosciuto.');
@@ -355,7 +357,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
         throw new Error('Ha già presentato: non può diventare solo pubblico.');
     }
     if (s.participants.some((x) => x.id !== p.id && x.name.toLowerCase() === p.name.toLowerCase()))
-      throw new Error('Questo nome è già nel registro.');
+      throw new Error('Questo alias è già preso.');
     const clean: Participant = {
       id: p.id,
       name: p.name,

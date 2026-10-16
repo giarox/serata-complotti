@@ -56,7 +56,7 @@ import '@fontsource/eb-garamond/400.css';
 import '@fontsource/eb-garamond/400-italic.css';
 import '@fontsource/special-elite/400.css';
 import './style.css';
-import { Button, Mark, Stamp, firstName } from './ui';
+import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { DossierHome, InvitePanel } from './dossier';
 const blank: Participant = { id: '', name: '', role: '', title: '', deckUrl: '', mode: null, spectator: false };
@@ -782,7 +782,7 @@ function Guest({
     <>
       <div className="guest-welcome">
         <span className="eyebrow">BENVENUTO NEL CONGRESSO</span>
-        <span className="guest-id">{me ? firstName(me.name) : ''}</span>
+        <span className="guest-id">{me?.name}</span>
       </div>
       <section className="guest-stage">
         <span className="phase-badge">{phaseNames[s.phase]}</span>
