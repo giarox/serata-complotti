@@ -1,0 +1,11 @@
+*PRIVATE*
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+test-results/
+playwright-report/
+.DS_Store
+tsconfig.tsbuildinfo
+pw.local.config.ts

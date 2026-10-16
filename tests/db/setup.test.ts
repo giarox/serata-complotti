@@ -1,0 +1,253 @@
+// Runs supabase/setup.sql in a local Postgres (PGlite) with small stand-ins for Supabase's
+// auth schema and roles, then calls the functions as real guests/GM would, through the
+// `authenticated` role — never as an all-powerful administrator.
+import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+// @ts-expect-error plain JS helper shared with the make-init script
+import { buildInitSql, hashPasswords, validateRoster } from '../../supabase/init-sql.mjs';
+
+const setupSql = readFileSync(new URL('../../supabase/setup.sql', import.meta.url), 'utf8');
+const roster = validateRoster(JSON.parse(readFileSync(new URL('../../supabase/roster.json', import.meta.url), 'utf8')));
+const GUEST = 'ospiti-test';
+const GM = 'regia-test-pw';
+let hashes: [string, string];
+let db: PGlite;
+
+const supabaseStandIns = `
+create schema if not exists extensions;
+create schema if not exists auth;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+create role anon nologin;
+create role authenticated nologin;
+grant usage on schema public to anon, authenticated;
+`;
+
+/** Runs one query as the signed-in user `uid` through the `authenticated` role. */
+async function as<T = unknown>(uid: string | null, sql: string, params: unknown[] = []) {
+  await db.query(`select set_config('test.uid', $1, false)`, [uid ?? '']);
+  await db.exec(uid ? 'set role authenticated' : 'set role anon');
+  try {
+    const { rows } = await db.query<{ r: T }>(sql, params);
+    return rows[0]?.r as T;
+  } finally {
+    await db.exec('reset role');
+  }
+}
+const user = async () => {
+  const id = randomUUID();
+  await db.query('insert into auth.users(id) values ($1)', [id]);
+  return id;
+};
+const join = (uid: string, passcode: string, person: string | null, gm = false) =>
+  as<{ role: string; participantId?: string }>(uid, 'select public.party_join($1, $2, $3) as r', [
+    passcode,
+    person,
+    gm,
+  ]);
+const act = (uid: string, command: object) =>
+  as(uid, 'select public.party_action($1::jsonb) as r', [JSON.stringify(command)]);
+type Snap = {
+  phase: string;
+  activeRoundId: string | null;
+  votes: { voterId: string; credibility: number }[];
+  voteCount: number;
+  claimed?: string[];
+  settings: { spectatorsVote: boolean; maxAwards: number | null };
+};
+const snap = (uid: string) => as<Snap>(uid, 'select public.party_snapshot() as r');
+const ballot = { credibility: 8, delivery: 7, research: 6, supercazzola: true };
+
+beforeAll(async () => {
+  hashes = await hashPasswords(GUEST, GM);
+}, 30000);
+
+let gm: string, giulia: string, marco: string, paolo: string;
+beforeEach(async () => {
+  db = await PGlite.create({ extensions: { pgcrypto } });
+  await db.exec(supabaseStandIns);
+  await db.exec(setupSql);
+  await db.exec(buildInitSql({ guestHash: hashes[0], gmHash: hashes[1], roster }));
+  [gm, giulia, marco, paolo] = await Promise.all([user(), user(), user(), user()]);
+  await join(gm, GM, null, true);
+  await join(giulia, GUEST, 'giulia');
+  await join(marco, GUEST, 'marco');
+  await join(paolo, GUEST, 'paolo');
+}, 30000);
+
+async function openVoting(presenter = 'paolo') {
+  await act(gm, { type: 'start', participantId: presenter });
+  const roundId = (await snap(gm)).activeRoundId!;
+  await act(gm, { type: 'phase', phase: 'questions', roundId });
+  await act(gm, { type: 'phase', phase: 'voting', roundId });
+  return roundId;
+}
+
+describe('access', () => {
+  it('denies direct table reads and writes, even for signed-in users', async () => {
+    await expect(as(giulia, 'select state as r from public.party_store')).rejects.toThrow(/permission denied/);
+    await expect(as(giulia, 'select count(*) as r from public.party_members')).rejects.toThrow(/permission denied/);
+    await expect(as(giulia, `update public.party_signal set revision = 0`)).rejects.toThrow(/permission denied/);
+  });
+
+  it('denies every function to visitors who are not signed in', async () => {
+    await expect(as(null, `select public.party_names('${GUEST}') as r`)).rejects.toThrow(/permission denied/);
+    await expect(as(null, 'select public.party_snapshot() as r')).rejects.toThrow(/permission denied/);
+  });
+
+  it('shows names only with a valid password, and lets only the GM password into the regia', async () => {
+    const stranger = await user();
+    await expect(as(stranger, 'select public.party_names($1) as r', ['sbagliata'])).rejects.toThrow(
+      'Password non corretta',
+    );
+    expect(await as<unknown[]>(stranger, 'select public.party_names($1) as r', [GUEST])).toHaveLength(roster.length);
+    expect(await as<unknown[]>(stranger, 'select public.party_names($1) as r', [GM])).toHaveLength(roster.length);
+    await expect(join(stranger, GUEST, null, true)).rejects.toThrow('Password non corretta');
+    await expect(snap(stranger)).rejects.toThrow('Entra nel congresso');
+  });
+
+  it('rejects a name that is already taken or not on the list', async () => {
+    await expect(join(await user(), GUEST, 'giulia')).rejects.toThrow('Nome già in uso');
+    await expect(join(await user(), GUEST, 'sconosciuto')).rejects.toThrow('Nome non disponibile');
+    await expect(join(await user(), GUEST, null)).rejects.toThrow('Scegli il tuo nome');
+  });
+
+  it('lets guests vote but never conduct', async () => {
+    for (const command of [
+      { type: 'start', participantId: 'marco' },
+      { type: 'reveal' },
+      { type: 'release', participantId: 'marco' },
+      {
+        type: 'settings',
+        settings: {
+          maxAwards: 1,
+          awardOrder: ['credibility', 'delivery', 'research', 'supercazzola'],
+          spectatorsVote: true,
+        },
+      },
+    ])
+      await expect(act(giulia, command)).rejects.toThrow('Solo la regia');
+  });
+});
+
+describe('ballots', () => {
+  it('stores one editable ballot per person, built from the server-side identity', async () => {
+    const roundId = await openVoting();
+    await act(giulia, { type: 'vote', roundId, ballot: { ...ballot, voterId: 'marco', roundId: 'altro' } });
+    await act(giulia, { type: 'vote', roundId, ballot: { ...ballot, credibility: 3 } });
+    const mine = await snap(giulia);
+    expect(mine.votes).toHaveLength(1);
+    expect(mine.votes[0]).toMatchObject({ voterId: 'giulia', credibility: 3 });
+    expect(mine.voteCount).toBe(1);
+  });
+
+  it('rejects self-votes and invalid or incomplete ballots', async () => {
+    const roundId = await openVoting();
+    await expect(act(paolo, { type: 'vote', roundId, ballot })).rejects.toThrow('tuo intervento');
+    for (const bad of [
+      { ...ballot, credibility: 11 },
+      { ...ballot, credibility: -1 },
+      { ...ballot, credibility: 3.5 },
+      { ...ballot, credibility: '8' },
+      { credibility: 1, delivery: 1, research: 1 },
+      { ...ballot, supercazzola: 'sì' },
+    ])
+      await expect(act(giulia, { type: 'vote', roundId, ballot: bad })).rejects.toThrow();
+    expect((await snap(gm)).voteCount).toBe(0);
+  });
+
+  it('rejects ballots before opening, after closing, and for another round', async () => {
+    await act(gm, { type: 'start', participantId: 'paolo' });
+    const first = (await snap(gm)).activeRoundId!;
+    await expect(act(giulia, { type: 'vote', roundId: first, ballot })).rejects.toThrow('chiusa');
+    await act(gm, { type: 'phase', phase: 'questions', roundId: first });
+    await act(gm, { type: 'phase', phase: 'voting', roundId: first });
+    await act(giulia, { type: 'vote', roundId: first, ballot });
+    await act(gm, { type: 'phase', phase: 'waiting', roundId: first });
+    await expect(act(marco, { type: 'vote', roundId: first, ballot })).rejects.toThrow('chiusa');
+    const second = await openVoting('marco');
+    await expect(act(giulia, { type: 'vote', roundId: first, ballot })).rejects.toThrow('chiusa');
+    await act(giulia, { type: 'vote', roundId: second, ballot });
+    expect((await snap(gm)).voteCount).toBe(1);
+  });
+
+  it('does not start another presenter while voting is open', async () => {
+    await openVoting();
+    await expect(act(gm, { type: 'start', participantId: 'marco' })).rejects.toThrow('Concludi il turno');
+  });
+
+  it('keeps ballots secret until the reveal, including from the GM', async () => {
+    const roundId = await openVoting();
+    await act(giulia, { type: 'vote', roundId, ballot });
+    expect((await snap(marco)).votes).toEqual([]);
+    expect((await snap(gm)).votes).toEqual([]);
+    expect((await snap(gm)).voteCount).toBe(1);
+    await act(gm, { type: 'phase', phase: 'waiting', roundId });
+    await act(gm, { type: 'reveal' });
+    expect((await snap(marco)).votes).toHaveLength(1);
+  });
+});
+
+describe('GM as participant, spectators, settings and releasing a name', () => {
+  it('lets a GM with a name vote and see only their own ballot', async () => {
+    const director = await user();
+    expect(await join(director, GM, 'gianluca', true)).toEqual({ role: 'gm', participantId: 'gianluca' });
+    const roundId = await openVoting();
+    await act(director, { type: 'vote', roundId, ballot });
+    await act(giulia, { type: 'vote', roundId, ballot });
+    expect((await snap(director)).votes.map((v) => v.voterId)).toEqual(['gianluca']);
+  });
+
+  it('lets spectators vote only when the setting allows it', async () => {
+    const guest = await user();
+    await join(guest, GUEST, 'pubblico');
+    let roundId = await openVoting();
+    await act(guest, { type: 'vote', roundId, ballot });
+    await act(gm, { type: 'phase', phase: 'waiting', roundId });
+    await act(gm, {
+      type: 'settings',
+      settings: {
+        maxAwards: null,
+        awardOrder: ['credibility', 'delivery', 'research', 'supercazzola'],
+        spectatorsVote: false,
+      },
+    });
+    roundId = await openVoting('marco');
+    await expect(act(guest, { type: 'vote', roundId, ballot })).rejects.toThrow('pubblico non vota');
+  });
+
+  it('validates award settings and freezes them at the reveal', async () => {
+    const order = ['supercazzola', 'credibility', 'delivery', 'research'];
+    for (const settings of [
+      { maxAwards: 0, awardOrder: order, spectatorsVote: true },
+      { maxAwards: 1.5, awardOrder: order, spectatorsVote: true },
+      { maxAwards: null, awardOrder: ['credibility', 'credibility', 'delivery', 'research'], spectatorsVote: true },
+      { maxAwards: null, awardOrder: order, spectatorsVote: 'sì' },
+    ])
+      await expect(act(gm, { type: 'settings', settings })).rejects.toThrow('non valide');
+    await act(gm, {
+      type: 'settings',
+      settings: { maxAwards: 1, awardOrder: order, spectatorsVote: true, extra: 'x' },
+    });
+    expect((await snap(giulia)).settings).toEqual({ maxAwards: 1, awardOrder: order, spectatorsVote: true });
+    const roundId = await openVoting();
+    await act(gm, { type: 'phase', phase: 'waiting', roundId });
+    await act(gm, { type: 'reveal' });
+    await expect(
+      act(gm, { type: 'settings', settings: { maxAwards: 2, awardOrder: order, spectatorsVote: true } }),
+    ).rejects.toThrow('reveal');
+  });
+
+  it('lets the GM release a mistaken name so the right person can enter', async () => {
+    expect((await snap(gm)).claimed?.sort()).toEqual(['giulia', 'marco', 'paolo']);
+    expect((await snap(giulia)).claimed).toBeUndefined();
+    await act(gm, { type: 'release', participantId: 'giulia' });
+    expect((await snap(gm)).claimed?.sort()).toEqual(['marco', 'paolo']);
+    await expect(snap(giulia)).rejects.toThrow('Entra nel congresso');
+    const realGiulia = await user();
+    expect(await join(realGiulia, GUEST, 'giulia')).toEqual({ role: 'guest', participantId: 'giulia' });
+  });
+});

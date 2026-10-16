@@ -1,0 +1,50 @@
+[
+  {
+    "id": "paolo",
+    "name": "Paolo",
+    "role": "Studioso dei finti uccelli",
+    "title": "PICCIONI FBI",
+    "deckUrl": "",
+    "spectator": false
+  },
+  {
+    "id": "giulia",
+    "name": "Giulia",
+    "role": "Cartografa delle verità scomode",
+    "title": "LA TERRA È UN PROGETTO PILOTA",
+    "deckUrl": "",
+    "spectator": false
+  },
+  {
+    "id": "marco",
+    "name": "Marco",
+    "role": "Esperto di segnali sospetti",
+    "title": "IL WI-FI CI LEGGE NEL PENSIERO",
+    "deckUrl": "",
+    "spectator": false
+  },
+  {
+    "id": "sara",
+    "name": "Sara",
+    "role": "Archivista delle coincidenze",
+    "title": "NON È MAI SOLO UNA COINCIDENZA",
+    "deckUrl": "",
+    "spectator": false
+  },
+  {
+    "id": "gianluca",
+    "name": "Gianluca",
+    "role": "Direttore del congresso",
+    "title": "IL DOSSIER MANCANTE",
+    "deckUrl": "",
+    "spectator": false
+  },
+  {
+    "id": "pubblico",
+    "name": "Ospite demo",
+    "role": "Osservatore indipendente",
+    "title": "",
+    "deckUrl": "",
+    "spectator": true
+  }
+]

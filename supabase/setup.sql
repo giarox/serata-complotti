@@ -1,0 +1,169 @@
+-- Complotto1: run once in a new project. Preserves existing objects/data on rerun.
+-- This is the app backend. Slides commands are intentionally deferred.
+-- Safe to rerun after updates: tables keep their data, functions are replaced.
+-- Anonymous sign-ins must be enabled in Supabase Authentication settings.
+begin;
+create extension if not exists pgcrypto with schema extensions;
+create table if not exists public.party_store (
+ id boolean primary key default true check(id),
+ state jsonb not null,
+ guest_hash text not null,
+ gm_hash text not null
+);
+create table if not exists public.party_members (
+ user_id uuid primary key references auth.users(id) on delete cascade,
+ role text not null check(role in ('gm','guest')),
+ person_id text unique
+);
+-- A GM may also have a name (they present and vote); a guest always has one.
+alter table public.party_members drop constraint if exists party_members_check;
+alter table public.party_members drop constraint if exists party_members_person_required;
+alter table public.party_members add constraint party_members_person_required check(role='gm' or person_id is not null);
+create table if not exists public.party_signal(id boolean primary key default true check(id), revision bigint not null default 0);
+alter table public.party_store enable row level security;
+alter table public.party_members enable row level security;
+alter table public.party_signal enable row level security;
+revoke all on public.party_store,public.party_members,public.party_signal from anon, authenticated;
+grant select on public.party_signal to authenticated;
+drop policy if exists "Members receive version notifications" on public.party_signal;
+create policy "Members receive version notifications" on public.party_signal for select to authenticated using (true);
+insert into public.party_signal(id) values(true) on conflict do nothing;
+
+create or replace function public.party_actor() returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
+ select jsonb_strip_nulls(jsonb_build_object('role',role,'participantId',person_id)) from public.party_members where user_id=auth.uid();
+$$;
+create or replace function public.party_names(passcode text) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+declare st public.party_store;
+begin
+ if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
+ select * into st from public.party_store where id=true;
+ if not found or passcode is null or length(passcode)>200 or (extensions.crypt(passcode,st.guest_hash) is distinct from st.guest_hash and extensions.crypt(passcode,st.gm_hash) is distinct from st.gm_hash) then raise exception 'Password non corretta.'; end if;
+ return (select coalesce(jsonb_agg(jsonb_build_object('id',p->>'id','name',p->>'name')), '[]'::jsonb) from jsonb_array_elements(st.state->'participants') p);
+end; $$;
+create or replace function public.party_join(passcode text, person_id text default null, as_gm boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+declare st public.party_store; existing public.party_members; expected text;
+begin
+ if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
+ select * into st from public.party_store where id=true for update;
+ if not found then raise exception 'Congresso non configurato.'; end if;
+ expected:=case when as_gm then st.gm_hash else st.guest_hash end;
+ if passcode is null or length(passcode)>200 or extensions.crypt(passcode,expected) is distinct from expected then raise exception 'Password non corretta.'; end if;
+ select * into existing from public.party_members where user_id=auth.uid();
+ if found then return jsonb_strip_nulls(jsonb_build_object('role',existing.role,'participantId',existing.person_id)); end if;
+ if not as_gm and coalesce(person_id,'')='' then raise exception 'Scegli il tuo nome.'; end if;
+ if coalesce(person_id,'')<>'' then
+  if not exists(select 1 from jsonb_array_elements(st.state->'participants') p where p->>'id'=person_id) then raise exception 'Nome non disponibile.'; end if;
+  if exists(select 1 from public.party_members m where m.person_id=party_join.person_id) then raise exception 'Nome già in uso. Chiedi alla regia di liberarlo.'; end if;
+ end if;
+ insert into public.party_members(user_id,role,person_id) values(auth.uid(),case when as_gm then 'gm' else 'guest' end,nullif(person_id,''));
+ return public.party_actor();
+end; $$;
+create or replace function public.party_snapshot() returns jsonb language plpgsql stable security definer set search_path=public,pg_temp as $$
+declare s jsonb; actor jsonb; visible_votes jsonb; n integer;
+begin
+ actor:=public.party_actor();
+ if actor is null then raise exception 'Entra nel congresso.'; end if;
+ select state into s from public.party_store where id=true;
+ select count(*) into n from jsonb_array_elements(s->'votes') v where v->>'roundId'=s->>'activeRoundId';
+ select coalesce(jsonb_agg(v),'[]'::jsonb) into visible_votes from jsonb_array_elements(s->'votes') v
+ where s->>'phase'='results' or v->>'voterId'=actor->>'participantId';
+ s:=s || jsonb_build_object('votes',visible_votes,'voteCount',n);
+ -- Only the GM learns which names are taken, so a mistaken pick can be released.
+ if actor->>'role'='gm' then
+  s:=s || jsonb_build_object('claimed',(select coalesce(jsonb_agg(person_id),'[]'::jsonb) from public.party_members where role='guest'));
+ end if;
+ return s;
+end; $$;
+create or replace function public.party_action(command jsonb) returns void language plpgsql security definer set search_path=public,pg_temp as $$
+declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb;
+begin
+ actor:=public.party_actor(); if actor is null then raise exception 'Entra nel congresso.'; end if;
+ select state into s from public.party_store where id=true for update;
+ kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
+ select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','settings') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind<>'vote' and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
+ if kind='start' then
+  if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
+  select v into p from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId';
+  if p is null or (p->>'spectator')::boolean or exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=p->>'id' and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Questo relatore non è disponibile.'; end if;
+  rid:=gen_random_uuid()::text;
+  s:=s||jsonb_build_object('phase','presenting','activeRoundId',rid,'rounds',(s->'rounds')||jsonb_build_array(jsonb_build_object('id',rid,'presenterId',p->>'id','closed',false)));
+ elsif kind in ('phase','cancel') then
+  if r is null or command->>'roundId' is distinct from rid or (r->>'closed')::boolean then raise exception 'Il turno è cambiato.'; end if;
+  if kind='cancel' then
+   r:=r||'{"closed":true,"cancelled":true}'::jsonb;
+   select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where v->>'roundId'<>rid;
+   s:=s||jsonb_build_object('phase','waiting','activeRoundId',null,'votes',votes);
+  else
+   if not ((phase='presenting' and command->>'phase'='questions') or (phase='questions' and command->>'phase'='voting') or (phase='voting' and command->>'phase'='waiting')) then raise exception 'Questo passaggio non è disponibile.'; end if;
+   s:=jsonb_set(s,'{phase}',command->'phase');
+   if command->>'phase'='waiting' then r:=r||'{"closed":true}'::jsonb; s:=jsonb_set(s,'{activeRoundId}','null'::jsonb); end if;
+  end if;
+  select jsonb_agg(case when v->>'id'=rid then r else v end order by ord) into rounds from jsonb_array_elements(s->'rounds') with ordinality as t(v,ord);
+  s:=jsonb_set(s,'{rounds}',rounds);
+ elsif kind='vote' then
+  if actor->>'participantId' is null then raise exception 'Scegli il tuo nome per votare.'; end if;
+  select v into voter from jsonb_array_elements(s->'participants') v where v->>'id'=actor->>'participantId';
+  if voter is null then raise exception 'Scegli il tuo nome per votare.'; end if;
+  if phase<>'voting' or r is null or command->>'roundId' is distinct from rid or (r->>'closed')::boolean then raise exception 'Questa votazione è chiusa.'; end if;
+  if r->>'presenterId'=actor->>'participantId' then raise exception 'Non puoi votare il tuo intervento.'; end if;
+  if (voter->>'spectator')::boolean and coalesce((s->'settings'->>'spectatorsVote')::boolean,true)=false then raise exception 'In questa serata il pubblico non vota.'; end if;
+  ballot:=command->'ballot';
+  if ballot is null or jsonb_typeof(ballot)<>'object' then raise exception 'Completa tutti i voti.'; end if;
+  foreach field in array array['credibility','delivery','research'] loop
+   if jsonb_typeof(ballot->field) is distinct from 'number' then raise exception 'Inserisci tre voti interi da 0 a 10.'; end if;
+   if (ballot->>field)::numeric<0 or (ballot->>field)::numeric>10 or trunc((ballot->>field)::numeric)<>(ballot->>field)::numeric then raise exception 'Inserisci tre voti interi da 0 a 10.'; end if;
+  end loop;
+  if jsonb_typeof(ballot->'supercazzola') is distinct from 'boolean' then raise exception 'Scegli sì o no per la Supercazzola.'; end if;
+  -- Construct only allowed fields; never accept client-supplied voter or round identities.
+  ballot:=jsonb_build_object('credibility',ballot->'credibility','delivery',ballot->'delivery','research',ballot->'research','supercazzola',ballot->'supercazzola','roundId',rid,'voterId',actor->>'participantId');
+  select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where not(v->>'roundId'=rid and v->>'voterId'=actor->>'participantId');
+  s:=jsonb_set(s,'{votes}',votes||jsonb_build_array(ballot));
+ elsif kind='reveal' then
+  if phase<>'waiting' or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
+  s:=s||'{"phase":"results","revealed":1}'::jsonb;
+ elsif kind='nextAward' then
+  if phase<>'results' or (s->>'revealed')::int>=4 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
+  s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::int+1));
+ elsif kind='release' then
+  if not exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId') then raise exception 'Nome non trovato.'; end if;
+  delete from public.party_members where person_id=command->>'participantId' and role='guest';
+ elsif kind='settings' then
+  if phase='results' then raise exception 'Le regole non si cambiano durante il reveal.'; end if;
+  cfg:=command->'settings';
+  if cfg is null or jsonb_typeof(cfg)<>'object'
+   or not (jsonb_typeof(cfg->'maxAwards')='null' or (jsonb_typeof(cfg->'maxAwards')='number' and (cfg->>'maxAwards')::numeric in (1,2,3,4)))
+   or jsonb_typeof(cfg->'spectatorsVote') is distinct from 'boolean'
+   or jsonb_typeof(cfg->'awardOrder') is distinct from 'array' or jsonb_array_length(cfg->'awardOrder')<>4
+   or (select count(distinct k) from jsonb_array_elements_text(cfg->'awardOrder') k where k in ('credibility','delivery','research','supercazzola'))<>4
+  then raise exception 'Regole dei premi non valide.'; end if;
+  s:=s||jsonb_build_object('settings',jsonb_build_object('maxAwards',cfg->'maxAwards','awardOrder',cfg->'awardOrder','spectatorsVote',cfg->'spectatorsVote'));
+ elsif kind='participant' then
+  if phase<>'waiting' then raise exception 'Modifica i fascicoli tra un turno e l’altro.'; end if;
+  p:=command->'participant';
+  if coalesce(length(trim(p->>'id')),0)=0 or coalesce(length(trim(p->>'name')),0)=0 or coalesce(length(trim(p->>'role')),0)=0 or jsonb_typeof(p->'spectator') is distinct from 'boolean' then raise exception 'Inserisci nome e ruolo.'; end if;
+  if not (p->>'spectator')::boolean and coalesce(length(trim(p->>'title')),0)=0 then raise exception 'Inserisci il titolo.'; end if;
+  if length(coalesce(p->>'deckUrl',''))>0 and p->>'deckUrl' !~ '^https://docs[.]google[.]com/presentation/' then raise exception 'Usa un link HTTPS di Google Slides.'; end if;
+  if exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=p->>'id') then
+   select jsonb_agg(case when v->>'id'=p->>'id' then p else v end order by ord) into rounds from jsonb_array_elements(s->'participants') with ordinality t(v,ord);
+  else rounds:=(s->'participants')||jsonb_build_array(p); end if;
+  s:=jsonb_set(s,'{participants}',rounds);
+ end if;
+ s:=jsonb_set(s,'{revision}',to_jsonb((s->>'revision')::int+1));
+ update public.party_store set state=s where id=true;
+ update public.party_signal set revision=(s->>'revision')::bigint where id=true;
+end; $$;
+revoke all on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb) from public,anon;
+grant execute on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb) to authenticated;
+-- Only a harmless revision number is broadcast; no scores, names or passwords.
+do $$ begin
+ if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='party_signal') then
+  alter publication supabase_realtime add table public.party_signal;
+ end if;
+end $$;
+commit;
+
+-- Next: run the private script made by `npm run make-init` (see supabase/README.md).
+-- It inserts the starting roster and the hashed guest and GM passwords.
+-- Never use the Supabase project/database password as an event access code.
