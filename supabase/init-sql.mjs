@@ -10,6 +10,9 @@ export const defaultSettings = () => ({
   spectatorsVote: true,
 });
 
+/** Same normalisation as party_norm() in setup.sql: guests' word ignores case and spaces. */
+export const normGuest = (t) => t.replace(/\s/g, '').toUpperCase();
+
 export async function hashPasswords(...passwords) {
   const db = await PGlite.create({ extensions: { pgcrypto } });
   await db.exec('create extension if not exists pgcrypto;');

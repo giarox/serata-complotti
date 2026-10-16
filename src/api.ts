@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { applyAction, initialState, makeId, normalize, snapshot, type State, type Action, type Actor } from './domain';
+/** Demo-mode check, same normalisation as the database: guests' word ignores case and spaces. */
+const demoOk = (code: string, gm: boolean) =>
+  gm ? code.trim() === '2480' : code.replace(/\s+/g, '').toUpperCase() === 'NONCIELODICONO';
 const env = (import.meta as unknown as { env: Record<string, string> }).env;
 export const live = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
 const client = live ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY) : null;
@@ -34,7 +37,7 @@ export async function action(actor: Actor, command: Action) {
 /** participantId may be empty for a GM who only conducts. */
 export async function login(code: string, participantId: string, gm: boolean): Promise<Actor> {
   if (!client) {
-    if (code !== (gm ? 'regia-demo' : 'complotti')) throw new Error('Password non corretta.');
+    if (!demoOk(code, gm)) throw new Error('Password non corretta.');
     if (gm) return participantId ? { role: 'gm', participantId } : { role: 'gm' };
     return { role: 'guest', participantId };
   }
@@ -52,18 +55,18 @@ export async function login(code: string, participantId: string, gm: boolean): P
   return data;
 }
 /** Self-registration from the invite: event password + first and last name. */
-export async function register(code: string, fullName: string, alias = ''): Promise<Actor> {
+export async function register(code: string, fullName: string): Promise<Actor> {
   if (!client) {
-    if (code !== 'complotti') throw new Error('Password non corretta.');
+    if (!demoOk(code, false)) throw new Error('Password non corretta.');
     const id = makeId(fullName);
     const guest: Actor = { role: 'guest' };
     await navigator.locks.request('complotti-demo', () =>
-      writeDemo(applyAction(readDemo(), guest, { type: 'register', id, name: fullName, alias })),
+      writeDemo(applyAction(readDemo(), guest, { type: 'register', id, name: fullName })),
     );
     return { role: 'guest', participantId: id };
   }
   await entryList();
-  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName, alias });
+  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName });
   if (error) throw new Error(error.message);
   return data;
 }
@@ -79,7 +82,7 @@ export async function entryList(): Promise<State['participants']> {
 /** Both the event password and the GM password unlock the list of names. */
 export async function unlockNames(code: string, gm = false): Promise<State['participants']> {
   if (!client) {
-    if (code !== (gm ? 'regia-demo' : 'complotti')) throw new Error('Password non corretta.');
+    if (!demoOk(code, gm)) throw new Error('Password non corretta.');
     return readDemo().participants;
   }
   await entryList();

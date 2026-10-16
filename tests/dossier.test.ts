@@ -5,9 +5,7 @@ import {
   initialState,
   makeId,
   normalize,
-  displayName,
   snapshot,
-  stageName,
   type Actor,
   type Participant,
   type State,
@@ -15,49 +13,27 @@ import {
 
 const gm: Actor = { role: 'gm' };
 const stranger: Actor = { role: 'guest' };
-const register = (s: State, name: string, id = makeId(name)) =>
+const register = (s: State, name: string, id = makeId(name)): State =>
   applyAction(s, stranger, { type: 'register', id, name });
 const me = (s: State, id: string) => s.participants.find((p) => p.id === id)!;
 const edit = (s: State, actor: Actor, p: Participant) => applyAction(s, actor, { type: 'participant', participant: p });
 
 describe('self-registration from the invite', () => {
-  it('needs a real first and last name; the alias is optional', () => {
-    expect(() => register(initialState(), 'Paolo')).toThrow('nome e cognome');
+  it('needs only a name, and starts an empty dossier', () => {
+    expect(() => register(initialState(), 'X')).toThrow('nome');
     expect(() => register(initialState(), '   ')).toThrow();
     const s = register(initialState(), '  Anna   Rossi ', 'anna-rossi-0001');
-    expect(me(s, 'anna-rossi-0001')).toMatchObject({
-      name: 'Anna Rossi',
-      alias: '',
-      role: '',
-      mode: null,
-      spectator: false,
-    });
+    expect(me(s, 'anna-rossi-0001')).toMatchObject({ name: 'Anna Rossi', role: '', mode: null, spectator: false });
     expect(dossierGaps(me(s, 'anna-rossi-0001'))).toEqual([
       'titolo da congresso',
       'titolo della rivelazione',
       'come presenti',
     ]);
-    const withAlias = applyAction(initialState(), stranger, {
-      type: 'register',
-      id: 'x',
-      name: 'Ugo Neri',
-      alias: ' Gola  Profonda ',
-    });
-    expect(me(withAlias, 'x')).toMatchObject({ name: 'Ugo Neri', alias: 'Gola Profonda' });
-    expect(() =>
-      applyAction(initialState(), stranger, { type: 'register', id: 'y', name: 'Ugo Neri', alias: 'x'.repeat(41) }),
-    ).toThrow('Alias');
   });
 
-  it('refuses a duplicate real name (pointing to “Ho già prenotato”) and a taken alias', () => {
-    const s = register(initialState(), 'Anna Rossi');
-    expect(() => register(s, 'anna rossi')).toThrow('Ho già prenotato');
-    expect(() => applyAction(s, stranger, { type: 'register', id: 'z', name: 'Ada Lovi', alias: 'la talpa' })).toThrow(
-      'già preso',
-    );
-    expect(() =>
-      applyAction(s, stranger, { type: 'register', id: 'z', name: 'Ada Lovi', alias: 'Anna Rossi' }),
-    ).toThrow('già preso');
+  it('allows two people with the same name', () => {
+    const s = register(register(initialState(), 'Giulia', 'g1'), 'Giulia', 'g2');
+    expect(s.participants.filter((p) => p.name === 'Giulia')).toHaveLength(3);
   });
 
   it('makes readable ids without accents', () => {
@@ -65,14 +41,9 @@ describe('self-registration from the invite', () => {
   });
 });
 
-describe('alias masking', () => {
-  it('shows other guests only alias (or name) and readiness, until they present', () => {
-    let s = applyAction(initialState(), stranger, {
-      type: 'register',
-      id: 'ugo',
-      name: 'Ugo Neri',
-      alias: 'Gola Profonda',
-    });
+describe('secret details', () => {
+  it('shows other guests only the name and readiness, until they present', () => {
+    let s = register(initialState(), 'Ugo', 'ugo');
     s = applyAction(
       s,
       { role: 'guest', participantId: 'ugo' },
@@ -83,23 +54,14 @@ describe('alias masking', () => {
     );
     const viewer: Actor = { role: 'guest', participantId: 'giulia' };
     const seen = snapshot(s, viewer).participants.find((p) => p.id === 'ugo')!;
-    expect(seen).toMatchObject({ name: 'Gola Profonda', alias: '', title: '', role: '', masked: true, ready: true });
-    const noAlias = snapshot(s, viewer).participants.find((p) => p.id === 'marco')!;
-    expect(noAlias.name).toBe('Marco Verdi');
-    // The GM and the person themselves see everything.
-    expect(snapshot(s, gm).participants.find((p) => p.id === 'ugo')).toMatchObject({
-      name: 'Ugo Neri',
-      title: 'SEGRETO',
-    });
-    expect(snapshot(s, { role: 'guest', participantId: 'ugo' }).participants.find((p) => p.id === 'ugo')!.name).toBe(
-      'Ugo Neri',
+    expect(seen).toMatchObject({ name: 'Ugo', title: '', role: '', masked: true, ready: true });
+    expect(dossierGaps(seen)).toEqual([]);
+    expect(snapshot(s, gm).participants.find((p) => p.id === 'ugo')).toMatchObject({ title: 'SEGRETO' });
+    expect(snapshot(s, { role: 'guest', participantId: 'ugo' }).participants.find((p) => p.id === 'ugo')!.title).toBe(
+      'SEGRETO',
     );
-    // On stage the identity is revealed.
     const onStage = applyAction(s, gm, { type: 'start', participantId: 'ugo' });
-    const revealed = snapshot(onStage, viewer).participants.find((p) => p.id === 'ugo')!;
-    expect(revealed).toMatchObject({ name: 'Ugo Neri', alias: 'Gola Profonda', title: 'SEGRETO' });
-    expect(stageName(revealed)).toBe('Gola Profonda, al secolo Ugo Neri');
-    expect(displayName(revealed)).toBe('Gola Profonda');
+    expect(snapshot(onStage, viewer).participants.find((p) => p.id === 'ugo')).toMatchObject({ title: 'SEGRETO' });
   });
 });
 

@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowRight, Eye, LockKeyhole } from 'lucide-react';
 import type { Actor, Participant } from './domain';
 import * as api from './api';
 import { Button, Mark, Stamp } from './ui';
-import { DossierFields, dossierProblem, emptyDossier } from './dossier';
+import { emptyDossier } from './dossier';
+import { DEADLINE_LABEL, EVENT_DAY } from './event';
 
 type Step = 'book' | 'returning' | 'gm';
 const KEY = 'complotti-invite-key';
@@ -32,7 +33,7 @@ function rememberKey(code: string) {
   }
 }
 const friendly = (m: string) =>
-  m.includes('Password') ? 'Parola d’ordine sbagliata. Ricontrolla il messaggio d’invito.' : m;
+  m.includes('Password') || m.includes('PIN') ? 'Parola d’ordine sbagliata. Ricontrolla il messaggio d’invito.' : m;
 
 export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
   const [step, setStep] = useState<Step>('book'),
@@ -84,18 +85,18 @@ function KeyField({ code, setCode }: { code: string; setCode: (c: string) => voi
     <label className="key-field">
       Parola d’ordine <span className="req">la trovi nel messaggio d’invito</span>
       <input
-        autoCapitalize="none"
+        autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
         value={code}
         onChange={(e) => setCode(e.target.value)}
       />
-      {!api.live && <span className="field-hint">Demo: complotti</span>}
+      {!api.live && <span className="field-hint">Demo: NONCIELODICONO</span>}
     </label>
   );
 }
 
-/** The whole invite is one form: book a speaker slot with an alias, add the rest whenever. */
+/** Screen 1: just a name to book the slot. The dossier details are previewed, not asked. */
 function Booking({
   code,
   setCode,
@@ -109,25 +110,21 @@ function Booking({
   onEnter: (a: Actor) => void;
   onReturning: () => void;
 }) {
-  const [draft, setDraft] = useState<Participant>(emptyDossier()),
+  const [name, setName] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   async function book(spectator: boolean) {
-    const problem = dossierProblem(draft);
-    if (problem) return setError(problem);
+    if (name.trim().length < 2) return setError('Scrivi il tuo nome.');
     if (!code.trim()) return setError('Manca la parola d’ordine. È nel messaggio d’invito.');
     setBusy(true);
     setError('');
     try {
-      const actor = await api.register(code.trim(), draft.name.trim(), draft.alias.trim());
+      const actor = await api.register(code.trim(), name.trim());
       rememberKey(code.trim());
-      const details = spectator ? { ...draft, mode: 'none' as const } : draft;
-      const hasDetails =
-        spectator || details.role.trim() || details.title.trim() || details.mode || details.deckUrl.trim();
-      if (hasDetails && actor.participantId)
+      if (spectator && actor.participantId)
         await api.action(actor, {
           type: 'participant',
-          participant: { ...details, id: actor.participantId, name: draft.name.trim(), alias: draft.alias.trim() },
+          participant: { ...emptyDossier(), id: actor.participantId, name: name.trim(), mode: 'none' },
         });
       onEnter(actor);
     } catch (e) {
@@ -142,8 +139,8 @@ function Booking({
         <p className="eyebrow">Comunicazione riservata</p>
         <h1>Sei stato selezionato.</h1>
         <p className="invite-lede">
-          Il congresso cerca relatori. Blocca il tuo posto adesso: i dettagli li aggiungi quando sei pronto. Tutto il
-          resto lo scoprirai in serata.
+          Il {EVENT_DAY} il congresso cerca relatori. Blocca il tuo posto: basta il nome. Il resto lo scoprirai in
+          serata.
         </p>
       </section>
       <form
@@ -157,7 +154,10 @@ function Booking({
         <span className="mono">MODULO DI PRENOTAZIONE</span>
         <h2>Blocca il tuo posto da relatore</h2>
         {!fromLink && <KeyField code={code} setCode={setCode} />}
-        <DossierFields value={draft} onChange={setDraft} />
+        <label className="field-name">
+          Il tuo nome
+          <input autoComplete="given-name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
         {error && (
           <p role="alert" className="field-error">
             {error}
@@ -167,6 +167,21 @@ function Booking({
           {busy ? 'Ti stiamo schedando…' : 'Blocca il mio posto'}
           <ArrowRight size={18} />
         </Button>
+        <div className="preview">
+          <p className="later-label">Poi, entro la {DEADLINE_LABEL}, ti chiederemo. Intanto pensaci:</p>
+          <ul>
+            <li>
+              <strong>Un titolo da congresso.</strong> Es. <em>Studioso dei finti uccelli</em>.
+            </li>
+            <li>
+              <strong>Il titolo della tua rivelazione.</strong> Resta segreto fino alla serata.
+            </li>
+            <li>
+              <strong>Come la presenti.</strong> Con le slide di Google o alla vecchia maniera: fogli, cartelloni,
+              oggetti, solo voce.
+            </li>
+          </ul>
+        </div>
         <div className="booking-secondary">
           <button type="button" className="text-button" disabled={busy} onClick={() => void book(true)}>
             <Eye size={14} /> Non presento, vengo solo a giudicare
@@ -235,7 +250,7 @@ function ReturningStep({
     <form className="entry-card step-card" onSubmit={submit}>
       <span className="mono">RIENTRO AGENTE</span>
       <h2>Bentornato. Chi sei?</h2>
-      <p>Nuovo telefono o pagina chiusa? Scegliti dalla lista (con l’alias, se ne hai uno).</p>
+      <p>Nuovo telefono o pagina chiusa? Scegliti dalla lista e riprendi il fascicolo.</p>
       {(!fromLink || !names.length) && !names.length && <KeyField code={code} setCode={setCode} />}
       {names.length > 0 && (
         <label>
@@ -291,9 +306,10 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
       <h2>Entra in regia.</h2>
       <p>{names.length ? 'Se presenti o voti anche tu, scegli il tuo nome.' : 'La conduzione è nelle tue mani.'}</p>
       <label>
-        Password della regia
+        PIN della regia
         <input
           type="password"
+          inputMode="numeric"
           autoComplete="current-password"
           required
           value={code}
@@ -330,7 +346,7 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
         <div className="demo-credentials">
           <strong>DEMO LOCALE</strong>
           <p>
-            Regia: <code>regia-demo</code> · Ospiti: <code>complotti</code>
+            PIN regia: <code>2480</code> · Ospiti: <code>NONCIELODICONO</code>
           </p>
         </div>
       )}

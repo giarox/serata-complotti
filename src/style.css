@@ -2666,6 +2666,92 @@ details.howto summary {
   scroll-margin-top: 20px;
 }
 
+/* Booking screen 1: name only, with a preview of what comes later */
+.field-name input {
+  font-size: 22px;
+  min-height: 56px;
+}
+.preview {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed #a9976f;
+}
+.preview ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.preview li {
+  position: relative;
+  padding: 6px 0 6px 26px;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.preview li:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #8a7752;
+  border-radius: 2px;
+}
+.preview strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* Screen 2: the countdown */
+.countdown {
+  text-align: center;
+  margin: 18px 0 30px;
+  padding: 18px 12px 16px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.countdown > .mono {
+  color: #e0604f;
+  font-size: 12px;
+}
+.countdown-digits {
+  display: flex;
+  justify-content: center;
+  gap: clamp(10px, 4vw, 28px);
+  margin: 10px 0 8px;
+}
+.countdown-digits span {
+  font: 600 clamp(44px, 12vw, 72px) / 1 var(--display);
+  letter-spacing: 0.04em;
+  color: var(--brass-hi);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.6ch;
+}
+.countdown-digits small {
+  display: block;
+  font: 11px var(--type);
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin-top: 6px;
+}
+.countdown > small {
+  display: block;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--dim);
+}
+.countdown.expired strong {
+  display: block;
+  font: 600 30px var(--display);
+  text-transform: uppercase;
+  color: #e0604f;
+  margin: 8px 0 4px;
+}
+.booked .registry {
+  margin-top: 40px;
+}
+
 /* Responsive */
 @media (min-width: 1500px) {
   .content {

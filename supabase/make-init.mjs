@@ -3,7 +3,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { buildInitSql, hashPasswords, validateRoster } from './init-sql.mjs';
+import { buildInitSql, hashPasswords, normGuest, validateRoster } from './init-sql.mjs';
 
 const here = new URL('.', import.meta.url);
 const reset = process.argv.includes('--reset');
@@ -19,10 +19,10 @@ const ask = async (prompt) => {
 console.log(
   `\nSerata Complotti — ${roster.length} nomi letti da supabase/roster.json${reset ? ' (RESET COMPLETO)' : ''}\n`,
 );
-const guest = (await ask('Password per gli ospiti (da condividere): ')).trim();
-const gm = (await ask('Password della regia (solo per te, diversa): ')).trim();
+const guest = normGuest(await ask('Parola d’ordine per gli ospiti (maiuscole/minuscole indifferenti): '));
+const gm = (await ask('PIN della regia (solo per te, almeno 4 cifre): ')).trim();
 rl.close();
-if (guest.length < 6 || gm.length < 8) throw new Error('Usa almeno 6 caratteri per gli ospiti e 8 per la regia.');
+if (guest.length < 6 || gm.length < 4) throw new Error('Usa almeno 6 caratteri per gli ospiti e 4 per la regia.');
 if (guest === gm) throw new Error('Le due password devono essere diverse.');
 
 const [guestHash, gmHash] = await hashPasswords(guest, gm);

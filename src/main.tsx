@@ -37,7 +37,6 @@ import {
   countVotes,
   defaultSettings,
   displayName,
-  stageName,
   dossierGaps,
   modes,
   phaseNames,
@@ -64,7 +63,6 @@ import { DossierHome, InvitePanel } from './dossier';
 const blank: Participant = {
   id: '',
   name: '',
-  alias: '',
   role: '',
   title: '',
   deckUrl: '',
@@ -401,7 +399,7 @@ function App() {
                         <p>
                           {person ? (
                             <>
-                              <strong>{stageName(person)}</strong>
+                              <strong>{displayName(person)}</strong>
                               {person.role ? ` · ${person.role}` : ''}
                             </>
                           ) : s.phase === 'results' ? (
@@ -628,7 +626,7 @@ function App() {
           <p className="eyebrow">IL PROSSIMO RELATORE</p>
           <h3 className="modal-talk">{selected.title || 'Titolo non ancora pervenuto'}</h3>
           <p>
-            {stageName(selected)}
+            {displayName(selected)}
             {selected.role ? ` · ${selected.role}` : ''}
           </p>
           <p className="footnote">
@@ -719,7 +717,6 @@ function People({
               <div className="person-info">
                 <h3>
                   {p.name}
-                  {p.alias && <em className="alias-tag">alias {p.alias}</em>}
                   {active && <span className="tiny-status">In corso</span>}
                   {done && <Check size={14} />}
                 </h3>
@@ -830,7 +827,7 @@ function Guest({
             <span className="mono">FASCICOLO ATTIVO</span>
             <h2>{p.title || 'Titolo top secret'}</h2>
             <span>
-              {stageName(p)}
+              {displayName(p)}
               {p.role ? `, ${p.role.toLowerCase()}` : ''}
             </span>
           </div>
@@ -1183,7 +1180,7 @@ function Projector({ s }: { s: State }) {
             <span>CONGRESSO N. 001</span>
           </div>
           <p>
-            {p ? `${stageName(p)}${p.role ? ', ' + p.role.toLowerCase() : ''}` : 'Il congresso sta per cominciare.'}
+            {p ? `${displayName(p)}${p.role ? ', ' + p.role.toLowerCase() : ''}` : 'Il congresso sta per cominciare.'}
           </p>
           {s.phase === 'presenting' && (
             <p className="projector-note">
@@ -1245,12 +1242,8 @@ function Editor({
         }}
       >
         <label>
-          Nome e cognome
+          Nome
           <input required value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
-        </label>
-        <label>
-          Alias (facoltativo, lo vedono gli altri)
-          <input value={p.alias} onChange={(e) => setP({ ...p, alias: e.target.value })} />
         </label>
         <label>
           Titolo da congresso

@@ -7,12 +7,12 @@ import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error plain JS helper shared with the make-init script
-import { buildInitSql, hashPasswords, validateRoster } from '../../supabase/init-sql.mjs';
+import { buildInitSql, hashPasswords, normGuest, validateRoster } from '../../supabase/init-sql.mjs';
 
 const setupSql = readFileSync(new URL('../../supabase/setup.sql', import.meta.url), 'utf8');
 const roster = validateRoster(JSON.parse(readFileSync(new URL('../../supabase/roster.json', import.meta.url), 'utf8')));
-const GUEST = 'ospiti-test';
-const GM = 'regia-test-pw';
+const GUEST = 'NonCieLoDicono Test';
+const GM = '9137';
 let hashes: [string, string];
 let db: PGlite;
 
@@ -62,7 +62,7 @@ const snap = (uid: string) => as<Snap>(uid, 'select public.party_snapshot() as r
 const ballot = { credibility: 8, delivery: 7, research: 6, supercazzola: true };
 
 beforeAll(async () => {
-  hashes = await hashPasswords(GUEST, GM);
+  hashes = await hashPasswords(normGuest(GUEST), GM);
 }, 30000);
 
 let gm: string, giulia: string, marco: string, paolo: string;
@@ -253,12 +253,8 @@ describe('GM as participant, spectators, settings and releasing a name', () => {
 });
 
 describe('self-registration and own dossier', () => {
-  const registerAs = (uid: string, passcode: string, name: string, alias = '') =>
-    as<{ role: string; participantId: string }>(uid, 'select public.party_register($1, $2, $3) as r', [
-      passcode,
-      name,
-      alias,
-    ]);
+  const registerAs = (uid: string, passcode: string, name: string) =>
+    as<{ role: string; participantId: string }>(uid, 'select public.party_register($1, $2) as r', [passcode, name]);
   type P = {
     id: string;
     name: string;
@@ -271,19 +267,21 @@ describe('self-registration and own dossier', () => {
   const people = async (uid: string) =>
     (await as<{ participants: P[] }>(uid, 'select public.party_snapshot() as r')).participants;
 
-  it('registers with the event password, real name and optional alias', async () => {
+  it('registers with the event password (any case, any spaces) and just a name', async () => {
     const anna = await user();
     await expect(registerAs(anna, 'sbagliata', 'Anna Rossi')).rejects.toThrow('Password non corretta');
-    await expect(registerAs(anna, GUEST, 'Anna')).rejects.toThrow('nome e cognome');
-    await expect(registerAs(anna, GUEST, 'Anna Rossi', 'x'.repeat(41))).rejects.toThrow('Alias');
-    const actor = await registerAs(anna, GUEST, '  Anna   Rossi ');
+    await expect(registerAs(anna, GUEST, 'A')).rejects.toThrow('nome');
+    await expect(registerAs(anna, GUEST, 'x'.repeat(41))).rejects.toThrow('nome');
+    const actor = await registerAs(anna, ' noncielodicono   test ', '  Anna   Rossi ');
     expect(actor.role).toBe('guest');
     expect(actor.participantId).toMatch(/^anna-rossi-[0-9a-f]{4}$/);
     const me = (await people(anna)).find((p) => p.id === actor.participantId)!;
     expect(me).toMatchObject({ name: 'Anna Rossi', role: '', mode: null, spectator: false });
     // Registering again from the same phone returns the same identity.
     expect(await registerAs(anna, GUEST, 'Altro Nome')).toEqual(actor);
-    await expect(registerAs(await user(), GUEST, 'anna rossi')).rejects.toThrow('Ho già prenotato');
+    // Two people with the same name are fine.
+    const twin = await registerAs(await user(), GUEST, 'Anna Rossi');
+    expect(twin.participantId).not.toBe(actor.participantId);
   });
 
   it('lets guests edit only their own dossier, with server-side checks', async () => {
@@ -357,52 +355,32 @@ describe('self-registration and own dossier', () => {
   });
 });
 
-describe('alias masking on the server', () => {
-  it('hides real names and details of people who have not presented, from guests only', async () => {
+describe('secrets on the server', () => {
+  it('hides other people’s talk details from guests until they present, but not names or readiness', async () => {
     const ugo = await user();
     const { participantId: id } = await as<{ participantId: string }>(
       ugo,
-      'select public.party_register($1, $2, $3) as r',
-      [GUEST, 'Ugo Neri', 'Gola Profonda'],
+      'select public.party_register($1, $2) as r',
+      [GUEST, 'Ugo'],
     );
     await act(ugo, {
       type: 'participant',
-      participant: {
-        id,
-        name: 'Ugo Neri',
-        alias: 'Gola Profonda',
-        role: 'R',
-        title: 'SEGRETO',
-        deckUrl: '',
-        mode: 'paper',
-        spectator: false,
-      },
+      participant: { id, name: 'Ugo', role: 'R', title: 'SEGRETO', deckUrl: '', mode: 'paper', spectator: false },
     });
-    type Seen = { id: string; name: string; alias: string; title: string; masked?: boolean; ready?: boolean };
+    type Seen = { id: string; name: string; title: string; role: string; masked?: boolean; ready?: boolean };
     const seenBy = async (uid: string) =>
       (await as<{ participants: Seen[] }>(uid, 'select public.party_snapshot() as r')).participants.find(
         (p) => p.id === id,
       )!;
-    expect(await seenBy(giulia)).toMatchObject({
-      name: 'Gola Profonda',
-      alias: '',
-      title: '',
-      masked: true,
-      ready: true,
-    });
-    expect(await seenBy(gm)).toMatchObject({ name: 'Ugo Neri', alias: 'Gola Profonda', title: 'SEGRETO' });
-    expect(await seenBy(ugo)).toMatchObject({ name: 'Ugo Neri', title: 'SEGRETO' });
-    const names = await as<{ name: string }[]>(giulia, 'select public.party_names($1) as r', [GUEST]);
-    expect(names.map((n) => n.name)).toContain('Gola Profonda');
-    expect(names.map((n) => n.name)).not.toContain('Ugo Neri');
+    expect(await seenBy(giulia)).toMatchObject({ name: 'Ugo', title: '', role: '', masked: true, ready: true });
+    expect(await seenBy(gm)).toMatchObject({ name: 'Ugo', title: 'SEGRETO', role: 'R' });
+    expect(await seenBy(ugo)).toMatchObject({ title: 'SEGRETO' });
     await act(gm, { type: 'start', participantId: id });
-    expect(await seenBy(giulia)).toMatchObject({ name: 'Ugo Neri', alias: 'Gola Profonda', title: 'SEGRETO' });
-    await expect(
-      as(ugo, 'select public.party_register($1, $2, $3) as r', [GUEST, 'Altro Nome', 'x']),
-    ).resolves.toBeTruthy(); // same phone: returns the existing identity
-    const other = await user();
-    await expect(
-      as(other, 'select public.party_register($1, $2, $3) as r', [GUEST, 'Ada Lovi', 'gola profonda']),
-    ).rejects.toThrow('già preso');
+    expect(await seenBy(giulia)).toMatchObject({ name: 'Ugo', title: 'SEGRETO' });
+  });
+
+  it('accepts the 4-digit GM PIN only as typed', async () => {
+    await expect(join(await user(), '1234', null, true)).rejects.toThrow('Password non corretta');
+    expect(await join(await user(), ' 9137 ', null, true)).toEqual({ role: 'gm' });
   });
 });
