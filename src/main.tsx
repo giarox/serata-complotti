@@ -47,9 +47,24 @@ import {
   type State,
 } from './domain';
 import * as api from './api';
+import '@fontsource/antonio/500.css';
+import '@fontsource/antonio/600.css';
+import '@fontsource/antonio/700.css';
+import '@fontsource/eb-garamond/400.css';
+import '@fontsource/eb-garamond/400-italic.css';
+import '@fontsource/special-elite/400.css';
 import './style.css';
 const blank: Participant = { id: '', name: '', role: '', title: '', deckUrl: '', spectator: false };
 const iconSize = 19;
+/** A worn ink stamp; decorative only. */
+function Stamp({ children, sub }: { children: ReactNode; sub?: string }) {
+  return (
+    <span className="stamp" aria-hidden="true">
+      {children}
+      {sub && <small>{sub}</small>}
+    </span>
+  );
+}
 function Mark({ large = false }: { large?: boolean }) {
   return (
     <div className={'mark ' + (large ? 'large' : '')}>
@@ -351,11 +366,7 @@ function App() {
                         : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
                   </p>
                 </div>
-                <span className="classified-stamp">
-                  STRETTAMENTE
-                  <br />
-                  CONFIDENZIALE
-                </span>
+                <Stamp sub="Strettamente confidenziale">Top secret</Stamp>
               </div>
               <div className="mobile-nav">
                 <button onClick={() => setTab('regia')}>Regia</button>
@@ -480,17 +491,25 @@ function App() {
                       <div className="dossier-art" aria-hidden="true">
                         <div className="art-paper">
                           <span>ARCHIVIO RISERVATO</span>
-                          <Eye size={82} strokeWidth={0.8} />
+                          <Eye strokeWidth={1} />
                           <strong>
-                            NON È UNA
+                            Non è una
                             <br />
-                            COINCIDENZA.
+                            coincidenza.
                           </strong>
                           <div className="art-lines" />
-                          <em>PROVA N. 001</em>
+                          <em>PROVA 001</em>
                         </div>
                         <div className="art-tape" />
-                        <span className="art-cross">+</span>
+                        <span className="art-cross">chi c’era davvero?</span>
+                        <svg className="art-strings" viewBox="0 0 248 208" preserveAspectRatio="none">
+                          <line x1="74" y1="34" x2="196" y2="48" />
+                          <line x1="74" y1="34" x2="150" y2="158" />
+                          <line x1="196" y1="48" x2="150" y2="158" />
+                          <circle cx="74" cy="34" r="5" />
+                          <circle cx="196" cy="48" r="5" />
+                          <circle cx="150" cy="158" r="5" />
+                        </svg>
                       </div>
                     </div>
                     <div className="phase-track">
@@ -799,13 +818,9 @@ function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
             <br />
             Porta le tue prove. Lascia a casa le certezze.
           </p>
-          <span className="classified-stamp">
-            RISERVATO A CHI
-            <br />
-            SI FA DOMANDE
-          </span>
         </section>
         <form className="entry-card" onSubmit={submit}>
+          <Stamp>Top secret</Stamp>
           <span className="mono">{gm ? 'ACCESSO REGIA' : 'IDENTIFICAZIONE DEL SOGGETTO'}</span>
           <h2>{gm ? 'Entra in regia.' : names.length ? 'Come ti chiami?' : 'Ti stavamo aspettando.'}</h2>
           <p>
@@ -1275,8 +1290,14 @@ function Projector({ s }: { s: State }) {
         </>
       ) : (
         <>
+          {s.phase === 'waiting' && <Stamp sub="Non divulgare">Top secret</Stamp>}
           <Mark large />
           <p className="eyebrow">{phaseNames[s.phase].toUpperCase()}</p>
+          <div className="codeline">
+            <span>FASC. {String(s.rounds.length).padStart(3, '0')}</span>
+            <i />
+            <span>RISERVATO</span>
+          </div>
           <h1>
             {s.phase === 'waiting'
               ? 'Nulla è come sembra.'
@@ -1286,7 +1307,12 @@ function Projector({ s }: { s: State }) {
                   ? 'Ai posteri il verdetto.'
                   : p?.title}
           </h1>
-          <p>{p ? `${p.name} · ${p.role}` : 'Il congresso sta per cominciare.'}</p>
+          <div className="codeline">
+            <span>{p ? 'RELATORE' : 'IN ATTESA'}</span>
+            <i />
+            <span>CONGRESSO N. 001</span>
+          </div>
+          <p>{p ? `${p.name}, ${p.role.toLowerCase()}` : 'Il congresso sta per cominciare.'}</p>
           {s.phase === 'presenting' && (
             <p className="projector-note">Le slide si aprono separatamente in questa alpha.</p>
           )}
