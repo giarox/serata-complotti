@@ -11,6 +11,7 @@ import {
   type State,
 } from './domain';
 import { Button, Stamp } from './ui';
+import { displayName } from './domain';
 
 export const aliasIdeas = [
   'Agente Piccione',
@@ -48,6 +49,7 @@ const pick = (list: string[], not = '') => {
 export const emptyDossier = (): Participant => ({
   id: '',
   name: '',
+  alias: '',
   role: '',
   title: '',
   deckUrl: '',
@@ -56,7 +58,9 @@ export const emptyDossier = (): Participant => ({
 });
 /** Client-side check before saving; the server repeats it. */
 export function dossierProblem(d: Participant): string | null {
-  if (d.name.trim().length < 2) return 'Serve almeno un alias. Anche ridicolo.';
+  const name = d.name.trim().replace(/\s+/g, ' ');
+  if (name.length < 3 || !name.includes(' ')) return 'Scrivi nome e cognome veri: servono alla regia.';
+  if (d.alias.trim() && d.alias.trim().length < 2) return 'Alias troppo corto: almeno 2 caratteri.';
   if (d.mode === 'slides' && d.deckUrl.trim() && !slidesUrlPattern.test(d.deckUrl.trim()))
     return 'Quello non sembra un link di Google Slides: deve iniziare con https://docs.google.com/presentation/';
   return null;
@@ -67,28 +71,41 @@ export function DossierFields({ value, onChange }: { value: Participant; onChang
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
   return (
     <>
-      <div className="field-alias">
+      <div className="field-identity">
+        <label>
+          Nome e cognome <span className="req">obbligatorio</span>
+          <input
+            autoComplete="name"
+            maxLength={60}
+            placeholder="Es. Paolo Pesaresi"
+            value={value.name}
+            onChange={(e) => set({ name: e.target.value })}
+          />
+        </label>
         <div className="field-row">
           <label>
-            Alias <span className="req">obbligatorio</span>
+            Alias <span className="opt">facoltativo</span>
             <input
               maxLength={40}
               autoComplete="off"
-              placeholder="Es. Agente Piccione"
-              value={value.name}
-              onChange={(e) => set({ name: e.target.value })}
+              placeholder="Es. La Talpa"
+              value={value.alias}
+              onChange={(e) => set({ alias: e.target.value })}
             />
           </label>
           <button
             type="button"
             className="icon-button dice"
             aria-label="Suggerisci un alias"
-            onClick={() => set({ name: pick(aliasIdeas, value.name) })}
+            onClick={() => set({ alias: pick(aliasIdeas, value.alias) })}
           >
             <Dices size={20} />
           </button>
         </div>
-        <p className="field-hint">Cela la tua identità fino al momento della presentazione.</p>
+        <p className="field-hint">
+          Vuoi restare top secret? Con un alias gli altri non sapranno chi sei fino al momento della presentazione. Il
+          tuo nome vero lo vede solo la regia.
+        </p>
       </div>
       <div className="later">
         <p className="later-label">Il resto puoi aggiungerlo quando hai il materiale pronto. Intanto pensaci.</p>
@@ -207,7 +224,7 @@ export function DossierHome({
       ) : (
         <Stamp sub="Posto bloccato">Prenotato</Stamp>
       )}
-      <span className="mono">FASCICOLO DI {me.name.toUpperCase()}</span>
+      <span className="mono">FASCICOLO DI {displayName(me).toUpperCase()}</span>
       {blocker ? (
         <p className="footnote">{blocker}</p>
       ) : me.mode === 'none' ? (
@@ -250,10 +267,14 @@ export function DossierHome({
   return (
     <section className="booked">
       <p className="eyebrow">Posto bloccato</p>
-      <h1>Benvenuto, {me.name}.</h1>
+      <h1>Benvenuto, {displayName(me)}.</h1>
       <p className="booked-lede">
         Il resto è top secret. Torna qui quando hai il materiale: questo telefono si ricorda di te.
       </p>
+      <Registry s={s} meId={me.id} />
+      <h2 className="sheet-heading" id="fascicolo">
+        Il tuo fascicolo
+      </h2>
       {sheet}
     </section>
   );
@@ -313,6 +334,54 @@ export function InvitePanel() {
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+type Status = 'ready' | 'booked' | 'audience';
+const statusOf = (p: Participant): Status =>
+  p.mode === 'none' ? 'audience' : dossierGaps(p).length === 0 ? 'ready' : 'booked';
+const statusLabel: Record<Status, string> = {
+  ready: 'Pronto',
+  booked: 'Posto bloccato, mancano dettagli',
+  audience: 'Pubblico',
+};
+const order: Record<Status, number> = { ready: 0, booked: 1, audience: 2 };
+
+/** Who else is in: aliases (or names) and how far along they are. A little social pressure. */
+export function Registry({ s, meId }: { s: State; meId?: string }) {
+  const people = [...s.participants].sort((a, b) => order[statusOf(a)] - order[statusOf(b)]);
+  const speakers = people.filter((p) => statusOf(p) !== 'audience'),
+    ready = speakers.filter((p) => statusOf(p) === 'ready').length;
+  return (
+    <section className="registry" aria-labelledby="registry-title">
+      <div className="registry-head">
+        <h2 id="registry-title">Il registro</h2>
+        <p>
+          {speakers.length === 1 ? '1 posto da relatore bloccato' : `${speakers.length} posti da relatore bloccati`},{' '}
+          {ready} {ready === 1 ? 'fascicolo pronto' : 'fascicoli pronti'}.{' '}
+          {speakers.length > ready
+            ? 'I ritardatari verranno segnalati alle autorità competenti.'
+            : 'Nessun ritardatario. Sospetto.'}
+        </p>
+      </div>
+      <ol className="registry-list">
+        {people.map((p) => {
+          const st = statusOf(p);
+          return (
+            <li key={p.id} className={'registry-row ' + st + (p.id === meId ? ' me' : '')}>
+              <span className="registry-name">
+                {displayName(p)}
+                {p.id === meId && <small>tu</small>}
+              </span>
+              <span className={'registry-status ' + st}>
+                {st === 'ready' && <Check size={14} />}
+                {p.id === meId && st === 'booked' ? <a href="#fascicolo">Completa il tuo</a> : statusLabel[st]}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

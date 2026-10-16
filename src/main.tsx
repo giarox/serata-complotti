@@ -36,6 +36,8 @@ import {
   category,
   countVotes,
   defaultSettings,
+  displayName,
+  stageName,
   dossierGaps,
   modes,
   phaseNames,
@@ -59,7 +61,16 @@ import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { DossierHome, InvitePanel } from './dossier';
-const blank: Participant = { id: '', name: '', role: '', title: '', deckUrl: '', mode: null, spectator: false };
+const blank: Participant = {
+  id: '',
+  name: '',
+  alias: '',
+  role: '',
+  title: '',
+  deckUrl: '',
+  mode: null,
+  spectator: false,
+};
 const iconSize = 19;
 function App() {
   const [actor, setActor] = useState<Actor | null>(null),
@@ -390,7 +401,8 @@ function App() {
                         <p>
                           {person ? (
                             <>
-                              <strong>{person.name}</strong> · {person.role}
+                              <strong>{stageName(person)}</strong>
+                              {person.role ? ` · ${person.role}` : ''}
                             </>
                           ) : s.phase === 'results' ? (
                             'Il congresso ha parlato. Svela una categoria alla volta.'
@@ -412,7 +424,7 @@ function App() {
                               disabled={busy || !connected}
                               onClick={() => setConfirm({ type: 'phase', phase: 'voting', roundId: round!.id })}
                             >
-                              Apri il voto per {person?.name}
+                              Apri il voto per {person ? displayName(person) : ''}
                               <ArrowRight size={18} />
                             </Button>
                           )}
@@ -616,7 +628,8 @@ function App() {
           <p className="eyebrow">IL PROSSIMO RELATORE</p>
           <h3 className="modal-talk">{selected.title || 'Titolo non ancora pervenuto'}</h3>
           <p>
-            {selected.name} · {selected.role}
+            {stageName(selected)}
+            {selected.role ? ` · ${selected.role}` : ''}
           </p>
           <p className="footnote">
             {selected.mode === 'paper'
@@ -631,7 +644,7 @@ function App() {
             <p className="award-reason">Fascicolo incompleto: manca {dossierGaps(selected).join(', ')}.</p>
           )}
           <Button disabled={busy} onClick={() => void perform({ type: 'start', participantId: selected.id })}>
-            Inizia con {selected.name}
+            Inizia con {displayName(selected)}
             <Play size={17} />
           </Button>
         </Modal>
@@ -667,7 +680,7 @@ function App() {
                 : confirm.type === 'reveal'
                   ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
                   : confirm.type === 'phase' && confirm.phase === 'voting'
-                    ? `Si voterà per ${person?.name}: ${person?.title}.`
+                    ? `Si voterà per ${person ? displayName(person) : ''}: ${person?.title}.`
                     : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
           </p>
           <Button disabled={busy} onClick={() => void perform(confirm)}>
@@ -706,6 +719,7 @@ function People({
               <div className="person-info">
                 <h3>
                   {p.name}
+                  {p.alias && <em className="alias-tag">alias {p.alias}</em>}
                   {active && <span className="tiny-status">In corso</span>}
                   {done && <Check size={14} />}
                 </h3>
@@ -782,7 +796,7 @@ function Guest({
     <>
       <div className="guest-welcome">
         <span className="eyebrow">BENVENUTO NEL CONGRESSO</span>
-        <span className="guest-id">{me?.name}</span>
+        <span className="guest-id">{me ? displayName(me) : ''}</span>
       </div>
       <section className="guest-stage">
         <span className="phase-badge">{phaseNames[s.phase]}</span>
@@ -816,7 +830,7 @@ function Guest({
             <span className="mono">FASCICOLO ATTIVO</span>
             <h2>{p.title || 'Titolo top secret'}</h2>
             <span>
-              {p.name}
+              {stageName(p)}
               {p.role ? `, ${p.role.toLowerCase()}` : ''}
             </span>
           </div>
@@ -866,7 +880,7 @@ function Voting({
       <h1>Convinto o confuso?</h1>
       <div className="ballot-person">
         <span>
-          Stai votando per <strong>{p.name}</strong>
+          Stai votando per <strong>{displayName(p)}</strong>
         </span>
         <h2>{p.title}</h2>
       </div>
@@ -956,7 +970,7 @@ function Results({ s }: { s: State }) {
                 {award.winners.length ? (
                   <div className="award-winner">
                     <span className="mono">{award.outcome === 'shared' ? 'PARI MERITO' : 'IL PREMIO VA A'}</span>
-                    <strong>{list(award.winners.map((p) => p.name))}</strong>
+                    <strong>{list(award.winners.map(displayName))}</strong>
                     <small>
                       {fmt(award.value!)}
                       {unit}
@@ -969,13 +983,13 @@ function Results({ s }: { s: State }) {
                 )}
                 {award.outcome === 'tieBreak' && (
                   <p className="award-reason">
-                    Pari merito con {list(award.passedOver.map((p) => p.name))},{' '}
+                    Pari merito con {list(award.passedOver.map(displayName))},{' '}
                     {award.passedOver.length > 1 ? 'che hanno' : 'che ha'} già un premio: vince chi non ne ha ancora.
                   </p>
                 )}
                 {award.capped.length > 0 && (
                   <p className="award-reason">
-                    {list(award.capped.map((p) => p.name))} {award.capped.length > 1 ? 'hanno' : 'ha'} già raggiunto il
+                    {list(award.capped.map(displayName))} {award.capped.length > 1 ? 'hanno' : 'ha'} già raggiunto il
                     massimo di premi per persona.
                   </p>
                 )}
@@ -984,7 +998,7 @@ function Results({ s }: { s: State }) {
                     {award.rows.map((row) => (
                       <li key={row.participant.id}>
                         <span>
-                          {row.participant.name}
+                          {displayName(row.participant)}
                           <small>{row.count} voti</small>
                         </span>
                         <strong>
@@ -1108,7 +1122,7 @@ function GmOwnTurn({
   if (s.phase === 'presenting' && r?.presenterId === me.id)
     return (
       <section className="panel gm-own-turn">
-        <p className="eyebrow">STAI PRESENTANDO TU, {me.name.toUpperCase()}</p>
+        <p className="eyebrow">STAI PRESENTANDO TU, {displayName(me).toUpperCase()}</p>
         <div className="slide-placeholder">
           <Button secondary disabled>
             <ArrowLeft size={18} />
@@ -1168,7 +1182,9 @@ function Projector({ s }: { s: State }) {
             <i />
             <span>CONGRESSO N. 001</span>
           </div>
-          <p>{p ? `${p.name}${p.role ? ', ' + p.role.toLowerCase() : ''}` : 'Il congresso sta per cominciare.'}</p>
+          <p>
+            {p ? `${stageName(p)}${p.role ? ', ' + p.role.toLowerCase() : ''}` : 'Il congresso sta per cominciare.'}
+          </p>
           {s.phase === 'presenting' && (
             <p className="projector-note">
               {p?.mode === 'paper'
@@ -1231,6 +1247,10 @@ function Editor({
         <label>
           Nome e cognome
           <input required value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
+        </label>
+        <label>
+          Alias (facoltativo, lo vedono gli altri)
+          <input value={p.alias} onChange={(e) => setP({ ...p, alias: e.target.value })} />
         </label>
         <label>
           Titolo da congresso

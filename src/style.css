@@ -2564,6 +2564,108 @@ details.howto summary {
   padding-bottom: 14px;
 }
 
+/* Identity fields and the registry */
+.booking .opt {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-left: 6px;
+}
+.field-identity > label input {
+  font-size: 19px;
+  min-height: 52px;
+}
+.alias-tag {
+  font-family: var(--type);
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--brass);
+  border: 1px dashed var(--brass-dim);
+  padding: 1px 6px;
+}
+.registry {
+  margin: 0 0 34px;
+}
+.registry-head h2 {
+  font-size: 32px;
+  color: var(--brass);
+}
+.registry-head p {
+  font-size: 17px;
+  font-style: italic;
+  color: var(--dim);
+  margin: 6px 0 14px;
+}
+.registry-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--rule);
+}
+.registry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 2px;
+  border-bottom: 1px dashed var(--rule);
+  min-height: 52px;
+}
+.registry-name {
+  font: 600 20px var(--display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bone);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.registry-name small {
+  font: 11px var(--type);
+  text-transform: none;
+  color: var(--ink);
+  background: var(--brass);
+  padding: 1px 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.registry-row.me {
+  background: #ffffff08;
+}
+.registry-status {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 12px var(--type);
+  padding: 4px 8px 3px;
+  border: 1.5px solid currentColor;
+  transform: rotate(-1.5deg);
+  max-width: 55%;
+  text-align: right;
+}
+.registry-status.ready {
+  color: var(--ok);
+}
+.registry-status.booked {
+  color: #e08a70;
+  border-style: dashed;
+}
+.registry-status.audience {
+  color: var(--dim);
+  border-color: transparent;
+}
+.registry-status a {
+  color: inherit;
+  text-decoration: underline;
+}
+.sheet-heading {
+  font-size: 30px;
+  color: var(--brass);
+  margin: 0 0 14px;
+  scroll-margin-top: 20px;
+}
+
 /* Responsive */
 @media (min-width: 1500px) {
   .content {

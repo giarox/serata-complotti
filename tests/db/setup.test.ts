@@ -253,8 +253,12 @@ describe('GM as participant, spectators, settings and releasing a name', () => {
 });
 
 describe('self-registration and own dossier', () => {
-  const registerAs = (uid: string, passcode: string, name: string) =>
-    as<{ role: string; participantId: string }>(uid, 'select public.party_register($1, $2) as r', [passcode, name]);
+  const registerAs = (uid: string, passcode: string, name: string, alias = '') =>
+    as<{ role: string; participantId: string }>(uid, 'select public.party_register($1, $2, $3) as r', [
+      passcode,
+      name,
+      alias,
+    ]);
   type P = {
     id: string;
     name: string;
@@ -267,11 +271,11 @@ describe('self-registration and own dossier', () => {
   const people = async (uid: string) =>
     (await as<{ participants: P[] }>(uid, 'select public.party_snapshot() as r')).participants;
 
-  it('registers with the event password and a free alias', async () => {
+  it('registers with the event password, real name and optional alias', async () => {
     const anna = await user();
     await expect(registerAs(anna, 'sbagliata', 'Anna Rossi')).rejects.toThrow('Password non corretta');
-    await expect(registerAs(anna, GUEST, 'A')).rejects.toThrow('alias');
-    await expect(registerAs(anna, GUEST, 'x'.repeat(41))).rejects.toThrow('alias');
+    await expect(registerAs(anna, GUEST, 'Anna')).rejects.toThrow('nome e cognome');
+    await expect(registerAs(anna, GUEST, 'Anna Rossi', 'x'.repeat(41))).rejects.toThrow('Alias');
     const actor = await registerAs(anna, GUEST, '  Anna   Rossi ');
     expect(actor.role).toBe('guest');
     expect(actor.participantId).toMatch(/^anna-rossi-[0-9a-f]{4}$/);
@@ -279,7 +283,7 @@ describe('self-registration and own dossier', () => {
     expect(me).toMatchObject({ name: 'Anna Rossi', role: '', mode: null, spectator: false });
     // Registering again from the same phone returns the same identity.
     expect(await registerAs(anna, GUEST, 'Altro Nome')).toEqual(actor);
-    await expect(registerAs(await user(), GUEST, 'anna rossi')).rejects.toThrow('Sono già nel registro');
+    await expect(registerAs(await user(), GUEST, 'anna rossi')).rejects.toThrow('Ho già prenotato');
   });
 
   it('lets guests edit only their own dossier, with server-side checks', async () => {
@@ -350,5 +354,55 @@ describe('self-registration and own dossier', () => {
     );
     await act(gm, { type: 'participant', participant: { ...base, title: 'Corretto dal GM' } });
     expect((await people(gm)).find((p) => p.id === id)!.title).toBe('Corretto dal GM');
+  });
+});
+
+describe('alias masking on the server', () => {
+  it('hides real names and details of people who have not presented, from guests only', async () => {
+    const ugo = await user();
+    const { participantId: id } = await as<{ participantId: string }>(
+      ugo,
+      'select public.party_register($1, $2, $3) as r',
+      [GUEST, 'Ugo Neri', 'Gola Profonda'],
+    );
+    await act(ugo, {
+      type: 'participant',
+      participant: {
+        id,
+        name: 'Ugo Neri',
+        alias: 'Gola Profonda',
+        role: 'R',
+        title: 'SEGRETO',
+        deckUrl: '',
+        mode: 'paper',
+        spectator: false,
+      },
+    });
+    type Seen = { id: string; name: string; alias: string; title: string; masked?: boolean; ready?: boolean };
+    const seenBy = async (uid: string) =>
+      (await as<{ participants: Seen[] }>(uid, 'select public.party_snapshot() as r')).participants.find(
+        (p) => p.id === id,
+      )!;
+    expect(await seenBy(giulia)).toMatchObject({
+      name: 'Gola Profonda',
+      alias: '',
+      title: '',
+      masked: true,
+      ready: true,
+    });
+    expect(await seenBy(gm)).toMatchObject({ name: 'Ugo Neri', alias: 'Gola Profonda', title: 'SEGRETO' });
+    expect(await seenBy(ugo)).toMatchObject({ name: 'Ugo Neri', title: 'SEGRETO' });
+    const names = await as<{ name: string }[]>(giulia, 'select public.party_names($1) as r', [GUEST]);
+    expect(names.map((n) => n.name)).toContain('Gola Profonda');
+    expect(names.map((n) => n.name)).not.toContain('Ugo Neri');
+    await act(gm, { type: 'start', participantId: id });
+    expect(await seenBy(giulia)).toMatchObject({ name: 'Ugo Neri', alias: 'Gola Profonda', title: 'SEGRETO' });
+    await expect(
+      as(ugo, 'select public.party_register($1, $2, $3) as r', [GUEST, 'Altro Nome', 'x']),
+    ).resolves.toBeTruthy(); // same phone: returns the existing identity
+    const other = await user();
+    await expect(
+      as(other, 'select public.party_register($1, $2, $3) as r', [GUEST, 'Ada Lovi', 'gola profonda']),
+    ).rejects.toThrow('già preso');
   });
 });

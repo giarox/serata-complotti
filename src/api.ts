@@ -52,18 +52,18 @@ export async function login(code: string, participantId: string, gm: boolean): P
   return data;
 }
 /** Self-registration from the invite: event password + first and last name. */
-export async function register(code: string, fullName: string): Promise<Actor> {
+export async function register(code: string, fullName: string, alias = ''): Promise<Actor> {
   if (!client) {
     if (code !== 'complotti') throw new Error('Password non corretta.');
     const id = makeId(fullName);
     const guest: Actor = { role: 'guest' };
     await navigator.locks.request('complotti-demo', () =>
-      writeDemo(applyAction(readDemo(), guest, { type: 'register', id, name: fullName })),
+      writeDemo(applyAction(readDemo(), guest, { type: 'register', id, name: fullName, alias })),
     );
     return { role: 'guest', participantId: id };
   }
   await entryList();
-  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName });
+  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName, alias });
   if (error) throw new Error(error.message);
   return data;
 }

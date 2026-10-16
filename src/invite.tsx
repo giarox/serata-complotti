@@ -119,7 +119,7 @@ function Booking({
     setBusy(true);
     setError('');
     try {
-      const actor = await api.register(code.trim(), draft.name.trim());
+      const actor = await api.register(code.trim(), draft.name.trim(), draft.alias.trim());
       rememberKey(code.trim());
       const details = spectator ? { ...draft, mode: 'none' as const } : draft;
       const hasDetails =
@@ -127,7 +127,7 @@ function Booking({
       if (hasDetails && actor.participantId)
         await api.action(actor, {
           type: 'participant',
-          participant: { ...details, id: actor.participantId, name: draft.name.trim() },
+          participant: { ...details, id: actor.participantId, name: draft.name.trim(), alias: draft.alias.trim() },
         });
       onEnter(actor);
     } catch (e) {
@@ -224,7 +224,7 @@ function ReturningStep({
       const m = (e as Error).message;
       setError(
         m.includes('già in uso')
-          ? 'Questo alias è aperto su un altro telefono. Chiedi alla regia di liberarlo.'
+          ? 'Risulti già aperto su un altro telefono. Chiedi alla regia di liberarti.'
           : friendly(m),
       );
     } finally {
@@ -234,12 +234,12 @@ function ReturningStep({
   return (
     <form className="entry-card step-card" onSubmit={submit}>
       <span className="mono">RIENTRO AGENTE</span>
-      <h2>Bentornato. Qual è il tuo alias?</h2>
-      <p>Nuovo telefono o pagina chiusa? Scegli il tuo alias e riprendi il fascicolo.</p>
+      <h2>Bentornato. Chi sei?</h2>
+      <p>Nuovo telefono o pagina chiusa? Scegliti dalla lista (con l’alias, se ne hai uno).</p>
       {(!fromLink || !names.length) && !names.length && <KeyField code={code} setCode={setCode} />}
       {names.length > 0 && (
         <label>
-          Il tuo alias
+          Chi sei
           <select required value={id} onChange={(e) => setId(e.target.value)}>
             <option value="">Scegli dalla lista</option>
             {names.map((p) => (
@@ -256,7 +256,7 @@ function ReturningStep({
         </p>
       )}
       <Button type="submit" disabled={busy || (names.length > 0 && !id)}>
-        {busy ? 'Controllo impronte…' : names.length ? 'Sono io' : 'Mostra gli alias'}
+        {busy ? 'Controllo impronte…' : names.length ? 'Sono io' : 'Mostra la lista'}
         <ArrowRight size={18} />
       </Button>
       <button type="button" className="text-button entry-switch" onClick={onBack}>

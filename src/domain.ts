@@ -3,8 +3,10 @@ export type Phase = 'waiting' | 'presenting' | 'questions' | 'voting' | 'results
 export type Mode = 'slides' | 'paper' | 'none';
 export type Participant = {
   id: string;
-  /** The alias chosen at registration: a code name, real identity optional. */
+  /** Real first and last name: always visible to the GM. */
   name: string;
+  /** Optional code name: other guests see only this until the person presents. */
+  alias: string;
   /** The silly congress title, e.g. "Studioso dei finti uccelli". */
   role: string;
   title: string;
@@ -12,6 +14,9 @@ export type Participant = {
   mode: Mode | null;
   /** Kept in sync with mode === 'none' (older data and the vote rules use it). */
   spectator: boolean;
+  /** Only in a guest's view of someone else: details hidden, just whether the dossier is complete. */
+  masked?: boolean;
+  ready?: boolean;
 };
 export type Round = { id: string; presenterId: string; closed: boolean; cancelled?: boolean };
 export type Ballot = { credibility: number; delivery: number; research: number; supercazzola: boolean };
@@ -52,7 +57,7 @@ export type Action =
   | { type: 'reveal' }
   | { type: 'nextAward' }
   | { type: 'participant'; participant: Participant }
-  | { type: 'register'; id: string; name: string }
+  | { type: 'register'; id: string; name: string; alias?: string }
   | { type: 'release'; participantId: string }
   | { type: 'settings'; settings: Settings };
 export const categories = [
@@ -119,6 +124,7 @@ export const presents = (p: Participant) => p.mode === 'slides' || p.mode === 'p
 export const slidesUrlPattern = /^https:\/\/docs\.google\.com\/presentation\//;
 /** What is still missing before the evening, in plain words. Empty = dossier complete. */
 export function dossierGaps(p: Participant): string[] {
+  if (p.masked) return p.ready ? [] : ['dettagli'];
   const gaps: string[] = [];
   if (p.mode === 'none') return gaps;
   if (!p.role.trim()) gaps.push('titolo da congresso');
@@ -143,7 +149,39 @@ export function makeId(name: string, random = Math.random().toString(36).slice(2
 }
 function normalizeParticipant(p: Participant): Participant {
   const mode: Mode | null = p.mode ?? (p.spectator ? 'none' : p.title ? (p.deckUrl ? 'slides' : 'paper') : null);
-  return { ...p, role: p.role ?? '', title: p.title ?? '', deckUrl: p.deckUrl ?? '', mode, spectator: mode === 'none' };
+  return {
+    ...p,
+    alias: p.alias ?? '',
+    role: p.role ?? '',
+    title: p.title ?? '',
+    deckUrl: p.deckUrl ?? '',
+    mode,
+    spectator: mode === 'none',
+  };
+}
+/** What other guests call this person. */
+export const displayName = (p: Participant) => p.alias || p.name;
+/** On stage the identity is revealed: "La Talpa, al secolo Paolo Pesaresi". */
+export const stageName = (p: Participant) =>
+  p.alias && p.alias !== p.name ? `${p.alias}, al secolo ${p.name}` : p.name;
+/** Someone who started presenting (or everyone, once the reveal starts) is no longer secret. */
+export const unmasked = (s: State, id: string) =>
+  s.phase === 'results' || s.rounds.some((r) => r.presenterId === id && !r.cancelled);
+/** Real name vs alias collisions, in plain words; null if fine. */
+function identityClash(s: State, id: string, name: string, alias: string): string | null {
+  const others = s.participants.filter((p) => p.id !== id);
+  const same = (a: string, b: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+  if (others.some((p) => same(p.name, name)))
+    return `Nel registro c’è già ${name}. Se sei tu, tocca “Ho già prenotato”.`;
+  if (alias && others.some((p) => same(p.alias, alias) || same(p.name, alias)))
+    return `L’alias “${alias}” è già preso. Inventane un altro.`;
+  return null;
+}
+function checkIdentity(name: string, alias: string) {
+  if (name.length < 3 || name.length > 60 || !name.includes(' '))
+    throw new Error('Scrivi nome e cognome veri: li vede solo la regia, se scegli un alias.');
+  if (alias.length > 40) throw new Error('Alias troppo lungo: massimo 40 caratteri.');
+  if (alias && alias.length < 2) throw new Error('Alias troppo corto: almeno 2 caratteri.');
 }
 /** Why this participant's dossier cannot be changed right now by this actor, or null. */
 export function editBlocker(s: State, actor: Actor, id: string): string | null {
@@ -204,7 +242,8 @@ export function initialState(): State {
     participants: [
       {
         id: 'paolo',
-        name: 'Paolo',
+        name: 'Paolo Pesaresi',
+        alias: 'La Talpa',
         role: 'Studioso dei finti uccelli',
         title: 'PICCIONI FBI',
         deckUrl: '',
@@ -213,7 +252,8 @@ export function initialState(): State {
       },
       {
         id: 'giulia',
-        name: 'Giulia',
+        name: 'Giulia Bianchi',
+        alias: '',
         role: 'Cartografa delle verità scomode',
         title: 'LA TERRA È UN PROGETTO PILOTA',
         deckUrl: '',
@@ -222,7 +262,8 @@ export function initialState(): State {
       },
       {
         id: 'marco',
-        name: 'Marco',
+        name: 'Marco Verdi',
+        alias: '',
         role: 'Esperto di segnali sospetti',
         title: 'IL WI-FI CI LEGGE NEL PENSIERO',
         deckUrl: '',
@@ -231,7 +272,8 @@ export function initialState(): State {
       },
       {
         id: 'sara',
-        name: 'Sara',
+        name: 'Sara Neri',
+        alias: '',
         role: 'Archivista delle coincidenze',
         title: 'NON È MAI SOLO UNA COINCIDENZA',
         deckUrl: '',
@@ -240,7 +282,8 @@ export function initialState(): State {
       },
       {
         id: 'gianluca',
-        name: 'Gianluca',
+        name: 'Gianluca Russo',
+        alias: '',
         role: 'Direttore del congresso',
         title: 'IL DOSSIER MANCANTE',
         deckUrl: '',
@@ -249,7 +292,8 @@ export function initialState(): State {
       },
       {
         id: 'pubblico',
-        name: 'Ospite demo',
+        name: 'Ospite Demo',
+        alias: 'Occhio Indiscreto',
         role: 'Osservatore indipendente',
         title: '',
         deckUrl: '',
@@ -329,20 +373,23 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     };
   } else if (action.type === 'register') {
     if (actor.role !== 'guest' || actor.participantId) throw new Error('Sei già nel registro.');
-    const name = cleanName(action.name);
-    if (name.length < 2 || name.length > 40) throw new Error('Serve un alias da 2 a 40 caratteri. Inventa pure.');
+    const name = cleanName(action.name),
+      alias = cleanName(action.alias ?? '');
+    checkIdentity(name, alias);
     if (s.phase === 'results') throw new Error('La serata è finita: il registro è chiuso.');
-    if (s.participants.some((p) => p.name.toLowerCase() === name.toLowerCase()))
-      throw new Error(
-        `L’alias “${name}” è già preso. Inventane un altro, oppure tocca “Sono già nel registro” se sei tu.`,
-      );
+    const clash = identityClash(s, action.id, name, alias);
+    if (clash) throw new Error(clash);
     if (s.participants.some((p) => p.id === action.id)) throw new Error('Riprova, il codice agente era già preso.');
-    s.participants.push({ id: action.id, name, role: '', title: '', deckUrl: '', mode: null, spectator: false });
+    s.participants.push({ id: action.id, name, alias, role: '', title: '', deckUrl: '', mode: null, spectator: false });
   } else if (action.type === 'participant') {
-    const p = normalizeParticipant({ ...action.participant, name: cleanName(action.participant.name) });
+    const p = normalizeParticipant({
+      ...action.participant,
+      name: cleanName(action.participant.name),
+      alias: cleanName(action.participant.alias ?? ''),
+    });
     const existing = s.participants.find((x) => x.id === p.id);
     if (!existing && actor.role !== 'gm') throw new Error('Questo fascicolo non è tuo.');
-    if (p.name.length < 2 || p.name.length > 40) throw new Error('Serve un alias da 2 a 40 caratteri.');
+    checkIdentity(p.name, p.alias);
     if (p.role.length > 80 || p.title.length > 120)
       throw new Error('Troppo lungo: i veri complotti stanno in una riga.');
     if (p.mode !== null && !modes.some((m) => m.key === p.mode)) throw new Error('Modo di presentare sconosciuto.');
@@ -356,11 +403,12 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       if (p.mode === 'none' && s.rounds.some((r) => r.presenterId === p.id && !r.cancelled))
         throw new Error('Ha già presentato: non può diventare solo pubblico.');
     }
-    if (s.participants.some((x) => x.id !== p.id && x.name.toLowerCase() === p.name.toLowerCase()))
-      throw new Error('Questo alias è già preso.');
+    const clash = identityClash(s, p.id, p.name, p.alias);
+    if (clash) throw new Error(clash);
     const clean: Participant = {
       id: p.id,
       name: p.name,
+      alias: p.alias,
       role: p.role.trim(),
       title: p.title.trim(),
       deckUrl: p.mode === 'slides' ? p.deckUrl.trim() : '',
@@ -376,9 +424,27 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
   s.revision++;
   return s;
 }
-export function snapshot(s: State, actor: Actor): State {
+/** Guests see other people's alias (or name) and whether their dossier is complete; nothing else until they present. */
+function maskFor(s: State, actor: Actor, p: Participant): Participant {
+  if (actor.role !== 'guest' || p.id === actor.participantId || unmasked(s, p.id)) return p;
   return {
-    ...normalize(structuredClone(s)),
+    id: p.id,
+    name: displayName(p),
+    alias: '',
+    role: '',
+    title: '',
+    deckUrl: '',
+    mode: p.mode,
+    spectator: p.spectator,
+    masked: true,
+    ready: dossierGaps(p).length === 0,
+  };
+}
+export function snapshot(s: State, actor: Actor): State {
+  const n = normalize(structuredClone(s));
+  return {
+    ...n,
+    participants: n.participants.map((p) => maskFor(n, actor, p)),
     voteCount: countVotes(s),
     votes:
       s.phase === 'results'
