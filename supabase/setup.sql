@@ -119,7 +119,7 @@ begin
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
   select v into p from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId';
-  if p is null or (p->>'spectator')::boolean or exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=p->>'id' and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Questo relatore non è disponibile.'; end if;
+  if p is null or (p->>'spectator')::boolean or exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=p->>'id' and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Questo ricercatore non è disponibile.'; end if;
   rid:=gen_random_uuid()::text;
   s:=s||jsonb_build_object('phase','presenting','activeRoundId',rid,'rounds',(s->'rounds')||jsonb_build_array(jsonb_build_object('id',rid,'presenterId',p->>'id','closed',false)));
  elsif kind in ('phase','cancel') then

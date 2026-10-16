@@ -33,7 +33,9 @@ function rememberKey(code: string) {
   }
 }
 const friendly = (m: string) =>
-  m.includes('Password') || m.includes('PIN') ? 'Parola d’ordine sbagliata. Ricontrolla il messaggio d’invito.' : m;
+  m.includes('Password') || m.includes('PIN')
+    ? 'Parola d’ordine sbagliata. Coincidenze? Io non credo. Ricontrolla il messaggio d’invito.'
+    : m;
 
 export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
   const [step, setStep] = useState<Step>('book'),
@@ -83,7 +85,7 @@ export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
 function KeyField({ code, setCode }: { code: string; setCode: (c: string) => void }) {
   return (
     <label className="key-field">
-      Parola d’ordine <span className="req">la trovi nel messaggio d’invito</span>
+      Parola d’ordine <span className="req">è nel messaggio d’invito. Non dirla a nessuno.</span>
       <input
         autoCapitalize="characters"
         autoCorrect="off"
@@ -114,8 +116,8 @@ function Booking({
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   async function book(spectator: boolean) {
-    if (name.trim().length < 2) return setError('Scrivi il tuo nome.');
-    if (!code.trim()) return setError('Manca la parola d’ordine. È nel messaggio d’invito.');
+    if (name.trim().length < 2) return setError('Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.');
+    if (!code.trim()) return setError('Manca la parola d’ordine: è nel messaggio d’invito.');
     setBusy(true);
     setError('');
     try {
@@ -136,11 +138,11 @@ function Booking({
   return (
     <div className="invite-layout">
       <section className="invite-intro">
-        <p className="eyebrow">Comunicazione riservata</p>
-        <h1>Sei stato selezionato.</h1>
+        <p className="eyebrow">Documento riservato · Leggi prima che lo cancellino</p>
         <p className="invite-lede">
-          Il {EVENT_DAY} il congresso cerca relatori. Blocca il tuo posto: basta il nome. Il resto lo scoprirai in
-          serata.
+          <strong>Siccome non cielo dicono, ce lo diciamo noi.</strong> Il {EVENT_DAY} si riunisce il congresso
+          clandestino dei ricercatori indipendenti. Blocca il tuo posto: basta il nome. Il resto è top secret (anche per
+          noi).
         </p>
       </section>
       <form
@@ -151,11 +153,11 @@ function Booking({
         }}
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
-        <span className="mono">MODULO DI PRENOTAZIONE</span>
-        <h2>Blocca il tuo posto da relatore</h2>
+        <span className="mono">MODULO DI ARRUOLAMENTO</span>
+        <h2>Blocca il tuo posto da ricercatore indipendente</h2>
         {!fromLink && <KeyField code={code} setCode={setCode} />}
         <label className="field-name">
-          Il tuo nome
+          Il tuo nome <span className="req">quello vero, tanto lo sanno già</span>
           <input autoComplete="given-name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         {error && (
@@ -168,20 +170,21 @@ function Booking({
           <ArrowRight size={18} />
         </Button>
         <div className="preview">
-          <p className="later-label">Poi, entro la {DEADLINE_LABEL}, ti chiederemo. Intanto pensaci:</p>
+          <p className="later-label">Entro la {DEADLINE_LABEL} ti chiederemo due cose. Intanto fatti delle domande:</p>
           <ul>
             <li>
-              <strong>Un titolo da congresso.</strong> Es. <em>Studioso dei finti uccelli</em>.
+              <strong>Il tuo seriosissimo titolo da ricercatore indipendente.</strong> Es.{' '}
+              <em>Laureato all’Università della Vita in Piccionologia</em>.
             </li>
             <li>
-              <strong>Come la presenti.</strong> Con le slide di Google o alla vecchia maniera: fogli, cartelloni,
-              oggetti, solo voce.
+              <strong>Come esporrai la verità.</strong> Con le slide di Google o alla vecchia maniera: fogli,
+              cartelloni, oggetti sospetti, solo voce e sguardo intenso.
             </li>
           </ul>
         </div>
         <div className="booking-secondary">
           <button type="button" className="text-button" disabled={busy} onClick={() => void book(true)}>
-            <Eye size={14} /> Non presento, vengo solo a giudicare
+            <Eye size={14} /> Non presento, vengo solo a giudicare (e fare domande scomode)
           </button>
           <button type="button" className="text-button" disabled={busy} onClick={onReturning}>
             Ho già prenotato
@@ -236,7 +239,7 @@ function ReturningStep({
       const m = (e as Error).message;
       setError(
         m.includes('già in uso')
-          ? 'Risulti già aperto su un altro telefono. Chiedi alla regia di liberarti.'
+          ? 'Risulti già aperto su un altro telefono. Sospetto. Chiedi alla regia di liberarti.'
           : friendly(m),
       );
     } finally {
@@ -246,8 +249,10 @@ function ReturningStep({
   return (
     <form className="entry-card step-card" onSubmit={submit}>
       <span className="mono">RIENTRO AGENTE</span>
-      <h2>Bentornato. Chi sei?</h2>
-      <p>Nuovo telefono o pagina chiusa? Scegliti dalla lista e riprendi il fascicolo.</p>
+      <h2>Bentornato. Chi sei, davvero?</h2>
+      <p>
+        Telefono nuovo? Pagina chiusa? Cookie cancellati dai poteri forti? Scegliti dalla lista e riprendi il fascicolo.
+      </p>
       {(!fromLink || !names.length) && !names.length && <KeyField code={code} setCode={setCode} />}
       {names.length > 0 && (
         <label>
@@ -301,7 +306,9 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
     <form className="entry-card step-card" onSubmit={submit}>
       <span className="mono">ACCESSO REGIA</span>
       <h2>Entra in regia.</h2>
-      <p>{names.length ? 'Se presenti o voti anche tu, scegli il tuo nome.' : 'La conduzione è nelle tue mani.'}</p>
+      <p>
+        {names.length ? 'Se presenti o voti anche tu, scegli il tuo nome.' : 'Qui si decide cosa sapranno gli altri.'}
+      </p>
       <label>
         PIN della regia
         <input

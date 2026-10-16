@@ -22,11 +22,11 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await row.getByRole('button', { name: 'Scegli' }).click();
     await page.getByRole('button', { name: 'Inizia con ' + name }).click();
     if (name === 'Paolo') {
-      await expect(speaker.getByRole('heading', { name: 'La parola è tua.' })).toBeVisible();
+      await expect(speaker.getByRole('heading', { name: 'La parola è tua. Svegliali.' })).toBeVisible();
       await expect(speaker.getByRole('button', { name: 'Successiva' })).toBeDisabled();
     }
     await page.getByRole('button', { name: 'Passa al question time' }).click();
-    await expect(voter.getByRole('heading', { name: 'Qualcuno ha delle domande.' })).toBeVisible();
+    await expect(voter.getByRole('heading', { name: 'Fatti delle domande.' })).toBeVisible();
     await page.getByRole('button', { name: 'Apri il voto per ' + name }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
     if (name === 'Paolo') await expect(speaker.getByRole('heading', { name: 'Ora parlano gli altri.' })).toBeVisible();
@@ -35,7 +35,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
         .getByRole('group', { name: label, exact: true })
         .getByRole('button', { name: '8', exact: true })
         .click();
-    await voter.getByRole('button', { name: 'Sì, senza dubbio.' }).click();
+    await voter.getByRole('button', { name: 'Sì, come se fosse antani.' }).click();
     await voter.getByRole('button', { name: 'Consegna il verdetto' }).click();
     await expect(voter.getByRole('status')).toContainText('Voto salvato');
     await voter.reload();
@@ -48,7 +48,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await expect(page.getByText('1 voti ricevuti')).toBeVisible();
     await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-    await expect(voter.getByRole('heading', { name: 'Tieni aperta la mente.' })).toBeVisible();
+    await expect(voter.getByRole('heading', { name: 'Apri la mente. Non troppo, che entra il 5G.' })).toBeVisible();
   }
   await page.getByRole('button', { name: 'Il verdetto', exact: true }).click();
   await expect(page.getByText('Il verdetto è ancora sotto chiave.').first()).toBeVisible();
@@ -91,7 +91,7 @@ test('GM with a name votes from the regia and sees the provisional award rules',
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
   for (const label of ['Credibilità', 'Esposizione', 'Le prove'])
     await page.getByRole('group', { name: label, exact: true }).getByRole('button', { name: '7', exact: true }).click();
-  await page.getByRole('button', { name: 'No, non mi ha convinto.' }).click();
+  await page.getByRole('button', { name: 'No, troppo sensata.' }).click();
   await page.getByRole('button', { name: 'Consegna il verdetto' }).click();
   await expect(page.getByText('1 voti ricevuti')).toBeVisible();
   await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
@@ -108,11 +108,11 @@ test('GM with a name votes from the regia and sees the provisional award rules',
 test('a friend books a slot with a name, then completes the dossier before the deadline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#invito=NONCIELODICONO');
-  await expect(page.getByRole('heading', { name: 'Blocca il tuo posto da relatore' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Blocca il tuo posto da ricercatore indipendente' })).toBeVisible();
   expect(page.url()).not.toContain('NONCIELODICONO');
   // Screen 1: only the name. The rest is previewed, not asked.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
-  await expect(page.locator('.preview')).toContainText('titolo da congresso');
+  await expect(page.locator('.preview')).toContainText('seriosissimo titolo da ricercatore');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('nome');
   await page.getByLabel('Il tuo nome').fill('Giulia');
@@ -131,7 +131,7 @@ test('a friend books a slot with a name, then completes the dossier before the d
   await expect(registry).toContainText('Paolo');
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByLabel('Titolo da congresso').fill('Esperta di scie sospette');
+  await page.getByLabel('Il tuo seriosissimo titolo da ricercatore indipendente').fill('Esperta di scie sospette');
   await page.getByRole('radio', { name: /Con le slide/ }).click();
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Salva il fascicolo' }).click();

@@ -65,25 +65,25 @@ export const categories = [
     key: 'credibility',
     title: 'MA SAI CHE…',
     label: 'Credibilità',
-    description: 'Quanto ti ha fatto dubitare delle tue certezze?',
+    description: 'Quanto ti ha fatto dubitare di tutto? Anche del tuo frigorifero?',
   },
   {
     key: 'delivery',
     title: 'NON SONO UN ESPERTO, MA…',
     label: 'Esposizione',
-    description: 'Quanto ti ha coinvolto e divertito?',
+    description: 'Quanto ti ha tenuto incollato? Più di un video da 3 ore su YouTube?',
   },
   {
     key: 'research',
     title: 'HO FATTO LE MIE RICERCHE',
     label: 'Le prove',
-    description: 'Quanto erano approfondite le sue ricerche?',
+    description: 'Quanto erano approfondite le sue ricerche? (Il cugino non vale come fonte.)',
   },
   {
     key: 'supercazzola',
     title: 'SUPERCAZZOLA',
     label: 'Supercazzola',
-    description: 'La risposta al question time merita un sì?',
+    description: 'La risposta al question time era una supercazzola come se fosse antani?',
   },
 ] as const;
 export const categoryKeys: CategoryKey[] = categories.map((c) => c.key);
@@ -105,19 +105,19 @@ export const modes: { key: Mode; label: string; short: string; hint: string }[] 
     key: 'slides',
     label: 'Con le slide',
     short: 'Slide',
-    hint: 'Google Slides, animazioni e video compresi.',
+    hint: 'Google Slides, con animazioni, video e transizioni sospette.',
   },
   {
     key: 'paper',
     label: 'Alla vecchia maniera',
     short: 'Dal vivo',
-    hint: 'Fogli, cartelloni, oggetti sospetti o solo la voce.',
+    hint: 'Fogli, cartelloni, oggetti sospetti, solo voce e sguardo intenso.',
   },
   {
     key: 'none',
     label: 'Solo pubblico',
     short: 'Pubblico',
-    hint: 'Niente palco: ascolti, fai domande scomode e voti.',
+    hint: 'Niente palco: ascolti, fai domande scomode e voti. Come un vero infiltrato.',
   },
 ];
 export const presents = (p: Participant) => p.mode === 'slides' || p.mode === 'paper';
@@ -290,7 +290,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     if (s.phase !== 'waiting') throw new Error('Concludi il turno prima di iniziarne un altro.');
     const p = s.participants.find((p) => p.id === action.participantId);
     if (!p || p.spectator || s.rounds.some((r) => r.presenterId === p.id && !r.cancelled))
-      throw new Error('Questo relatore non è disponibile.');
+      throw new Error('Questo ricercatore non è disponibile.');
     const round: Round = { id: crypto.randomUUID(), presenterId: p.id, closed: false };
     s.rounds.push(round);
     s.activeRoundId = round.id;

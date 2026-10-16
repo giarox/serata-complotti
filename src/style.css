@@ -2752,6 +2752,54 @@ details.howto summary {
   margin-top: 40px;
 }
 
+/* Gradient headings: room for the descenders so background-clip never cuts the letters */
+.entry-intro h1,
+.invite-intro h1,
+.projector h1 {
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.booked > h1 {
+  margin-bottom: 28px;
+}
+/* The invite opens with the punchline, no headline */
+.invite-lede strong {
+  display: block;
+  font-family: var(--display);
+  font-style: normal;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.08;
+  font-size: clamp(30px, 6vw, 48px);
+  color: var(--brass-hi);
+  margin-bottom: 18px;
+}
+.field-hint.examples {
+  margin: -6px 0 18px;
+}
+.howto-inline {
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 8px 0 4px;
+}
+.howto-inline strong {
+  color: var(--stamp);
+  font-weight: 400;
+  -webkit-text-stroke: 0.6px currentColor;
+}
+/* Keep the form label clear of the stamp in the top-right corner */
+.booking > .mono {
+  display: block;
+  max-width: calc(100% - 170px);
+}
+.howto-inline b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (min-width: 1500px) {
   .content {

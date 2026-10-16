@@ -332,7 +332,7 @@ function App() {
                   </h1>
                   <p>
                     {tab === 'fascicoli'
-                      ? 'Prepara i relatori, le prove e i loro fascicoli.'
+                      ? 'Prepara i ricercatori, le prove e i loro fascicoli.'
                       : tab === 'premi'
                         ? 'Quattro categorie. Nessun premio alla normalità.'
                         : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
@@ -440,7 +440,7 @@ function App() {
                           )}
                           {s.phase === 'waiting' && (
                             <a className="button" href="#relatori">
-                              Scegli un relatore
+                              Scegli un ricercatore
                               <ArrowRight size={18} />
                             </a>
                           )}
@@ -501,7 +501,7 @@ function App() {
                       <div className="panel-heading">
                         <div>
                           <p className="eyebrow">CHI HA QUALCOSA DA DIRE?</p>
-                          <h2>I relatori</h2>
+                          <h2>I ricercatori</h2>
                         </div>
                         <button className="text-button" onClick={() => setTab('fascicoli')}>
                           Tutti i fascicoli <ArrowUpRight size={16} />
@@ -545,7 +545,7 @@ function App() {
                   <div className="panel-heading">
                     <div>
                       <p className="eyebrow">L’ARCHIVIO DEL CONGRESSO</p>
-                      <h2>Relatori e osservatori</h2>
+                      <h2>Ricercatori e infiltrati</h2>
                     </div>
                     <Button
                       secondary
@@ -627,10 +627,10 @@ function App() {
         <Modal title="Apriamo questo fascicolo?" onClose={() => setSelected(null)}>
           <p className="eyebrow">IL PROSSIMO RELATORE</p>
           <h3 className="modal-talk">{displayName(selected)}</h3>
-          <p>{selected.role || 'Titolo da congresso non pervenuto'}</p>
+          <p>{selected.role || 'Titolo da ricercatore non pervenuto'}</p>
           <p className="footnote">
             {selected.mode === 'paper'
-              ? 'Presentazione dal vivo: niente slide, sul proiettore restano nome e titolo da congresso.'
+              ? 'Presentazione dal vivo: niente slide, sul proiettore restano nome e titolo.'
               : selected.mode === 'slides' && selected.deckUrl
                 ? 'Presentazione con slide. Per ora il deck si apre a mano sul computer del proiettore.'
                 : selected.mode === 'slides'
@@ -673,7 +673,7 @@ function App() {
         >
           <p>
             {confirm.type === 'cancel'
-              ? 'Il turno e gli eventuali voti verranno esclusi. Il relatore tornerà disponibile.'
+              ? 'Il turno e gli eventuali voti verranno esclusi. Il ricercatore tornerà disponibile.'
               : confirm.type === 'remove'
                 ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
                 : confirm.type === 'release'
@@ -725,7 +725,7 @@ function People({
                   {active && <span className="tiny-status">In corso</span>}
                   {done && <Check size={14} />}
                 </h3>
-                <p>{p.role || 'Titolo da congresso mancante'}</p>
+                <p>{p.role || 'Titolo da ricercatore mancante'}</p>
                 <span>
                   {p.mode === 'none' ? 'Solo pubblico' : ''}
                   {p.mode && p.mode !== 'none' && (
@@ -807,7 +807,7 @@ function Guest({
   return (
     <>
       <div className="guest-welcome">
-        <span className="eyebrow">BENVENUTO NEL CONGRESSO</span>
+        <span className="eyebrow">SEI DENTRO. NON DIRLO A NESSUNO.</span>
         <span className="guest-id">{me ? displayName(me) : ''}</span>
       </div>
       <section className="guest-stage">
@@ -815,33 +815,33 @@ function Guest({
         <Mark large />
         <h1>
           {s.phase === 'waiting'
-            ? 'Tieni aperta la mente.'
+            ? 'Apri la mente. Non troppo, che entra il 5G.'
             : s.phase === 'questions'
-              ? 'Qualcuno ha delle domande.'
+              ? 'Fatti delle domande.'
               : s.phase === 'voting'
                 ? 'Ora parlano gli altri.'
                 : r?.presenterId === actor.participantId
-                  ? 'La parola è tua.'
-                  : 'Ascolta. E prendi appunti mentali.'}
+                  ? 'La parola è tua. Svegliali.'
+                  : 'Ascolta. Prendi appunti. Non fidarti di nessuno.'}
         </h1>
         <p>
           {s.phase === 'waiting'
-            ? 'Il prossimo relatore sta per farsi avanti. Questa pagina si aggiorna da sola.'
+            ? 'Il prossimo ricercatore sta per farsi avanti. Questa pagina si aggiorna da sola (sì, è inquietante).'
             : s.phase === 'voting'
               ? `${blocker ?? ''} Aspetta che la regia chiuda il turno.`
               : s.phase === 'questions'
-                ? 'Alza la mano e fai la tua domanda dal vivo. Il voto arriverà dopo.'
+                ? 'Alza la mano e fai la tua domanda scomoda dal vivo. Il voto arriva dopo.'
                 : r?.presenterId === actor.participantId
                   ? me?.mode === 'paper'
-                    ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo da congresso.'
+                    ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo.'
                     : 'Stai presentando. Il telecomando delle slide arriverà qui.'
-                  : 'Tra poco potrai esprimere il tuo verdetto.'}
+                  : 'Tra poco potrai emettere il tuo verdetto insindacabile.'}
         </p>
         {p && (
           <div className="guest-dossier">
             <span className="mono">FASCICOLO ATTIVO</span>
             <h2>{displayName(p)}</h2>
-            <span>{p.role || 'Titolo da congresso top secret'}</span>
+            <span>{p.role || 'Titolo top secret'}</span>
           </div>
         )}
         {r?.presenterId === actor.participantId && s.phase === 'presenting' && me?.mode !== 'paper' && (
@@ -931,7 +931,7 @@ function Voting({
         <legend>
           <span>04</span>BONUS SUPERCAZZOLA
         </legend>
-        <p>La risposta al question time merita un punto?</p>
+        <p>La risposta al question time era una supercazzola degna di questo nome?</p>
         <div className="yes-no">
           {[true, false].map((v) => (
             <button
@@ -943,7 +943,7 @@ function Voting({
                 setDirty(true);
               }}
             >
-              {v ? 'Sì, senza dubbio.' : 'No, non mi ha convinto.'}
+              {v ? 'Sì, come se fosse antani.' : 'No, troppo sensata.'}
             </button>
           ))}
         </div>
@@ -952,7 +952,9 @@ function Voting({
         {busy ? 'Salvataggio…' : saved ? 'Aggiorna il voto' : 'Consegna il verdetto'}
         <Check size={18} />
       </Button>
-      <p className="footnote">Tutte le risposte sono obbligatorie. I punteggi restano segreti fino al reveal.</p>
+      <p className="footnote">
+        Tutte le risposte sono obbligatorie. I punteggi restano segreti fino al reveal, come tutto il resto.
+      </p>
     </form>
   );
 }
@@ -1197,7 +1199,7 @@ function Projector({ s }: { s: State }) {
           {s.phase === 'presenting' && (
             <p className="projector-note">
               {p?.mode === 'paper'
-                ? 'Presentazione dal vivo. Guardate il relatore, non lo schermo.'
+                ? 'Presentazione dal vivo. Guardate il ricercatore, non lo schermo: lo schermo vi guarda già.'
                 : 'Le slide si aprono separatamente in questa alpha.'}
             </p>
           )}
@@ -1258,7 +1260,7 @@ function Editor({
           <input required value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} />
         </label>
         <label>
-          Titolo da congresso
+          Titolo da ricercatore
           <input value={p.role} onChange={(e) => setP({ ...p, role: e.target.value })} />
         </label>
         <label>
