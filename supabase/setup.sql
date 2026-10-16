@@ -32,7 +32,7 @@ insert into public.party_signal(id) values(true) on conflict do nothing;
 -- Dossier complete? Same rule as dossierGaps() in the app.
 create or replace function public.party_ready(p jsonb) returns boolean language sql immutable as $$
  select coalesce(p->>'mode'='none',false) or (
-  length(trim(coalesce(p->>'role','')))>0 and length(trim(coalesce(p->>'title','')))>0 and p->>'mode' in ('slides','paper')
+  length(trim(coalesce(p->>'role','')))>0 and p->>'mode' in ('slides','paper')
   and (p->>'mode'<>'slides' or length(coalesce(p->>'deckUrl',''))>0));
 $$;
 -- Guests' password ignores case and spaces ("noncielodicono" works); the GM PIN is compared as typed.
@@ -114,7 +114,7 @@ begin
  select state into s from public.party_store where id=true for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
- if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','settings') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings') then raise exception 'Operazione non riconosciuta.'; end if;
  if kind not in ('vote','participant') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
@@ -162,6 +162,23 @@ begin
  elsif kind='release' then
   if not exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId') then raise exception 'Nome non trovato.'; end if;
   delete from public.party_members where person_id=command->>'participantId' and role='guest';
+ elsif kind='remove' then
+  -- GM only (checked above): the person disappears with their turns and votes, and their phone is unlinked.
+  pid:=command->>'participantId';
+  if not exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=pid) then raise exception 'Nome non trovato.'; end if;
+  if r is not null and not (r->>'closed')::boolean and r->>'presenterId'=pid then raise exception 'Sta presentando: chiudi o annulla il turno prima.'; end if;
+  select coalesce(jsonb_agg(v order by ord),'[]'::jsonb) into rounds from jsonb_array_elements(s->'participants') with ordinality t(v,ord) where v->>'id'<>pid;
+  s:=jsonb_set(s,'{participants}',rounds);
+  select coalesce(jsonb_agg(v->'id'),'[]'::jsonb) into prev from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=pid;
+  select coalesce(jsonb_agg(v order by ord),'[]'::jsonb) into rounds from jsonb_array_elements(s->'rounds') with ordinality t(v,ord) where v->>'presenterId'<>pid;
+  s:=jsonb_set(s,'{rounds}',rounds);
+  select coalesce(jsonb_agg(v order by ord),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') with ordinality t(v,ord) where v->>'voterId'<>pid and not prev ? (v->>'roundId');
+  s:=jsonb_set(s,'{votes}',votes);
+  if phase='results' and not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then
+   s:=s||'{"phase":"waiting","revealed":0}'::jsonb;
+  end if;
+  delete from public.party_members where person_id=pid and role='guest';
+  update public.party_members set person_id=null where person_id=pid and role='gm';
  elsif kind='settings' then
   if phase='results' then raise exception 'Le regole non si cambiano durante il reveal.'; end if;
   cfg:=command->'settings';

@@ -28,6 +28,7 @@ import {
   ArrowUp,
   ArrowDown,
   SlidersHorizontal,
+  Trash2,
 } from 'lucide-react';
 import {
   activeRound,
@@ -391,7 +392,7 @@ function App() {
                         </span>
                         <h2>
                           {person
-                            ? person.title
+                            ? person.role || displayName(person)
                             : s.phase === 'results'
                               ? 'Ci sono delle conclusioni.'
                               : 'La parola al prossimo sospettato.'}
@@ -560,6 +561,7 @@ function App() {
                     onSelect={setSelected}
                     onEdit={setEditing}
                     onRelease={(p) => setConfirm({ type: 'release', participantId: p.id })}
+                    onRemove={(p) => setConfirm({ type: 'remove', participantId: p.id })}
                     all
                   />
                   <p className="footnote">
@@ -624,14 +626,11 @@ function App() {
       {selected && (
         <Modal title="Apriamo questo fascicolo?" onClose={() => setSelected(null)}>
           <p className="eyebrow">IL PROSSIMO RELATORE</p>
-          <h3 className="modal-talk">{selected.title || 'Titolo non ancora pervenuto'}</h3>
-          <p>
-            {displayName(selected)}
-            {selected.role ? ` · ${selected.role}` : ''}
-          </p>
+          <h3 className="modal-talk">{displayName(selected)}</h3>
+          <p>{selected.role || 'Titolo da congresso non pervenuto'}</p>
           <p className="footnote">
             {selected.mode === 'paper'
-              ? 'Presentazione dal vivo: niente slide, sul proiettore resta il titolo.'
+              ? 'Presentazione dal vivo: niente slide, sul proiettore restano nome e titolo da congresso.'
               : selected.mode === 'slides' && selected.deckUrl
                 ? 'Presentazione con slide. Per ora il deck si apre a mano sul computer del proiettore.'
                 : selected.mode === 'slides'
@@ -662,24 +661,28 @@ function App() {
               ? 'Annullare il turno?'
               : confirm.type === 'release'
                 ? 'Liberare questo nome?'
-                : confirm.type === 'reveal'
-                  ? 'È il momento della verità?'
-                  : confirm.type === 'phase' && confirm.phase === 'voting'
-                    ? 'Aprire la votazione?'
-                    : 'Chiudere la votazione?'
+                : confirm.type === 'remove'
+                  ? 'Eliminare questa persona?'
+                  : confirm.type === 'reveal'
+                    ? 'È il momento della verità?'
+                    : confirm.type === 'phase' && confirm.phase === 'voting'
+                      ? 'Aprire la votazione?'
+                      : 'Chiudere la votazione?'
           }
           onClose={() => setConfirm(null)}
         >
           <p>
             {confirm.type === 'cancel'
               ? 'Il turno e gli eventuali voti verranno esclusi. Il relatore tornerà disponibile.'
-              : confirm.type === 'release'
-                ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
-                : confirm.type === 'reveal'
-                  ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
-                  : confirm.type === 'phase' && confirm.phase === 'voting'
-                    ? `Si voterà per ${person ? displayName(person) : ''}: ${person?.title}.`
-                    : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
+              : confirm.type === 'remove'
+                ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
+                : confirm.type === 'release'
+                  ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
+                  : confirm.type === 'reveal'
+                    ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
+                    : confirm.type === 'phase' && confirm.phase === 'voting'
+                      ? `Si voterà per ${person ? displayName(person) : ''}.`
+                      : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
           </p>
           <Button disabled={busy} onClick={() => void perform(confirm)}>
             Conferma
@@ -695,12 +698,14 @@ function People({
   onSelect,
   onEdit,
   onRelease,
+  onRemove,
   all = false,
 }: {
   s: State;
   onSelect: (p: Participant) => void;
   onEdit: (p: Participant) => void;
   onRelease?: (p: Participant) => void;
+  onRemove?: (p: Participant) => void;
   all?: boolean;
 }) {
   return (
@@ -722,7 +727,7 @@ function People({
                 </h3>
                 <p>{p.role || 'Titolo da congresso mancante'}</p>
                 <span>
-                  {p.mode === 'none' ? 'Solo pubblico' : p.title || 'Rivelazione senza titolo'}
+                  {p.mode === 'none' ? 'Solo pubblico' : ''}
                   {p.mode && p.mode !== 'none' && (
                     <em className="mode-tag">{modes.find((m) => m.key === p.mode)?.short}</em>
                   )}
@@ -734,6 +739,16 @@ function People({
                   {onRelease && s.claimed?.includes(p.id) && (
                     <button className="choose-button" aria-label={'Libera ' + p.name} onClick={() => onRelease(p)}>
                       <LockKeyholeOpen size={14} /> Libera
+                    </button>
+                  )}
+                  {onRemove && (
+                    <button
+                      className="icon-button"
+                      aria-label={'Elimina ' + p.name}
+                      disabled={presenter(s)?.id === p.id}
+                      onClick={() => onRemove(p)}
+                    >
+                      <Trash2 size={17} />
                     </button>
                   )}
                   <button
@@ -818,18 +833,15 @@ function Guest({
                 ? 'Alza la mano e fai la tua domanda dal vivo. Il voto arriverà dopo.'
                 : r?.presenterId === actor.participantId
                   ? me?.mode === 'paper'
-                    ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore c’è il tuo titolo.'
+                    ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo da congresso.'
                     : 'Stai presentando. Il telecomando delle slide arriverà qui.'
                   : 'Tra poco potrai esprimere il tuo verdetto.'}
         </p>
         {p && (
           <div className="guest-dossier">
             <span className="mono">FASCICOLO ATTIVO</span>
-            <h2>{p.title || 'Titolo top secret'}</h2>
-            <span>
-              {displayName(p)}
-              {p.role ? `, ${p.role.toLowerCase()}` : ''}
-            </span>
+            <h2>{displayName(p)}</h2>
+            <span>{p.role || 'Titolo da congresso top secret'}</span>
           </div>
         )}
         {r?.presenterId === actor.participantId && s.phase === 'presenting' && me?.mode !== 'paper' && (
@@ -879,7 +891,7 @@ function Voting({
         <span>
           Stai votando per <strong>{displayName(p)}</strong>
         </span>
-        <h2>{p.title}</h2>
+        <h2>{p.role}</h2>
       </div>
       {saved && (
         <p className="saved-banner" role="status">
@@ -1172,7 +1184,7 @@ function Projector({ s }: { s: State }) {
                 ? 'Fate le domande giuste.'
                 : s.phase === 'voting'
                   ? 'Ai posteri il verdetto.'
-                  : p?.title}
+                  : p?.role || (p ? displayName(p) : '')}
           </h1>
           <div className="codeline">
             <span>{p ? 'RELATORE' : 'IN ATTESA'}</span>
@@ -1263,12 +1275,6 @@ function Editor({
             ))}
           </select>
         </label>
-        {p.mode !== 'none' && (
-          <label>
-            Titolo della rivelazione
-            <input value={p.title} onChange={(e) => setP({ ...p, title: e.target.value })} />
-          </label>
-        )}
         {p.mode === 'slides' && (
           <label>
             Link Google Slides

@@ -24,11 +24,7 @@ describe('self-registration from the invite', () => {
     expect(() => register(initialState(), '   ')).toThrow();
     const s = register(initialState(), '  Anna   Rossi ', 'anna-rossi-0001');
     expect(me(s, 'anna-rossi-0001')).toMatchObject({ name: 'Anna Rossi', role: '', mode: null, spectator: false });
-    expect(dossierGaps(me(s, 'anna-rossi-0001'))).toEqual([
-      'titolo da congresso',
-      'titolo della rivelazione',
-      'come presenti',
-    ]);
+    expect(dossierGaps(me(s, 'anna-rossi-0001'))).toEqual(['titolo da congresso', 'come presenti']);
   });
 
   it('allows two people with the same name', () => {
@@ -75,10 +71,9 @@ describe('the dossier', () => {
     const { s } = setup();
     const base = me(s, 'anna');
     expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'none' })).toEqual([]);
-    expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'paper' })).toEqual(['titolo della rivelazione']);
-    expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'slides', title: 'LE SCIE' })).toEqual([
-      'link delle slide',
-    ]);
+    expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'paper' })).toEqual([]);
+    expect(dossierGaps({ ...base, mode: 'paper' })).toEqual(['titolo da congresso']);
+    expect(dossierGaps({ ...base, role: 'Esperta di scie', mode: 'slides' })).toEqual(['link delle slide']);
   });
 
   it('lets a guest fill their own dossier, but not someone else’s', () => {
@@ -141,5 +136,36 @@ describe('the dossier', () => {
       { id: 'b', name: 'B', role: 'r', title: '', deckUrl: '', spectator: true },
     ] as Participant[];
     expect(normalize(old).participants.map((p) => p.mode)).toEqual(['slides', 'none']);
+  });
+});
+
+describe('removing people (GM)', () => {
+  it('deletes a person with their turns and votes; guests cannot', () => {
+    let s = register(register(initialState(), 'Ugo', 'ugo'), 'Bea', 'bea');
+    s = applyAction(s, gm, { type: 'participant', participant: { ...me(s, 'ugo'), role: 'R', mode: 'paper' } });
+    s = applyAction(s, gm, { type: 'start', participantId: 'ugo' });
+    const rid = s.activeRoundId!;
+    expect(() => applyAction(s, gm, { type: 'remove', participantId: 'ugo' })).toThrow('Sta presentando');
+    s = applyAction(s, gm, { type: 'phase', phase: 'questions', roundId: rid });
+    s = applyAction(s, gm, { type: 'phase', phase: 'voting', roundId: rid });
+    s = applyAction(
+      s,
+      { role: 'guest', participantId: 'bea' },
+      {
+        type: 'vote',
+        roundId: rid,
+        ballot: { credibility: 5, delivery: 5, research: 5, supercazzola: false },
+      },
+    );
+    s = applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: rid });
+    s = applyAction(s, gm, { type: 'reveal' });
+    expect(() =>
+      applyAction(s, { role: 'guest', participantId: 'bea' }, { type: 'remove', participantId: 'ugo' }),
+    ).toThrow('regia');
+    s = applyAction(s, gm, { type: 'remove', participantId: 'ugo' });
+    expect(s.participants.some((p) => p.id === 'ugo')).toBe(false);
+    expect(s.rounds).toEqual([]);
+    expect(s.votes).toEqual([]);
+    expect(s.phase).toBe('waiting');
   });
 });

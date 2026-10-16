@@ -95,7 +95,7 @@ export function Countdown() {
   );
 }
 
-/** The details needed before the evening: silly title, talk title (secret), how, and the Slides link. */
+/** The details needed before the evening: silly title, how, and the Slides link. No talk title: no spoilers, not even for the GM. */
 export function DossierFields({ value, onChange }: { value: Participant; onChange: (p: Participant) => void }) {
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
   return (
@@ -119,16 +119,6 @@ export function DossierFields({ value, onChange }: { value: Participant; onChang
           <Dices size={20} />
         </button>
       </div>
-      <label>
-        Titolo della rivelazione
-        <input
-          maxLength={120}
-          placeholder="Es. PICCIONI FBI"
-          value={value.title}
-          onChange={(e) => set({ title: e.target.value })}
-        />
-        <span className="field-hint">Resta segreto: gli altri lo scopriranno solo quando sali sul palco.</span>
-      </label>
       <div className="field-mode" role="radiogroup" aria-label="Come presenti">
         <span className="label">Come presenti</span>
         <div className="mode-chips">

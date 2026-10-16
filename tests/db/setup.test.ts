@@ -353,6 +353,31 @@ describe('self-registration and own dossier', () => {
     await act(gm, { type: 'participant', participant: { ...base, title: 'Corretto dal GM' } });
     expect((await people(gm)).find((p) => p.id === id)!.title).toBe('Corretto dal GM');
   });
+
+  it('lets only the GM remove a person, with their turns, votes and phone link', async () => {
+    const anna = await user();
+    const { participantId: id } = await registerAs(anna, GUEST, 'Anna Rossi');
+    const base = { id, name: 'Anna Rossi', role: 'R', title: '', deckUrl: '', mode: 'paper', spectator: false };
+    await act(anna, { type: 'participant', participant: base });
+    await act(gm, { type: 'start', participantId: id });
+    const roundId = (await snap(gm)).activeRoundId!;
+    await expect(act(gm, { type: 'remove', participantId: id })).rejects.toThrow('Sta presentando');
+    await act(gm, { type: 'phase', phase: 'questions', roundId });
+    await act(gm, { type: 'phase', phase: 'voting', roundId });
+    await act(giulia, {
+      type: 'vote',
+      roundId,
+      ballot: { credibility: 7, delivery: 7, research: 7, supercazzola: true },
+    });
+    await act(gm, { type: 'phase', phase: 'waiting', roundId });
+    await expect(act(giulia, { type: 'remove', participantId: id })).rejects.toThrow('Solo la regia');
+    await act(gm, { type: 'remove', participantId: id });
+    const after = await snap(gm);
+    expect(after.participants.some((p) => p.id === id)).toBe(false);
+    expect(after.rounds.some((r) => r.id === roundId)).toBe(false);
+    expect((await snap(giulia)).votes.some((v) => v.roundId === roundId)).toBe(false);
+    expect(await as(anna, 'select public.party_actor() as r')).toBeNull();
+  });
 });
 
 describe('secrets on the server', () => {

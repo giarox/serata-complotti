@@ -57,6 +57,8 @@ export type Action =
   | { type: 'participant'; participant: Participant }
   | { type: 'register'; id: string; name: string }
   | { type: 'release'; participantId: string }
+  /** GM only: delete a person with their turns and votes. */
+  | { type: 'remove'; participantId: string }
   | { type: 'settings'; settings: Settings };
 export const categories = [
   {
@@ -126,7 +128,6 @@ export function dossierGaps(p: Participant): string[] {
   const gaps: string[] = [];
   if (p.mode === 'none') return gaps;
   if (!p.role.trim()) gaps.push('titolo da congresso');
-  if (!p.title.trim()) gaps.push('titolo della rivelazione');
   if (!p.mode) gaps.push('come presenti');
   if (p.mode === 'slides' && !p.deckUrl) gaps.push('link delle slide');
   return gaps;
@@ -225,7 +226,7 @@ export function initialState(): State {
         id: 'paolo',
         name: 'Paolo',
         role: 'Studioso dei finti uccelli',
-        title: 'PICCIONI FBI',
+        title: '',
         deckUrl: '',
         mode: 'slides',
         spectator: false,
@@ -234,7 +235,7 @@ export function initialState(): State {
         id: 'giulia',
         name: 'Giulia',
         role: 'Cartografa delle verità scomode',
-        title: 'LA TERRA È UN PROGETTO PILOTA',
+        title: '',
         deckUrl: '',
         mode: 'paper',
         spectator: false,
@@ -243,7 +244,7 @@ export function initialState(): State {
         id: 'marco',
         name: 'Marco',
         role: 'Esperto di segnali sospetti',
-        title: 'IL WI-FI CI LEGGE NEL PENSIERO',
+        title: '',
         deckUrl: '',
         mode: 'paper',
         spectator: false,
@@ -252,7 +253,7 @@ export function initialState(): State {
         id: 'sara',
         name: 'Sara',
         role: 'Archivista delle coincidenze',
-        title: 'NON È MAI SOLO UNA COINCIDENZA',
+        title: '',
         deckUrl: '',
         mode: 'paper',
         spectator: false,
@@ -261,7 +262,7 @@ export function initialState(): State {
         id: 'gianluca',
         name: 'Gianluca',
         role: 'Direttore del congresso',
-        title: 'IL DOSSIER MANCANTE',
+        title: '',
         deckUrl: '',
         mode: 'paper',
         spectator: false,
@@ -338,6 +339,20 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
   } else if (action.type === 'release') {
     // Membership lives in Supabase; in the browser demo there is nothing to release.
     if (!s.participants.some((p) => p.id === action.participantId)) throw new Error('Nome non trovato.');
+  } else if (action.type === 'remove') {
+    if (actor.role !== 'gm') throw new Error('Solo la regia può fare questa operazione.');
+    if (!s.participants.some((p) => p.id === action.participantId)) throw new Error('Nome non trovato.');
+    const r = activeRound(s);
+    if (r && !r.closed && r.presenterId === action.participantId)
+      throw new Error('Sta presentando: chiudi o annulla il turno prima.');
+    const gone = new Set(s.rounds.filter((x) => x.presenterId === action.participantId).map((x) => x.id));
+    s.participants = s.participants.filter((p) => p.id !== action.participantId);
+    s.rounds = s.rounds.filter((x) => !gone.has(x.id));
+    s.votes = s.votes.filter((v) => v.voterId !== action.participantId && !gone.has(v.roundId));
+    if (s.phase === 'results' && !s.rounds.some((x) => x.closed && !x.cancelled)) {
+      s.phase = 'waiting';
+      s.revealed = 0;
+    }
   } else if (action.type === 'settings') {
     if (s.phase === 'results') throw new Error('Le regole non si cambiano durante il reveal.');
     if (!validSettings(action.settings)) throw new Error('Regole dei premi non valide.');

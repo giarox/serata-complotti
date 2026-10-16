@@ -112,7 +112,7 @@ test('a friend books a slot with a name, then completes the dossier before the d
   expect(page.url()).not.toContain('NONCIELODICONO');
   // Screen 1: only the name. The rest is previewed, not asked.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
-  await expect(page.locator('.preview')).toContainText('titolo della tua rivelazione');
+  await expect(page.locator('.preview')).toContainText('titolo da congresso');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('nome');
   await page.getByLabel('Il tuo nome').fill('Giulia');
@@ -129,10 +129,9 @@ test('a friend books a slot with a name, then completes the dossier before the d
   const registry = page.locator('.registry');
   await expect(registry.locator('.registry-row.me')).toContainText('Completa il tuo');
   await expect(registry).toContainText('Paolo');
-  await expect(registry).not.toContainText('PICCIONI FBI'); // titles stay secret
+  await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByLabel('Titolo da congresso').fill('Esperta di scie sospette');
-  await page.getByLabel('Titolo della rivelazione').fill('LE SCIE PARLANO');
   await page.getByRole('radio', { name: /Con le slide/ }).click();
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
@@ -141,16 +140,27 @@ test('a friend books a slot with a name, then completes the dossier before the d
   await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
   await expect(page.locator('.booking .stamp')).toContainText('Ammesso');
   await expect(page.getByRole('timer')).toHaveCount(0);
-  // The GM sees the title and mode; two Giulia are fine.
+  // No talk title at all: no spoilers, not even for the GM.
+  await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
+  // The GM sees the congress title and mode; two Giulia are fine.
   const gm = await context.newPage();
   await gm.goto('/');
   await gm.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
   await gm.getByLabel('PIN della regia').fill('2480');
   await gm.getByRole('button', { name: 'Continua', exact: true }).click();
   await gm.getByRole('button', { name: 'Entra in regia', exact: true }).click();
-  const row = gm.locator('.person-row').filter({ hasText: 'LE SCIE PARLANO' });
+  const row = gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' });
   await expect(row).toContainText('Giulia');
   await expect(row).toContainText('Slide');
+  // The GM can remove anyone, from the dossier list.
+  await gm.getByRole('button', { name: 'I fascicoli' }).first().click();
+  await gm
+    .locator('.person-row')
+    .filter({ hasText: 'Esperta di scie sospette' })
+    .getByRole('button', { name: 'Elimina Giulia' })
+    .click();
+  await gm.getByRole('button', { name: 'Conferma' }).click();
+  await expect(gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' })).toHaveCount(0);
   // A spectator, from a link without the key: the word works in lowercase too.
   const other = await context.newPage();
   await other.goto('/');

@@ -174,9 +174,6 @@ function Booking({
               <strong>Un titolo da congresso.</strong> Es. <em>Studioso dei finti uccelli</em>.
             </li>
             <li>
-              <strong>Il titolo della tua rivelazione.</strong> Resta segreto fino alla serata.
-            </li>
-            <li>
               <strong>Come la presenti.</strong> Con le slide di Google o alla vecchia maniera: fogli, cartelloni,
               oggetti, solo voce.
             </li>

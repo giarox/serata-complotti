@@ -3,7 +3,7 @@
     "id": "paolo",
     "name": "Paolo",
     "role": "Studioso dei finti uccelli",
-    "title": "PICCIONI FBI",
+    "title": "",
     "deckUrl": "",
     "spectator": false,
     "mode": "slides"
@@ -12,7 +12,7 @@
     "id": "giulia",
     "name": "Giulia",
     "role": "Cartografa delle verità scomode",
-    "title": "LA TERRA È UN PROGETTO PILOTA",
+    "title": "",
     "deckUrl": "",
     "spectator": false,
     "mode": "paper"
@@ -21,7 +21,7 @@
     "id": "marco",
     "name": "Marco",
     "role": "Esperto di segnali sospetti",
-    "title": "IL WI-FI CI LEGGE NEL PENSIERO",
+    "title": "",
     "deckUrl": "",
     "spectator": false,
     "mode": "paper"
@@ -30,7 +30,7 @@
     "id": "sara",
     "name": "Sara",
     "role": "Archivista delle coincidenze",
-    "title": "NON È MAI SOLO UNA COINCIDENZA",
+    "title": "",
     "deckUrl": "",
     "spectator": false,
     "mode": "paper"
@@ -39,7 +39,7 @@
     "id": "gianluca",
     "name": "Gianluca",
     "role": "Direttore del congresso",
-    "title": "IL DOSSIER MANCANTE",
+    "title": "",
     "deckUrl": "",
     "spectator": false,
     "mode": "paper"
