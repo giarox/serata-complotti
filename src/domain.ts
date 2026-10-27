@@ -105,19 +105,19 @@ export const modes: { key: Mode; label: string; short: string; hint: string }[] 
     key: 'slides',
     label: 'Con le slide',
     short: 'Slide',
-    hint: 'Google Slides, con animazioni, video e transizioni sospette.',
+    hint: 'Google Slides, con video e animazioni.',
   },
   {
     key: 'paper',
     label: 'Alla vecchia maniera',
     short: 'Dal vivo',
-    hint: 'Fogli, cartelloni, oggetti sospetti, solo voce e sguardo intenso.',
+    hint: 'Fogli, oggetti sospetti, solo voce.',
   },
   {
     key: 'none',
     label: 'Solo pubblico',
     short: 'Pubblico',
-    hint: 'Niente palco: ascolti, fai domande scomode e voti. Come un vero infiltrato.',
+    hint: 'Ascolti, fai domande, voti.',
   },
 ];
 export const presents = (p: Participant) => p.mode === 'slides' || p.mode === 'paper';

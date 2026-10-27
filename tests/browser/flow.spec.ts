@@ -108,7 +108,7 @@ test('GM with a name votes from the regia and sees the provisional award rules',
 test('a friend registers on one screen, then adds the Slides link before the deadline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#invito=NONCIELODICONO');
-  await expect(page.getByRole('heading', { name: 'Blocca il tuo posto da ricercatore indipendente' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Blocca il tuo posto' })).toBeVisible();
   expect(page.url()).not.toContain('NONCIELODICONO');
   // One screen: name, silly title and how they take part.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
@@ -120,7 +120,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByRole('radio', { name: /Con le slide/ }).click();
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('titolo');
-  await page.getByLabel('Il tuo seriosissimo titolo da ricercatore indipendente').fill('Esperta di scie sospette');
+  await page.getByLabel('Il tuo seriosissimo titolo da ricercatore').fill('Esperta di scie sospette');
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
@@ -132,16 +132,14 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.getByRole('heading', { name: 'Benvenuto, Giulia.' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
-  await expect(page.getByLabel('Il tuo seriosissimo titolo da ricercatore indipendente')).toHaveValue(
-    'Esperta di scie sospette',
-  );
+  await expect(page.getByLabel('Il tuo seriosissimo titolo da ricercatore')).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.registry'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
   expect(order[0]).toBeLessThan(order[1]);
   expect(order[1]).toBeLessThan(order[2]);
   const registry = page.locator('.registry');
-  await expect(registry.locator('.registry-row.me')).toContainText('Completa il tuo');
+  await expect(registry.locator('.registry-row.me')).toContainText('Incompleto');
   await expect(registry).toContainText('Paolo');
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');

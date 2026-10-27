@@ -32,8 +32,8 @@ export const roleIdeas = [
 ];
 /** Missing pieces, said like a person would. */
 const gapWords: Record<string, string> = {
-  'titolo da congresso': 'il tuo titolo da ricercatore',
-  'come presenti': 'come esporrai la verità',
+  'titolo da congresso': 'il tuo titolo',
+  'come presenti': 'come partecipi',
   'link delle slide': 'il link delle slide',
 };
 const andList = (xs: string[]) =>
@@ -71,8 +71,7 @@ export function Countdown() {
     return (
       <div className="countdown expired" role="timer">
         <span className="mono">TEMPO SCADUTO</span>
-        <strong>Il fascicolo doveva essere consegnato.</strong>
-        <small>Completalo subito: la regia chiuderà un occhio. Solo uno, l’altro è sorvegliato.</small>
+        <strong>Completalo subito: la regia chiude un occhio.</strong>
       </div>
     );
   const sec = Math.floor(left / 1000),
@@ -83,7 +82,7 @@ export function Countdown() {
   const pad = (n: number) => String(n).padStart(2, '0');
   return (
     <div className="countdown" role="timer" aria-label={`Mancano ${d} giorni e ${h} ore alla consegna`}>
-      <span className="mono">LA VERITÀ VA CONSEGNATA ENTRO</span>
+      <span className="mono">COMPLETA IL FASCICOLO ENTRO</span>
       <div className="countdown-digits" aria-hidden="true">
         <span>
           {d}
@@ -102,7 +101,6 @@ export function Countdown() {
           <small>sec</small>
         </span>
       </div>
-      <small>Scadenza: {DEADLINE_LABEL}. Dopo, il tuo fascicolo verrà insabbiato.</small>
     </div>
   );
 }
@@ -124,38 +122,22 @@ export function DossierFields({
     <>
       {askTitle && (
         <>
-          <div className="field-row">
-            <label>
-              Il tuo seriosissimo titolo da ricercatore indipendente
-              <input
-                maxLength={80}
-                placeholder="Es. Ricercatore della seconda pagina di Google"
-                value={value.role}
-                onChange={(e) => set({ role: e.target.value })}
-              />
-            </label>
-            <button
-              type="button"
-              className="icon-button dice"
-              aria-label="Suggerisci un titolo"
-              onClick={() => set({ role: pick(roleIdeas, value.role) })}
-            >
-              <Dices size={20} />
-            </button>
-          </div>
-          <p className="field-hint examples">
-            Per esempio: <em>Studiosa indipendente di screenshot sgranati</em>,{' '}
-            <em>Ricercatore autodidatta (fonte: un blog del 2009)</em>, <em>Ha letto tutto, soprattutto i commenti</em>.
-            Nessuna idea? Tira il dado.
-          </p>
+          <label>
+            Il tuo seriosissimo titolo da ricercatore
+            <input
+              maxLength={80}
+              placeholder="Es. Ricercatore della seconda pagina di Google"
+              value={value.role}
+              onChange={(e) => set({ role: e.target.value })}
+            />
+          </label>
+          <Button secondary className="dice" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
+            <Dices size={18} /> Dammi un’idea
+          </Button>
         </>
       )}
-      <div
-        className="field-mode"
-        role="radiogroup"
-        aria-label={withAudience ? 'Come partecipi' : 'Come esporrai la verità'}
-      >
-        <span className="label">{withAudience ? 'Come partecipi' : 'Come esporrai la verità'}</span>
+      <div className="field-mode" role="radiogroup" aria-label={withAudience ? 'Come partecipi' : 'Come presenti'}>
+        <span className="label">{withAudience ? 'Come partecipi' : 'Come presenti'}</span>
         <div className={'mode-chips' + (withAudience ? ' three' : '')}>
           {modes
             .filter((m) => withAudience || m.key !== 'none')
@@ -190,15 +172,9 @@ export function DossierFields({
             />
           </label>
           <p className="howto-inline">
-            <strong>Non sai dove trovare il link?</strong> Apri la presentazione, tocca <b>Condividi</b>, scegli{' '}
-            <b>Chiunque abbia il link</b>, poi <b>Copia link</b> e incollalo qui. Nessuno lo aprirà prima della serata.
-            Promesso. Forse.
+            <strong>Non sai dove trovarlo?</strong> In Google Slides: <b>Condividi</b> → <b>Chiunque abbia il link</b> →{' '}
+            <b>Copia link</b>.{withAudience && ' Non è pronto? Aggiungilo dopo.'}
           </p>
-          {withAudience && (
-            <p className="field-hint">
-              Slide non ancora pronte? Lascia vuoto e aggiungi il link dopo, da questa pagina.
-            </p>
-          )}
         </div>
       )}
     </>
@@ -252,24 +228,21 @@ export function DossierHome({
       ) : (
         <Stamp sub="Posto bloccato">Prenotato</Stamp>
       )}
-      <span className="mono">FASCICOLO DI {me.name.toUpperCase()}</span>
       {blocker ? (
         <p className="footnote">{blocker}</p>
       ) : audience ? (
         <>
           <h2>Sei tra il pubblico.</h2>
-          <p className="booking-lede">
-            Hai cambiato idea? Scegli come esporre la verità e il posto da ricercatore è tuo.
-          </p>
+          <p className="booking-lede">Vuoi presentare anche tu? Scegli come.</p>
           <DossierFields value={value} onChange={change} />
         </>
       ) : (
         <>
-          <h2>{gaps.length ? 'Completa il fascicolo' : 'Tutto pronto. Sospetto.'}</h2>
+          <h2>{gaps.length ? 'Il tuo fascicolo' : 'Fascicolo completo. Sospetto.'}</h2>
           <p className="booking-lede">
             {gaps.length
-              ? `Ci servono ancora ${andList(gaps.map((g) => gapWords[g] ?? g))}. Puoi salvare un pezzo alla volta.`
-              : 'Puoi ritoccare tutto fino al tuo turno. Nessuno vedrà niente prima della serata.'}
+              ? `${gaps.length > 1 ? 'Mancano' : 'Manca'} ancora ${andList(gaps.map((g) => gapWords[g] ?? g))}.`
+              : 'Puoi modificarlo fino al tuo turno.'}
           </p>
           <DossierFields value={value} onChange={change} />
         </>
@@ -281,7 +254,7 @@ export function DossierHome({
       )}
       {!blocker && (
         <Button type="submit" className="booking-cta" disabled={busy || !dirty}>
-          {busy ? 'Criptazione in corso…' : saved && !dirty ? 'Salvato e criptato' : 'Salva il fascicolo'}
+          {busy ? 'Salvataggio…' : saved && !dirty ? 'Salvato' : 'Salva il fascicolo'}
           <Check size={18} />
         </Button>
       )}
@@ -296,7 +269,6 @@ export function DossierHome({
     );
   return (
     <section className="booked">
-      <p className="eyebrow">Posto bloccato · Sei nel sistema</p>
       <h1>Benvenuto, {me.name}.</h1>
       {!audience && gaps.length > 0 && <Countdown />}
       {sheet}
@@ -309,9 +281,9 @@ type Status = 'ready' | 'booked' | 'audience';
 const statusOf = (p: Participant): Status =>
   p.mode === 'none' ? 'audience' : dossierGaps(p).length === 0 ? 'ready' : 'booked';
 const statusLabel: Record<Status, string> = {
-  ready: 'Fascicolo consegnato',
-  booked: 'Posto bloccato, verità in arrivo',
-  audience: 'Solo pubblico (infiltrato?)',
+  ready: 'Pronto',
+  booked: 'Incompleto',
+  audience: 'Pubblico',
 };
 const order: Record<Status, number> = { ready: 0, booked: 1, audience: 2 };
 
@@ -323,13 +295,13 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
   return (
     <section className="registry" aria-labelledby="registry-title">
       <div className="registry-head">
-        <h2 id="registry-title">Il registro degli arruolati</h2>
+        <h2 id="registry-title">Gli altri ricercatori</h2>
         <p>
-          {speakers.length === 1 ? '1 ricercatore arruolato' : `${speakers.length} ricercatori arruolati`}, {ready}{' '}
-          {ready === 1 ? 'fascicolo consegnato' : 'fascicoli consegnati'}.{' '}
+          {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}, {ready}{' '}
+          {ready === 1 ? 'pronto' : 'pronti'}.{' '}
           {speakers.length > ready
-            ? 'I ritardatari verranno segnalati alle autorità competenti (che però sono complici).'
-            : 'Nessun ritardatario. Troppo perfetto per essere vero.'}
+            ? 'I ritardatari verranno segnalati alle autorità.'
+            : 'Nessun ritardatario. Sospetto.'}
         </p>
       </div>
       <ol className="registry-list">
@@ -343,7 +315,7 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
               </span>
               <span className={'registry-status ' + st}>
                 {st === 'ready' && <Check size={14} />}
-                {p.id === meId && st === 'booked' ? <a href="#fascicolo">Completa il tuo</a> : statusLabel[st]}
+                {statusLabel[st]}
               </span>
             </li>
           );

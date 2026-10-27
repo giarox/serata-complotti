@@ -4,7 +4,7 @@ import type { Actor, Participant } from './domain';
 import * as api from './api';
 import { Button, Mark, Stamp } from './ui';
 import { DossierFields, dossierProblem, emptyDossier } from './dossier';
-import { DEADLINE_LABEL, EVENT_DAY } from './event';
+import { EVENT_DAY } from './event';
 
 type Step = 'book' | 'returning' | 'gm';
 const KEY = 'complotti-invite-key';
@@ -73,9 +73,9 @@ export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
       {step === 'gm' && <GmStep onEnter={onEnter} onBack={() => setStep('book')} />}
       <div className="entry-footer">
         {step !== 'gm' && (
-          <button type="button" className="text-button gm-door" onClick={() => setStep('gm')}>
-            <LockKeyhole size={12} /> Accesso riservato alla regia
-          </button>
+          <Button secondary className="gm-door" onClick={() => setStep('gm')}>
+            <LockKeyhole size={16} /> Accesso riservato alla regia
+          </Button>
         )}
       </div>
     </div>
@@ -85,7 +85,7 @@ export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
 function KeyField({ code, setCode }: { code: string; setCode: (c: string) => void }) {
   return (
     <label className="key-field">
-      Parola d’ordine <span className="req">è nel messaggio d’invito. Non dirla a nessuno.</span>
+      Parola d’ordine (nel messaggio d’invito)
       <input
         autoCapitalize="characters"
         autoCorrect="off"
@@ -153,11 +153,9 @@ function Booking({
   return (
     <div className="invite-layout">
       <section className="invite-intro">
-        <p className="eyebrow">Documento riservato · Leggi prima che lo cancellino</p>
         <p className="invite-lede">
-          <strong>Siccome non cielo dicono, ce lo diciamo noi.</strong> Il {EVENT_DAY} si riunisce il congresso
-          clandestino dei ricercatori indipendenti. Iscriviti qui sotto: ci vuole un minuto. Il resto è top secret
-          (anche per noi).
+          <strong>Siccome non cielo dicono, ce lo diciamo noi.</strong> {EVENT_DAY}: congresso clandestino dei
+          ricercatori indipendenti. Iscriviti qui sotto, ci vuole un minuto.
         </p>
       </section>
       <form
@@ -168,11 +166,10 @@ function Booking({
         }}
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
-        <span className="mono">MODULO DI ARRUOLAMENTO</span>
-        <h2>Blocca il tuo posto da ricercatore indipendente</h2>
+        <h2>Blocca il tuo posto</h2>
         {!fromLink && <KeyField code={code} setCode={setCode} />}
         <label className="field-name">
-          Il tuo nome vero <span className="req">tanto lo sanno già</span>
+          Il tuo nome
           <input
             autoComplete="given-name"
             maxLength={40}
@@ -190,12 +187,9 @@ function Booking({
           {busy ? 'Ti stiamo schedando…' : 'Blocca il mio posto'}
           <ArrowRight size={18} />
         </Button>
-        <p className="field-hint booking-note">Potrai cambiare tutto fino alla {DEADLINE_LABEL}.</p>
-        <div className="booking-secondary">
-          <button type="button" className="text-button" disabled={busy} onClick={onReturning}>
-            Ho già prenotato
-          </button>
-        </div>
+        <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
+          Ho già prenotato
+        </Button>
       </form>
     </div>
   );
@@ -254,11 +248,8 @@ function ReturningStep({
   }
   return (
     <form className="entry-card step-card" onSubmit={submit}>
-      <span className="mono">RIENTRO AGENTE</span>
-      <h2>Bentornato. Chi sei, davvero?</h2>
-      <p>
-        Telefono nuovo? Pagina chiusa? Cookie cancellati dai poteri forti? Scegliti dalla lista e riprendi il fascicolo.
-      </p>
+      <h2>Bentornato. Chi sei?</h2>
+      <p>Telefono nuovo o pagina chiusa? Scegliti dalla lista.</p>
       {(!fromLink || !names.length) && !names.length && <KeyField code={code} setCode={setCode} />}
       {names.length > 0 && (
         <label>
@@ -282,9 +273,9 @@ function ReturningStep({
         {busy ? 'Controllo impronte…' : names.length ? 'Sono io' : 'Mostra la lista'}
         <ArrowRight size={18} />
       </Button>
-      <button type="button" className="text-button entry-switch" onClick={onBack}>
-        <ArrowLeft size={14} /> Torna alla prenotazione
-      </button>
+      <Button secondary className="entry-switch" onClick={onBack}>
+        <ArrowLeft size={18} /> Indietro
+      </Button>
     </form>
   );
 }
@@ -310,7 +301,6 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
   }
   return (
     <form className="entry-card step-card" onSubmit={submit}>
-      <span className="mono">ACCESSO REGIA</span>
       <h2>Entra in regia.</h2>
       <p>
         {names.length ? 'Se presenti o voti anche tu, scegli il tuo nome.' : 'Qui si decide cosa sapranno gli altri.'}
@@ -349,9 +339,9 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
         {busy ? 'Un momento…' : names.length ? 'Entra in regia' : 'Continua'}
         <ArrowRight size={18} />
       </Button>
-      <button type="button" className="text-button entry-switch" onClick={onBack}>
-        <ArrowLeft size={14} /> Torna alla prenotazione
-      </button>
+      <Button secondary className="entry-switch" onClick={onBack}>
+        <ArrowLeft size={18} /> Indietro
+      </Button>
       {!api.live && (
         <div className="demo-credentials">
           <strong>DEMO LOCALE</strong>

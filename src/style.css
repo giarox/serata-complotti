@@ -3285,3 +3285,198 @@ details.howto summary {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===================================================================
+   Clarity pass (27 Oct): one size for every button, readable labels,
+   obvious interactive elements. Kept last so it wins over older rules.
+   =================================================================== */
+:root {
+  --control-h: 52px;
+}
+/* Every button-like control: same height, same type. */
+.button,
+.choose-button,
+.booking-cta,
+.booking .button,
+.entry-card > .button {
+  min-height: var(--control-h);
+  padding: 0 20px;
+  font: 600 17px/1 var(--display) !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.button:focus-visible,
+.choose-button:focus-visible,
+.icon-button:focus-visible,
+.mode-chip:focus-visible,
+.text-button:focus-visible {
+  outline: 3px solid var(--brass-hi);
+  outline-offset: 2px;
+}
+.icon-button {
+  width: var(--control-h);
+  height: var(--control-h);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+}
+/* Leftover text links still look clickable: underlined, readable size. */
+.text-button {
+  font-size: 15px;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+/* Secondary buttons on paper: outlined ink. */
+.booking .button.secondary,
+.entry-card .button.secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+.booking .button.secondary:hover:not(:disabled),
+.entry-card .button.secondary:hover:not(:disabled) {
+  background: #00000014;
+}
+.booking-cta,
+.booking-alt,
+.entry-switch {
+  width: 100%;
+  margin-top: 12px;
+}
+.booking-cta {
+  margin-top: 26px;
+}
+.entry-switch {
+  display: inline-flex;
+  color: var(--ink) !important;
+}
+.booking .dice {
+  width: auto;
+  height: auto;
+  margin-top: 10px;
+  gap: 10px;
+}
+/* GM door on the dark background: outlined brass, same size as the rest. */
+.gm-door {
+  font-size: 15px !important;
+  color: var(--brass) !important;
+  border-color: var(--brass-dim) !important;
+}
+
+/* Labels: clearly above everything else in a form. */
+label,
+.field-mode .label {
+  display: block;
+  font: 600 16px/1.25 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bone);
+}
+.booking label,
+.booking .field-mode .label,
+.entry-card label,
+.letter label,
+.modal label,
+.wizard label {
+  color: var(--ink);
+}
+.booking label,
+.booking .field-mode,
+.booking .slides-field {
+  margin-top: 22px;
+}
+.checkbox {
+  font: 17px/1.4 var(--serif);
+  text-transform: none;
+  letter-spacing: 0;
+}
+input,
+select {
+  font-size: 18px;
+  min-height: var(--control-h);
+}
+.booking input,
+.entry-card input,
+.entry-card select,
+.modal input,
+.modal select {
+  border: 2px solid #8a7752;
+  border-radius: 3px;
+  background: #f7f0e1;
+}
+.booking input:focus,
+.entry-card input:focus,
+.modal input:focus {
+  outline: 3px solid var(--brass);
+  outline-offset: 0;
+}
+.booking h2 {
+  margin-bottom: 4px;
+}
+.booking-lede {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+/* Choices look like choices: a radio dot on every card. */
+.mode-chip {
+  position: relative;
+  padding: 14px 14px 14px 46px;
+  min-height: 64px;
+  justify-content: center;
+  cursor: pointer;
+  border-width: 2px;
+}
+.mode-chip::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff8;
+}
+.mode-chip.chosen::before {
+  background: radial-gradient(circle, var(--stamp) 0 5px, #fff8 6px);
+  border-color: var(--stamp);
+}
+.mode-chip.chosen {
+  box-shadow: none;
+}
+.mode-chip strong {
+  font-size: 19px;
+}
+.mode-chip span {
+  font-size: 15px;
+}
+.field-mode .mode-chips {
+  margin-top: 10px;
+}
+.howto-inline {
+  font-size: 16px;
+}
+.invite-lede {
+  font-style: normal;
+}
+@media (max-width: 650px) {
+  .mode-chips.three {
+    grid-template-columns: 1fr;
+  }
+}
+/* Title clear of the stamp in the top-right corner */
+.booking > h2:first-of-type {
+  margin-top: 46px;
+  padding-right: 0;
+}
+@media (min-width: 651px) {
+  .booking > h2:first-of-type {
+    margin-top: 6px;
+    padding-right: 190px;
+  }
+}
