@@ -5279,3 +5279,71 @@ label,
   font-size: 13px !important;
   padding: 0 10px;
 }
+
+/* ===================================================================
+   27 Oct, 23:00 — hand-filled sheet: dashed section rules, stamp back
+   on the right, firm writing lines
+   =================================================================== */
+.form-section,
+.form-section.first {
+  border-top: 1.5px dashed #a99772 !important;
+  padding-top: 14px !important;
+}
+.form-section legend {
+  display: block;
+  float: left;
+  width: 100%;
+  padding: 0 !important;
+  background: none;
+  color: var(--ink) !important;
+  border-radius: 0;
+  font: 600 13px/1.4 var(--mono) !important;
+  letter-spacing: 0.16em;
+}
+.form-section legend + * {
+  clear: both;
+}
+.form-section > .section-note {
+  margin-top: 6px !important;
+}
+/* Qualification: both writing lines as firm as the name line */
+.booking .form-line textarea {
+  background: linear-gradient(
+      to bottom,
+      transparent calc(50% - 1px),
+      #6f5d3e calc(50% - 1px),
+      #6f5d3e calc(50% + 1px),
+      transparent calc(50% + 1px)
+    )
+    no-repeat;
+}
+/* Secondary door, kept apart from the main action */
+.booking-alt-wrap {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1.5px dashed #a99772;
+}
+.booking-alt-wrap .booking-alt {
+  margin-top: 0 !important;
+}
+/* Phone: stamp back at the top right, tilted the other way, just kissing the title */
+@media (max-width: 650px) {
+  .booking > .stamp {
+    position: absolute;
+    top: 14px;
+    right: 10px;
+    margin: 0;
+    font-size: 22px;
+    transform: rotate(9deg);
+    z-index: 1;
+  }
+  .booking > h2:first-of-type {
+    margin-top: 46px !important;
+    padding-right: 24px;
+  }
+}
+@media (max-width: 650px) {
+  .booking > h2:first-of-type {
+    margin-top: 34px !important;
+  }
+}

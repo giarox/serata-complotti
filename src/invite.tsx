@@ -155,7 +155,8 @@ function Booking({
           </div>
         </dl>
         <p className="event-sub">
-          I posti sono limitatissimi: richiedi l’ammissione e i poteri forti la valuteranno accuratamente.
+          I posti sono limitatissimi. I poteri forti valuteranno ogni richiesta con cura scrupolosa, annotandone l’ora
+          esatta di arrivo. Così, per puro scrupolo.
         </p>
       </section>
       <form
@@ -196,9 +197,11 @@ function Booking({
         <p className="booking-next">
           Dopo l’invio riceverai il tuo pass. L’esito della valutazione comparirà lì: torna a controllarlo.
         </p>
-        <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
-          Ho già fatto richiesta
-        </Button>
+        <div className="booking-alt-wrap">
+          <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
+            Ho già fatto richiesta
+          </Button>
+        </div>
       </form>
     </div>
   );

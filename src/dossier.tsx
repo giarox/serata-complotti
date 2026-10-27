@@ -291,7 +291,9 @@ export function DossierHome({
         <p className="footnote">{blocker}</p>
       ) : (
         <>
-          <p className="booking-lede">Modifica quello che vuoi, poi salva. Il resto della richiesta non cambia.</p>
+          <p className="booking-lede">
+            Qui puoi ritoccare qualifica, presentazione e accompagnatore. Il nome no: quello è già agli atti.
+          </p>
           <DossierFields value={value} onChange={setDraft} />
         </>
       )}
