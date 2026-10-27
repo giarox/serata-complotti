@@ -42,7 +42,7 @@ $$;
 -- What other guests see of someone who has not presented yet: name and readiness only.
 create or replace function public.party_mask(p jsonb) returns jsonb language sql immutable as $$
  select jsonb_build_object('id',p->>'id','name',p->>'name','role','','title','','deckUrl','',
-  'mode',p->'mode','spectator',coalesce((p->>'spectator')::boolean,false),'plusOne',coalesce(p->'plusOne','null'::jsonb),'masked',true,'ready',public.party_ready(p));
+  'mode',p->'mode','spectator',coalesce((p->>'spectator')::boolean,false),'plusOne',coalesce(p->'plusOne','null'::jsonb),'admission',coalesce(p->'admission','"pending"'::jsonb),'masked',true,'ready',public.party_ready(p));
 $$;
 create or replace function public.party_actor() returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
  select jsonb_strip_nulls(jsonb_build_object('role',role,'participantId',person_id)) from public.party_members where user_id=auth.uid();
@@ -212,7 +212,9 @@ begin
   end if;
   p:=jsonb_build_object('id',pid,'name',nm,'role',trim(coalesce(p->>'role','')),'title',trim(coalesce(p->>'title','')),
     'deckUrl',case when md='slides' then trim(coalesce(p->>'deckUrl','')) else '' end,'mode',to_jsonb(md),'spectator',coalesce(md='none',false),
-    'plusOne',case when jsonb_typeof(p->'plusOne')='boolean' then p->'plusOne' else 'null'::jsonb end);
+    'plusOne',case when jsonb_typeof(p->'plusOne')='boolean' then p->'plusOne' else 'null'::jsonb end,
+    -- Only the GM decides who is in; guests keep whatever was decided.
+    'admission',case when actor->>'role'='gm' and p->>'admission' in ('pending','admitted','reserve') then p->'admission' else coalesce(prev->'admission','"pending"'::jsonb) end);
   if prev is not null then
    select jsonb_agg(case when v->>'id'=pid then p else v end order by ord) into rounds from jsonb_array_elements(s->'participants') with ordinality t(v,ord);
   else rounds:=(s->'participants')||jsonb_build_array(p); end if;
@@ -239,7 +241,7 @@ begin
  if s->>'phase'='results' then raise exception 'La serata è finita: il registro è chiuso.'; end if;
  pid:=left(trim(both '-' from regexp_replace(translate(lower(nm),'àáâäèéêëìíîïòóôöùúûüç','aaaaeeeeiiiioooouuuuc'),'[^a-z0-9]+','-','g')),30);
  pid:=coalesce(nullif(pid,''),'agente')||'-'||substr(md5(gen_random_uuid()::text),1,4);
- s:=jsonb_set(s,'{participants}',(s->'participants')||jsonb_build_array(jsonb_build_object('id',pid,'name',nm,'role','','title','','deckUrl','','mode',null,'spectator',false,'plusOne',null)));
+ s:=jsonb_set(s,'{participants}',(s->'participants')||jsonb_build_array(jsonb_build_object('id',pid,'name',nm,'role','','title','','deckUrl','','mode',null,'spectator',false,'plusOne',null,'admission','pending')));
  s:=jsonb_set(s,'{revision}',to_jsonb((s->>'revision')::int+1));
  update public.party_store set state=s where id=true;
  update public.party_signal set revision=(s->>'revision')::bigint where id=true;

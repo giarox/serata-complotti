@@ -4596,3 +4596,92 @@ h1,
     padding-right: 0;
   }
 }
+
+/* Admission states */
+.pass-live.pending {
+  color: #b07a1c;
+}
+.pass-live.pending::before {
+  background: #c9902a;
+  animation: blink 1.6s steps(2, start) infinite;
+}
+.pass-live.reserve {
+  color: var(--ink-soft);
+}
+.pass-live.reserve::before {
+  background: var(--ink-soft);
+}
+.pass-live.admitted {
+  color: #3f7a45;
+}
+.pass-live.admitted::before {
+  background: #3f7a45;
+}
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pass-live.pending::before {
+    animation: none;
+  }
+}
+.pass-stamp {
+  font-size: 22px !important;
+  transform: rotate(-10deg);
+  flex-shrink: 0;
+}
+.roster-group {
+  margin-top: 16px;
+}
+.roster-group h3 {
+  font: 500 12px/1.4 var(--mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid #ffffff1a;
+}
+.roster-group.admitted h3 {
+  color: #8fc495;
+}
+.roster-group.pending h3 {
+  color: #e0b25c;
+}
+.roster-group h3 small {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.roster-group.reserve .roster-row {
+  opacity: 0.7;
+}
+.admit-select {
+  margin-top: 8px;
+  width: auto;
+  min-height: 40px;
+  padding: 4px 10px;
+  font: 500 13px/1 var(--mono) !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #0f0d0a;
+  color: var(--bone);
+  border: 1.5px solid var(--rule);
+}
+.admit-select.admitted {
+  border-color: #3f7a45;
+  color: #8fc495;
+}
+.admit-select.pending {
+  border-color: #c9902a;
+  color: #e0b25c;
+}
+.roster-tags .registry-status {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-height: 0;
+  padding: 2px 6px;
+  text-align: left;
+  white-space: nowrap;
+}

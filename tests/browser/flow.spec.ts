@@ -140,7 +140,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   expect(order[0]).toBeLessThan(order[1]);
   expect(order[1]).toBeLessThan(order[2]);
   const registry = page.locator('.roster');
-  await expect(registry.locator('.registry-row.me')).toContainText('Incompleto');
+  await expect(registry.locator('.registry-row.me')).toContainText('Fascicolo incompleto');
   await expect(registry).toContainText('Paolo');
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
@@ -176,6 +176,6 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await other.getByRole('radio', { name: /Alla vecchia maniera/ }).click();
   await other.getByLabel(/Titolo da ricercatore/).fill('Investigatore da gruppo Telegram');
   await other.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
-  await expect(other.locator('.welcome-lede')).toContainText('teoria');
+  await expect(other.locator('.welcome-lede')).toContainText('regia');
   await expect(other.locator('.roster')).toContainText('Ugo');
 });

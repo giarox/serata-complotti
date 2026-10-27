@@ -169,3 +169,20 @@ describe('removing people (GM)', () => {
     expect(s.phase).toBe('waiting');
   });
 });
+
+describe('admission (limited seats)', () => {
+  it('starts pending; only the GM can admit or put in reserve', () => {
+    let s = register(initialState(), 'Ugo', 'ugo');
+    expect(me(s, 'ugo').admission).toBe('pending');
+    const ugo: Actor = { role: 'guest', participantId: 'ugo' };
+    s = applyAction(s, ugo, { type: 'participant', participant: { ...me(s, 'ugo'), admission: 'admitted' } });
+    expect(me(s, 'ugo').admission).toBe('pending');
+    s = applyAction(s, gm, { type: 'participant', participant: { ...me(s, 'ugo'), admission: 'admitted' } });
+    expect(me(s, 'ugo').admission).toBe('admitted');
+    s = applyAction(s, ugo, { type: 'participant', participant: { ...me(s, 'ugo'), role: 'Nuovo titolo' } });
+    expect(me(s, 'ugo')).toMatchObject({ role: 'Nuovo titolo', admission: 'admitted' });
+    expect(snapshot(s, { role: 'guest', participantId: 'x' }).participants.find((p) => p.id === 'ugo')!.admission).toBe(
+      'admitted',
+    );
+  });
+});

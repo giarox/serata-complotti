@@ -6,6 +6,7 @@ import {
   modes,
   slidesUrlPattern,
   type Action,
+  type Admission,
   type Actor,
   type Participant,
   type State,
@@ -293,20 +294,38 @@ export function DossierHome({
     );
   const passNo = String(s.participants.findIndex((p) => p.id === me.id) + 1).padStart(3, '0');
   const modeLabel = me.mode ? modes.find((m) => m.key === me.mode)?.label : 'Modo da scegliere';
+  const adm = me.admission ?? 'pending';
+  const head = {
+    pending: [
+      'Richiesta ricevuta.',
+      'La regia valuta.',
+      'I posti sono pochi e la regia sceglie chi entra. Torna qui nei prossimi giorni per scoprire se sei stato ammesso.',
+    ],
+    admitted: [
+      'Ammissione accolta.',
+      'Sei nel congresso.',
+      'Il 31 ottobre porta la tua teoria e la faccia di chi l’ha scoperta.',
+    ],
+    reserve: [
+      'Sei in riserva.',
+      'Non perdere la speranza.',
+      'Per ora i posti sono pieni. Se si libera una sedia, la regia pescherà dalla riserva. Ricontrolla qui.',
+    ],
+  }[adm];
   return (
     <section className="booked">
-      <p className="receipt-kicker">Ricevuta d’iscrizione / {passNo}</p>
+      <p className="receipt-kicker">Richiesta d’ammissione / {passNo}</p>
       <h1 className="receipt-title">
-        Ammissione accolta.
+        {head[0]}
         <br />
-        Sei nel congresso.
+        {head[1]}
       </h1>
-      <p className="welcome-lede">Il 31 ottobre porta la tua teoria e la faccia di chi l’ha scoperta.</p>
+      <p className="welcome-lede">{head[2]}</p>
 
       <article className="guest-pass" aria-label="Il tuo pass">
         <header>
           <span>Pass / SC-{passNo}</span>
-          <span className="pass-live">Posto riservato</span>
+          <span className={'pass-live ' + adm}>{admissionLabel[adm]}</span>
         </header>
         <div className="pass-body">
           <div>
@@ -317,9 +336,15 @@ export function DossierHome({
               {modeLabel} · collaboratore: {me.plusOne ? 'sì (+1)' : 'no'}
             </span>
           </div>
-          <div className="pass-seal" aria-hidden="true">
-            <span>N. {passNo}</span>
-          </div>
+          {adm === 'admitted' ? (
+            <Stamp className="ok pass-stamp" sub="Dalla regia">
+              Ammesso
+            </Stamp>
+          ) : (
+            <div className="pass-seal" aria-hidden="true">
+              <span>N. {passNo}</span>
+            </div>
+          )}
         </div>
         <footer>
           <span>31 ottobre</span>
@@ -328,10 +353,12 @@ export function DossierHome({
       </article>
 
       <section className="edit-box" aria-labelledby="edit-title">
-        <h2 id="edit-title">Il posto è tuo. Il resto può aspettare.</h2>
+        <h2 id="edit-title">
+          {adm === 'admitted' ? 'Il posto è tuo. Il resto può aspettare.' : 'Intanto prepara il fascicolo.'}
+        </h2>
         <p>
-          Fino alla <strong>{DEADLINE_LABEL}</strong> puoi ancora completare o cambiare tutto qui sotto. Il tuo posto
-          resta tenuto.
+          Fino alla <strong>{DEADLINE_LABEL}</strong> puoi completare o cambiare tutto qui sotto.
+          {adm === 'admitted' ? ' Il tuo posto resta tenuto.' : ' Un fascicolo completo aiuta la regia a decidere.'}
         </p>
         {gaps.length > 0 && (
           <>
@@ -392,12 +419,23 @@ const statusLabel: Record<Status, string> = {
 const order: Record<Status, number> = { ready: 0, booked: 1, audience: 2 };
 
 const modeTag: Record<string, string> = { slides: 'Slide', paper: 'Dal vivo', none: 'Pubblico' };
+export const admissionLabel: Record<Admission, string> = {
+  pending: 'In attesa di giudizio',
+  admitted: 'Ammesso',
+  reserve: 'In riserva',
+};
+const groups: [Admission, string][] = [
+  ['admitted', 'Ammessi'],
+  ['pending', 'In attesa di giudizio'],
+  ['reserve', 'In riserva'],
+];
 
 /** Everyone who signed up, as mugshots. Others' titles stay secret until they present. */
 export function Registry({ s, meId }: { s: State; meId?: string }) {
   const people = [...s.participants].sort((a, b) => order[statusOf(a)] - order[statusOf(b)]);
-  const speakers = people.filter((p) => statusOf(p) !== 'audience'),
-    ready = speakers.filter((p) => statusOf(p) === 'ready').length,
+  const admOf = (p: Participant) => p.admission ?? 'pending';
+  const admitted = people.filter((p) => admOf(p) === 'admitted').length,
+    waiting = people.filter((p) => admOf(p) === 'pending').length,
     plusOnes = people.filter((p) => p.plusOne).length;
   const initials = (n: string) =>
     n
@@ -409,38 +447,53 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
   return (
     <section className="roster" aria-labelledby="registry-title">
       <header className="roster-head">
-        <h2 id="registry-title">Gli altri ricercatori</h2>
+        <h2 id="registry-title">Chi è dentro</h2>
         <span>
-          {speakers.length} iscritti{plusOnes > 0 && ` +${plusOnes}`} · {ready} pronti
+          {admitted} ammessi · {waiting} in attesa{plusOnes > 0 && ` · ${plusOnes} +1`}
         </span>
       </header>
-      <ol className="roster-list">
-        {people.map((p) => {
-          const st = statusOf(p),
-            mine = p.id === meId;
-          return (
-            <li key={p.id} className={'roster-row registry-row ' + st + (mine ? ' me' : '')}>
-              <span className="roster-badge" aria-hidden="true">
-                {initials(p.name)}
-              </span>
-              <div className="roster-info">
-                <strong>
-                  {p.name}
-                  {mine && <small> (tu)</small>}
-                </strong>
-                <span>{mine ? `«${p.role || 'titolo da scegliere'}»` : '«Titolo top secret»'}</span>
-                <span className="roster-tags">
-                  {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
-                  {p.plusOne && <em className="mode-tag">+1</em>}
-                  <em className={'registry-status ' + st}>{statusLabel[st]}</em>
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+      {groups.map(([adm, title]) => {
+        const list = people.filter((p) => admOf(p) === adm);
+        if (!list.length) return null;
+        return (
+          <div className={'roster-group ' + adm} key={adm}>
+            <h3>
+              {title} <small>{list.length}</small>
+            </h3>
+            <ol className="roster-list">
+              {list.map((p) => {
+                const st = statusOf(p),
+                  mine = p.id === meId;
+                return (
+                  <li key={p.id} className={'roster-row registry-row ' + st + (mine ? ' me' : '')}>
+                    <span className="roster-badge" aria-hidden="true">
+                      {initials(p.name)}
+                    </span>
+                    <div className="roster-info">
+                      <strong>
+                        {p.name}
+                        {mine && <small> (tu)</small>}
+                      </strong>
+                      <span>{mine ? `«${p.role || 'titolo da scegliere'}»` : '«Titolo top secret»'}</span>
+                      <span className="roster-tags">
+                        {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
+                        {p.plusOne && <em className="mode-tag">+1</em>}
+                        <em className={'registry-status ' + st}>
+                          {st === 'audience' ? 'Pubblico' : `Fascicolo ${statusLabel[st].toLowerCase()}`}
+                        </em>
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        );
+      })}
       <p className="roster-foot">
-        {speakers.length > ready ? 'I ritardatari verranno segnalati alle autorità.' : 'Nessun ritardatario. Sospetto.'}
+        {waiting > 0
+          ? 'La regia sta valutando. Ricontrolla questa pagina: le decisioni arrivano senza preavviso.'
+          : 'Il congresso è al completo. Sospetto.'}
       </p>
     </section>
   );
@@ -450,7 +503,7 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
 export function InvitePanel() {
   const [copied, setCopied] = useState(false);
   const link = location.origin + location.pathname;
-  const message = `🕵️ Documento riservato. Siccome non cielo dicono, cielo diciamo noi: il ${EVENT_DAY} si riunisce il congresso dei ricercatori indipendenti. Blocca il tuo posto prima che lo cancellino: ${link}`;
+  const message = `🕵️ Documento riservato. Siccome non cielo dicono, cielo diciamo noi: il ${EVENT_DAY} si riunisce il congresso dei ricercatori indipendenti. Richiedi l’ammissione prima che lo cancellino (i posti sono pochi): ${link}`;
   return (
     <section className="panel invite-panel">
       <div className="panel-heading">

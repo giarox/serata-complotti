@@ -353,6 +353,19 @@ describe('self-registration and own dossier', () => {
     expect((await people(gm)).find((p) => p.id === id)!.title).toBe('Corretto dal GM');
   });
 
+  it('keeps admission in the GM’s hands', async () => {
+    const anna = await user();
+    const { participantId: id } = await registerAs(anna, '', 'Anna Rossi');
+    const base = { id, name: 'Anna Rossi', role: 'R', title: '', deckUrl: '', mode: 'paper', spectator: false };
+    const mine = async () => (await people(gm)).find((p) => p.id === id) as unknown as { admission: string };
+    expect((await mine()).admission).toBe('pending');
+    await act(anna, { type: 'participant', participant: { ...base, admission: 'admitted' } });
+    expect((await mine()).admission).toBe('pending');
+    await act(gm, { type: 'participant', participant: { ...base, admission: 'admitted' } });
+    await act(anna, { type: 'participant', participant: { ...base, role: 'Altro' } });
+    expect((await mine()).admission).toBe('admitted');
+  });
+
   it('lets only the GM remove a person, with their turns, votes and phone link', async () => {
     const anna = await user();
     const { participantId: id } = await registerAs(anna, GUEST, 'Anna Rossi');

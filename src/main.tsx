@@ -44,6 +44,7 @@ import {
   presenter,
   voteBlocker,
   type Action,
+  type Admission,
   type Actor,
   type Ballot,
   type Participant,
@@ -566,6 +567,7 @@ function App() {
                     onEdit={setEditing}
                     onRelease={(p) => setConfirm({ type: 'release', participantId: p.id })}
                     onRemove={(p) => setConfirm({ type: 'remove', participantId: p.id })}
+                    onAdmit={(p, admission) => void perform({ type: 'participant', participant: { ...p, admission } })}
                     all
                   />
                   <p className="footnote">
@@ -702,6 +704,7 @@ function People({
   onSelect,
   onEdit,
   onRelease,
+  onAdmit,
   onRemove,
   all = false,
 }: {
@@ -710,6 +713,7 @@ function People({
   onEdit: (p: Participant) => void;
   onRelease?: (p: Participant) => void;
   onRemove?: (p: Participant) => void;
+  onAdmit?: (p: Participant, a: Admission) => void;
   all?: boolean;
 }) {
   return (
@@ -738,6 +742,18 @@ function People({
                   {p.plusOne && <em className="mode-tag">+1</em>}
                   {dossierGaps(p).length > 0 && <em className="mode-tag todo">Fascicolo incompleto</em>}
                 </span>
+                {onAdmit && (
+                  <select
+                    className={'admit-select ' + (p.admission ?? 'pending')}
+                    aria-label={'Ammissione di ' + p.name}
+                    value={p.admission ?? 'pending'}
+                    onChange={(e) => onAdmit(p, e.target.value as Admission)}
+                  >
+                    <option value="pending">In attesa</option>
+                    <option value="admitted">Ammesso</option>
+                    <option value="reserve">Riserva</option>
+                  </select>
+                )}
               </div>
               {all ? (
                 <div className="row-actions">

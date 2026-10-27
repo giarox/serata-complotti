@@ -137,7 +137,7 @@ function Booking({
       <section className="invite-intro">
         <p className="invite-lede">
           <strong>Siccome non cielo dicono, cielo diciamo noi.</strong> {EVENT_DAY}: congresso clandestino dei
-          ricercatori indipendenti. Iscriviti qui sotto, ci vuole un minuto.
+          ricercatori indipendenti. I posti sono pochi: richiedi l’ammissione e la regia deciderà chi entra.
         </p>
       </section>
       <form
@@ -149,6 +149,7 @@ function Booking({
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Richiesta di ammissione</h2>
+        <p className="booking-lede">Prima arrivi, più possibilità hai. La regia valuta ogni richiesta.</p>
         <div className="form-line">
           <label htmlFor="f-name">Il tuo nome</label>
           <input

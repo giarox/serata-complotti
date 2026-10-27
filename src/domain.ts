@@ -1,3 +1,6 @@
+/** A request to join: pending until the GM admits it or puts it in reserve. */
+export type Admission = 'pending' | 'admitted' | 'reserve';
+export const admissions: Admission[] = ['pending', 'admitted', 'reserve'];
 export type Phase = 'waiting' | 'presenting' | 'questions' | 'voting' | 'results';
 /** How someone presents: Google Slides, paper/props/voice, or not at all. null = not decided yet. */
 export type Mode = 'slides' | 'paper' | 'none';
@@ -14,6 +17,8 @@ export type Participant = {
   spectator: boolean;
   /** Brings one collaborator (+1, never more). null = not said yet. */
   plusOne?: boolean | null;
+  /** Seats are limited: the GM decides. Missing = pending. */
+  admission?: Admission;
   /** Only in a guest's view of someone else: details hidden, just whether the dossier is complete. */
   masked?: boolean;
   ready?: boolean;
@@ -158,6 +163,7 @@ function normalizeParticipant(p: Participant): Participant {
     mode,
     spectator: mode === 'none',
     plusOne: typeof p.plusOne === 'boolean' ? p.plusOne : null,
+    admission: admissions.includes(p.admission as Admission) ? p.admission : 'pending',
   };
 }
 /** How a person is shown everywhere. */
@@ -379,6 +385,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       mode: null,
       spectator: false,
       plusOne: null,
+      admission: 'pending',
     });
   } else if (action.type === 'participant') {
     const p = normalizeParticipant({ ...action.participant, name: cleanName(action.participant.name) });
@@ -407,6 +414,11 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       mode: p.mode,
       spectator: p.mode === 'none',
       plusOne: p.plusOne ?? null,
+      // Only the GM decides who is in; guests keep whatever was decided.
+      admission:
+        actor.role === 'gm' && admissions.includes(p.admission as Admission)
+          ? p.admission
+          : (existing?.admission ?? 'pending'),
     };
     const i = s.participants.findIndex((x) => x.id === p.id);
     if (i >= 0) s.participants[i] = clean;
@@ -429,6 +441,7 @@ function maskFor(s: State, actor: Actor, p: Participant): Participant {
     mode: p.mode,
     spectator: p.spectator,
     plusOne: p.plusOne ?? null,
+    admission: p.admission ?? 'pending',
     masked: true,
     ready: dossierGaps(p).length === 0,
   };
