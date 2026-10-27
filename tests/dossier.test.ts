@@ -186,3 +186,24 @@ describe('admission (limited seats)', () => {
     );
   });
 });
+
+describe('going back (GM)', () => {
+  it('steps back through the turn, reopens the last vote and leaves the reveal', () => {
+    let s = register(initialState(), 'Ugo', 'ugo');
+    s = applyAction(s, gm, { type: 'participant', participant: { ...me(s, 'ugo'), role: 'R', mode: 'paper' } });
+    s = applyAction(s, gm, { type: 'start', participantId: 'ugo' });
+    const rid = s.activeRoundId!;
+    expect(() => applyAction(s, gm, { type: 'back' })).toThrow('annulla il turno');
+    s = applyAction(s, gm, { type: 'phase', phase: 'questions', roundId: rid });
+    expect(applyAction(s, gm, { type: 'back' }).phase).toBe('presenting');
+    s = applyAction(s, gm, { type: 'phase', phase: 'voting', roundId: rid });
+    expect(applyAction(s, gm, { type: 'back' }).phase).toBe('questions');
+    s = applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: rid });
+    const reopened = applyAction(s, gm, { type: 'back' });
+    expect(reopened).toMatchObject({ phase: 'voting', activeRoundId: rid });
+    expect(reopened.rounds[0].closed).toBe(false);
+    s = applyAction(s, gm, { type: 'reveal' });
+    expect(applyAction(s, gm, { type: 'back' })).toMatchObject({ phase: 'waiting', revealed: 0 });
+    expect(() => applyAction(s, { role: 'guest', participantId: 'ugo' }, { type: 'back' })).toThrow('regia');
+  });
+});

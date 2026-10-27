@@ -115,7 +115,7 @@ begin
  select state into s from public.party_store where id=true for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
- if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back') then raise exception 'Operazione non riconosciuta.'; end if;
  if kind not in ('vote','participant') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
@@ -154,6 +154,18 @@ begin
   ballot:=jsonb_build_object('credibility',ballot->'credibility','delivery',ballot->'delivery','research',ballot->'research','supercazzola',ballot->'supercazzola','roundId',rid,'voterId',actor->>'participantId');
   select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where not(v->>'roundId'=rid and v->>'voterId'=actor->>'participantId');
   s:=jsonb_set(s,'{votes}',votes||jsonb_build_array(ballot));
+ elsif kind='back' then
+  if phase='questions' then s:=jsonb_set(s,'{phase}','"presenting"'::jsonb);
+  elsif phase='voting' then s:=jsonb_set(s,'{phase}','"questions"'::jsonb);
+  elsif phase='results' then s:=s||'{"phase":"waiting","revealed":0}'::jsonb;
+  elsif phase='waiting' then
+   select v into r from jsonb_array_elements(s->'rounds') with ordinality t(v,ord) where not coalesce((v->>'cancelled')::boolean,false) order by ord desc limit 1;
+   if r is null or not coalesce((r->>'closed')::boolean,false) then raise exception 'Non c''è niente da riaprire.'; end if;
+   rid:=r->>'id';
+   select jsonb_agg(case when v->>'id'=rid then v||'{"closed":false}'::jsonb else v end order by ord) into rounds from jsonb_array_elements(s->'rounds') with ordinality t(v,ord);
+   s:=s||jsonb_build_object('rounds',rounds,'activeRoundId',rid,'phase','voting');
+  else raise exception 'Per tornare indietro dalla presentazione, annulla il turno.';
+  end if;
  elsif kind='reveal' then
   if phase<>'waiting' or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
   s:=s||'{"phase":"results","revealed":1}'::jsonb;

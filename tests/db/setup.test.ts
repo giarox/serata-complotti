@@ -353,6 +353,26 @@ describe('self-registration and own dossier', () => {
     expect((await people(gm)).find((p) => p.id === id)!.title).toBe('Corretto dal GM');
   });
 
+  it('lets the GM step back and reopen the last vote', async () => {
+    const anna = await user();
+    const { participantId: id } = await registerAs(anna, '', 'Anna Rossi');
+    await act(anna, {
+      type: 'participant',
+      participant: { id, name: 'Anna Rossi', role: 'R', title: '', deckUrl: '', mode: 'paper', spectator: false },
+    });
+    await act(gm, { type: 'start', participantId: id });
+    const roundId = (await snap(gm)).activeRoundId!;
+    await act(gm, { type: 'phase', phase: 'questions', roundId });
+    await act(gm, { type: 'back' });
+    expect((await snap(gm)).phase).toBe('presenting');
+    await act(gm, { type: 'phase', phase: 'questions', roundId });
+    await act(gm, { type: 'phase', phase: 'voting', roundId });
+    await act(gm, { type: 'phase', phase: 'waiting', roundId });
+    await act(gm, { type: 'back' });
+    expect(await snap(gm)).toMatchObject({ phase: 'voting', activeRoundId: roundId });
+    await expect(act(anna, { type: 'back' })).rejects.toThrow('Solo la regia');
+  });
+
   it('keeps admission in the GM’s hands', async () => {
     const anna = await user();
     const { participantId: id } = await registerAs(anna, '', 'Anna Rossi');

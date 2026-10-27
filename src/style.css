@@ -5147,3 +5147,20 @@ label,
   color: var(--ink-soft);
   text-align: center;
 }
+.secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin-top: 10px;
+}
+.secondary-actions .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.verdict-done {
+  width: 100%;
+  margin: 0 0 6px !important;
+  font: 17px/1.5 var(--type) !important;
+  color: var(--brass-hi);
+}

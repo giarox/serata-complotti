@@ -178,6 +178,22 @@ function App() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   const completed = s.rounds.filter((r) => r.closed && !r.cancelled).length;
+  const left = s.participants.filter(
+    (p) => !p.spectator && !s.rounds.some((r) => r.presenterId === p.id && !r.cancelled),
+  );
+  const allDone = s.phase === 'waiting' && completed > 0 && left.length === 0;
+  const lastRound = [...s.rounds].reverse().find((r) => !r.cancelled);
+  const lastPresenter = lastRound ? s.participants.find((p) => p.id === lastRound.presenterId) : undefined;
+  const backLabel =
+    s.phase === 'questions'
+      ? 'Torna alla presentazione'
+      : s.phase === 'voting'
+        ? 'Torna al question time'
+        : s.phase === 'results'
+          ? 'Esci dal reveal'
+          : s.phase === 'waiting' && lastRound?.closed
+            ? `Riapri il voto${lastPresenter ? ' per ' + displayName(lastPresenter) : ''}`
+            : '';
   const me = s.participants.find((p) => p.id === actor.participantId);
   return (
     <div className={screen ? 'app screen-mode' : 'app'}>
@@ -257,9 +273,14 @@ function App() {
                 <LogOut size={18} />
               </button>
             ) : (
-              <span className="avatar" title={me ? 'Regia · ' + me.name : 'Solo regia'}>
-                {me ? me.name.slice(0, 2).toUpperCase() : 'GM'}
-              </span>
+              <>
+                <span className="avatar" title={me ? 'Regia · ' + me.name : 'Solo regia'}>
+                  {me ? me.name.slice(0, 2).toUpperCase() : 'GM'}
+                </span>
+                <button className="icon-button" aria-label="Esci dalla regia" onClick={() => void logout()}>
+                  <LogOut size={18} />
+                </button>
+              </>
             )}
           </div>
         </header>
@@ -360,7 +381,7 @@ function App() {
                           {(s.participants.length + s.participants.filter((p) => p.plusOne).length)
                             .toString()
                             .padStart(2, '0')}{' '}
-                          <small>persone ({s.participants.filter((p) => p.plusOne).length} collaboratori)</small>
+                          <small>persone ({s.participants.filter((p) => p.plusOne).length} accompagnatori)</small>
                         </strong>
                       </span>
                     </div>
@@ -401,7 +422,9 @@ function App() {
                             ? person.role || displayName(person)
                             : s.phase === 'results'
                               ? 'Ci sono delle conclusioni.'
-                              : 'La parola al prossimo sospettato.'}
+                              : allDone
+                                ? 'Tutti hanno parlato.'
+                                : 'La parola al prossimo sospettato.'}
                         </h2>
                         <p>
                           {person ? (
@@ -410,7 +433,11 @@ function App() {
                               {person.role ? ` · ${person.role}` : ''}
                             </>
                           ) : s.phase === 'results' ? (
-                            'Il congresso ha parlato. Svela una categoria alla volta.'
+                            'Il congresso ha parlato. Svela una categoria alla volta dal Verdetto.'
+                          ) : allDone ? (
+                            'Le presentazioni sono finite. Passa al verdetto e svela i premi una categoria alla volta.'
+                          ) : completed > 0 ? (
+                            `Scegli il prossimo ricercatore (ne mancano ${left.length}), oppure chiudi i turni e passa al verdetto.`
                           ) : (
                             'Scegli chi vuole presentare. L’ordine lo decide la serata.'
                           )}
@@ -444,11 +471,17 @@ function App() {
                               <span className="vote-tally">{countVotes(s)} voti ricevuti</span>
                             </>
                           )}
-                          {s.phase === 'waiting' && (
+                          {s.phase === 'waiting' && !allDone && (
                             <a className="button" href="#relatori">
                               Scegli un ricercatore
                               <ArrowRight size={18} />
                             </a>
+                          )}
+                          {s.phase === 'waiting' && completed > 0 && (
+                            <Button secondary={!allDone} onClick={() => setTab('premi')}>
+                              Vai al verdetto
+                              <Trophy size={18} />
+                            </Button>
                           )}
                           {s.phase === 'results' && (
                             <Button onClick={() => setTab('premi')}>
@@ -457,15 +490,26 @@ function App() {
                             </Button>
                           )}
                         </div>
-                        {round && (
-                          <button
-                            className="text-button"
-                            disabled={busy}
-                            onClick={() => setConfirm({ type: 'cancel', roundId: round.id })}
-                          >
-                            Annulla questo turno
-                          </button>
-                        )}
+                        <div className="secondary-actions">
+                          {backLabel && (
+                            <button
+                              className="text-button"
+                              disabled={busy || !connected}
+                              onClick={() => void perform({ type: 'back' })}
+                            >
+                              <ArrowLeft size={15} /> {backLabel}
+                            </button>
+                          )}
+                          {round && (
+                            <button
+                              className="text-button"
+                              disabled={busy}
+                              onClick={() => setConfirm({ type: 'cancel', roundId: round.id })}
+                            >
+                              Annulla questo turno
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="dossier-art" aria-hidden="true">
                         <div className="art-paper">
@@ -595,6 +639,15 @@ function App() {
                       <Button disabled={busy} onClick={() => void perform({ type: 'nextAward' })}>
                         Svela la prossima categoria
                         <ArrowRight size={18} />
+                      </Button>
+                    )}
+                    {s.phase === 'results' && s.revealed >= 4 && (
+                      <p className="verdict-done">Tutte le categorie sono state svelate. La serata è conclusa.</p>
+                    )}
+                    {s.phase === 'results' && (
+                      <Button secondary disabled={busy} onClick={() => void perform({ type: 'back' })}>
+                        <ArrowLeft size={17} />
+                        Esci dal reveal
                       </Button>
                     )}
                     {s.phase === 'results' && (
