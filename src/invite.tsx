@@ -101,8 +101,8 @@ function Booking({
     [busy, setBusy] = useState(false);
   function problem(): string | null {
     if (draft.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.';
-    if (!draft.mode) return 'Scegli come presenti: con le slide o alla vecchia maniera.';
-    if (!draft.role.trim()) return 'Manca il tuo titolo da ricercatore. Nessuna idea? Tocca “Idea”.';
+    if (!draft.mode) return 'Scegli la modalità di presentazione: con o senza tecnologia.';
+    if (!draft.role.trim()) return 'Manca la qualifica. Nessuna idea? Tocca “Genera qualifica”.';
     return dossierProblem(draft);
   }
   async function book() {
@@ -149,9 +149,11 @@ function Booking({
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Richiesta di ammissione</h2>
-        <p className="booking-lede">Prima arrivi, più possibilità hai. La regia valuta ogni richiesta.</p>
+        <p className="booking-lede">
+          Le richieste vengono protocollate in ordine di arrivo. Si dice in giro che conti.
+        </p>
         <div className="form-line">
-          <label htmlFor="f-name">Il tuo nome</label>
+          <label htmlFor="f-name">Nome del relatore</label>
           <input
             id="f-name"
             autoComplete="given-name"

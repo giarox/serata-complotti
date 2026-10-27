@@ -114,14 +114,14 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('nome');
-  await page.getByLabel('Il tuo nome').fill('Giulia');
+  await page.getByLabel('Nome del relatore').fill('Giulia');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
-  await expect(page.getByRole('alert')).toContainText('Scegli come presenti');
-  await page.getByRole('radio', { name: /Con le slide/ }).click();
+  await expect(page.getByRole('alert')).toContainText('modalità di presentazione');
+  await page.getByRole('radio', { name: /Con tecnologia/ }).click();
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
-  await expect(page.getByRole('alert')).toContainText('titolo');
-  await page.getByLabel(/Titolo da ricercatore/).fill('Esperta di scie sospette');
-  await page.getByRole('checkbox', { name: /Porto un collaboratore/ }).click();
+  await expect(page.getByRole('alert')).toContainText('qualifica');
+  await page.getByLabel(/Qualifica/).fill('Esperta di scie sospette');
+  await page.getByRole('radio', { name: /Porto un testimone/ }).click();
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
@@ -133,7 +133,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.locator('.pass-name', { hasText: 'Giulia' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
-  await expect(page.getByLabel(/Titolo da ricercatore/)).toHaveValue('Esperta di scie sospette');
+  await expect(page.getByLabel(/Qualifica/)).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
@@ -171,10 +171,10 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   // Another researcher from the plain link: no password, no audience option.
   const other = await context.newPage();
   await other.goto('/');
-  await other.getByLabel('Il tuo nome').fill('Ugo');
+  await other.getByLabel('Nome del relatore').fill('Ugo');
   await expect(other.getByRole('radio', { name: /Solo pubblico/ })).toHaveCount(0);
-  await other.getByRole('radio', { name: /Alla vecchia maniera/ }).click();
-  await other.getByLabel(/Titolo da ricercatore/).fill('Investigatore da gruppo Telegram');
+  await other.getByRole('radio', { name: /Senza tecnologia/ }).click();
+  await other.getByLabel(/Qualifica/).fill('Investigatore da gruppo Telegram');
   await other.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(other.locator('.welcome-lede')).toContainText('regia');
   await expect(other.locator('.roster')).toContainText('Ugo');

@@ -1,3 +1,6 @@
+/** The +1: comes along (witness) or presents together (co-speaker). */
+export type Partner = 'witness' | 'copresenter';
+export const cleanPartner = (v: unknown): Partner | null => (v === 'witness' || v === 'copresenter' ? v : null);
 /** A request to join: pending until the GM admits it or puts it in reserve. */
 export type Admission = 'pending' | 'admitted' | 'reserve';
 export const admissions: Admission[] = ['pending', 'admitted', 'reserve'];
@@ -17,6 +20,9 @@ export type Participant = {
   spectator: boolean;
   /** Brings one collaborator (+1, never more). null = not said yet. */
   plusOne?: boolean | null;
+  /** Who the +1 is: a witness who just comes, or a co-speaker who presents too. */
+  partner?: Partner | null;
+  partnerName?: string;
   /** Seats are limited: the GM decides. Missing = pending. */
   admission?: Admission;
   /** Only in a guest's view of someone else: details hidden, just whether the dossier is complete. */
@@ -110,15 +116,15 @@ export const phaseNames: Record<Phase, string> = {
 export const modes: { key: Mode; label: string; short: string; hint: string }[] = [
   {
     key: 'slides',
-    label: 'Con le slide',
+    label: 'Con tecnologia',
     short: 'Slide',
-    hint: 'Google Slides',
+    hint: 'Slide proiettate. Rischio intercettazione: alto.',
   },
   {
     key: 'paper',
-    label: 'Alla vecchia maniera',
+    label: 'Senza tecnologia',
     short: 'Dal vivo',
-    hint: 'Fogli, oggetti, voce',
+    hint: 'Carta, oggetti, voce. Non tracciabile.',
   },
   {
     key: 'none',
@@ -163,11 +169,14 @@ function normalizeParticipant(p: Participant): Participant {
     mode,
     spectator: mode === 'none',
     plusOne: typeof p.plusOne === 'boolean' ? p.plusOne : null,
+    partner: cleanPartner(p.partner) ?? (p.plusOne ? 'witness' : null),
+    partnerName: p.partnerName ?? '',
     admission: admissions.includes(p.admission as Admission) ? p.admission : 'pending',
   };
 }
 /** How a person is shown everywhere. */
-export const displayName = (p: Participant) => p.name;
+export const displayName = (p: Participant) =>
+  p.partner === 'copresenter' && p.partnerName ? `${p.name} & ${p.partnerName}` : p.name;
 /** Someone who started presenting (or everyone, once the reveal starts) has no more secrets. */
 export const unmasked = (s: State, id: string) =>
   s.phase === 'results' || s.rounds.some((r) => r.presenterId === id && !r.cancelled);
@@ -385,6 +394,8 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       mode: null,
       spectator: false,
       plusOne: null,
+      partner: null,
+      partnerName: '',
       admission: 'pending',
     });
   } else if (action.type === 'participant') {
@@ -413,7 +424,9 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       deckUrl: p.mode === 'slides' ? p.deckUrl.trim() : '',
       mode: p.mode,
       spectator: p.mode === 'none',
-      plusOne: p.plusOne ?? null,
+      plusOne: cleanPartner(p.partner) ? true : (p.plusOne ?? null),
+      partner: cleanPartner(p.partner),
+      partnerName: cleanPartner(p.partner) ? cleanName(p.partnerName ?? '').slice(0, 40) : '',
       // Only the GM decides who is in; guests keep whatever was decided.
       admission:
         actor.role === 'gm' && admissions.includes(p.admission as Admission)
@@ -441,6 +454,8 @@ function maskFor(s: State, actor: Actor, p: Participant): Participant {
     mode: p.mode,
     spectator: p.spectator,
     plusOne: p.plusOne ?? null,
+    partner: p.partner ?? null,
+    partnerName: p.partnerName ?? '',
     admission: p.admission ?? 'pending',
     masked: true,
     ready: dossierGaps(p).length === 0,

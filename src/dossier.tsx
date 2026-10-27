@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Copy, Dices, MessageCircle } from 'lucide-react';
 import {
+  displayName,
   dossierGaps,
   editBlocker,
   modes,
@@ -9,6 +10,7 @@ import {
   type Admission,
   type Actor,
   type Participant,
+  type Partner,
   type State,
 } from './domain';
 import { DEADLINE_LABEL, DOSSIER_DEADLINE, EVENT_DAY } from './event';
@@ -33,8 +35,8 @@ export const roleIdeas = [
 ];
 /** Missing pieces, said like a person would. */
 const gapWords: Record<string, string> = {
-  'titolo da congresso': 'il tuo titolo',
-  'come presenti': 'come partecipi',
+  'titolo da congresso': 'la qualifica',
+  'come presenti': 'la modalità di presentazione',
   'link delle slide': 'il link delle slide',
 };
 const andList = (xs: string[]) =>
@@ -52,10 +54,13 @@ export const emptyDossier = (): Participant => ({
   mode: null,
   spectator: false,
   plusOne: null,
+  partner: null,
+  partnerName: '',
 });
 /** Client-side check before saving; the server repeats it. */
 export function dossierProblem(d: Participant): string | null {
-  if (d.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già.';
+  if (d.name.trim().length < 2) return 'Scrivi il nome del relatore.';
+  if (d.partner === 'copresenter' && (d.partnerName ?? '').trim().length < 2) return 'Scrivi il nome del co-relatore.';
   if (d.mode === 'slides' && d.deckUrl.trim() && !slidesUrlPattern.test(d.deckUrl.trim()))
     return 'Quello non sembra un link di Google Slides: deve iniziare con https://docs.google.com/presentation/';
   return null;
@@ -119,32 +124,24 @@ export function DossierFields({
   withAudience?: boolean;
 }) {
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
+  const partner = value.partner ?? null;
+  const setPartner = (v: Partner | null) => set({ partner: v, plusOne: v !== null });
   return (
     <>
       <div className="form-line">
         <label htmlFor="f-role">
-          Titolo da ricercatore <span className="label-aside">(certificato seriamente, eh)</span>
+          Qualifica <span className="label-aside">(non verificabile)</span>
         </label>
-        <div className="line-with-action">
-          <input
-            id="f-role"
-            maxLength={80}
-            placeholder="Es. Ricercatore della seconda pagina di Google"
-            value={value.role}
-            onChange={(e) => set({ role: e.target.value })}
-          />
-          <button
-            type="button"
-            className="line-action"
-            aria-label="Dammi un’idea"
-            onClick={() => set({ role: pick(roleIdeas, value.role) })}
-          >
-            <Dices size={18} /> Idea
+        <input id="f-role" maxLength={80} value={value.role} onChange={(e) => set({ role: e.target.value })} />
+        <div className="examples-row">
+          <p className="examples">Es. «Investigatrice da gruppo Telegram»</p>
+          <button type="button" className="line-action" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
+            <Dices size={16} /> Genera qualifica
           </button>
         </div>
       </div>
-      <div className="form-line" role="radiogroup" aria-label="Come presenti" id="f-mode">
-        <span className="label">Come presenti</span>
+      <div className="form-line" role="radiogroup" aria-label="Modalità di presentazione" id="f-mode">
+        <span className="label">Modalità di presentazione</span>
         <div className="ticks">
           {modes
             .filter((m) => m.key !== 'none')
@@ -186,21 +183,48 @@ export function DossierFields({
           </p>
         </div>
       )}
-      <div className="form-line" id="f-plus">
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={!!value.plusOne}
-          className={'tick plus-one ' + (value.plusOne ? 'chosen' : '')}
-          onClick={() => set({ plusOne: !value.plusOne })}
-        >
-          <i aria-hidden="true" />
-          <span>
-            <strong>Porto un collaboratore</strong>
-            <small>Una persona in più, non di più.</small>
-          </span>
-        </button>
-      </div>
+      <fieldset className="form-section" id="f-plus">
+        <legend>Accompagnatore</legend>
+        <p className="section-note">L’invito vale per te più una persona al massimo.</p>
+        <div className="ticks stacked" role="radiogroup" aria-label="Accompagnatore">
+          {(
+            [
+              [null, 'Vengo da solo', 'Nessun accompagnatore.'],
+              ['witness', 'Porto un testimone', 'Viene con te ma non presenta. Osserva, annuisce, conferma.'],
+              ['copresenter', 'Presento con un co-relatore', 'Sale sul palco con te: la teoria è di entrambi.'],
+            ] as const
+          ).map(([v, label, hint]) => (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={partner === v}
+              key={label}
+              className={'tick ' + (partner === v ? 'chosen' : '')}
+              onClick={() => setPartner(v)}
+            >
+              <i aria-hidden="true" />
+              <span>
+                <strong>{label}</strong>
+                <small>{hint}</small>
+              </span>
+            </button>
+          ))}
+        </div>
+        {partner && (
+          <div className="form-line">
+            <label htmlFor="f-partner">
+              {partner === 'copresenter' ? 'Nome del co-relatore' : 'Nome del testimone'}
+              {partner === 'witness' && <span className="label-aside"> (facoltativo)</span>}
+            </label>
+            <input
+              id="f-partner"
+              maxLength={40}
+              value={value.partnerName ?? ''}
+              onChange={(e) => set({ partnerName: e.target.value })}
+            />
+          </div>
+        )}
+      </fieldset>
     </>
   );
 }
@@ -333,7 +357,7 @@ export function DossierHome({
             <strong className="pass-name">{me.name}</strong>
             <span className="pass-role">{me.role ? `«${me.role}»` : 'Titolo ancora da scegliere'}</span>
             <span className="pass-meta">
-              {modeLabel} · collaboratore: {me.plusOne ? 'sì (+1)' : 'no'}
+              {modeLabel} · {partnerText(me)}
             </span>
           </div>
           {adm === 'admitted' ? (
@@ -371,10 +395,10 @@ export function DossierHome({
         <div className="edit-chips">
           {(
             [
-              ['f-role', 'Titolo'],
-              ['f-mode', 'Come presenti'],
+              ['f-role', 'Qualifica'],
+              ['f-mode', 'Modalità'],
               ['f-deck', 'Link slide'],
-              ['f-plus', 'Collaboratore'],
+              ['f-plus', 'Accompagnatore'],
             ] as const
           )
             .filter(([field]) => field !== 'f-deck' || me.mode === 'slides')
@@ -417,6 +441,14 @@ const statusLabel: Record<Status, string> = {
   audience: 'Pubblico',
 };
 const order: Record<Status, number> = { ready: 0, booked: 1, audience: 2 };
+
+/** “con il co-relatore Camilla”, “testimone: sì”… for the pass. */
+const partnerText = (p: Participant) =>
+  p.partner === 'copresenter'
+    ? `co-relatore: ${p.partnerName || 'da indicare'}`
+    : p.partner === 'witness'
+      ? `testimone: ${p.partnerName || 'sì'}`
+      : 'senza accompagnatore';
 
 const modeTag: Record<string, string> = { slides: 'Slide', paper: 'Dal vivo', none: 'Pubblico' };
 export const admissionLabel: Record<Admission, string> = {
@@ -471,13 +503,14 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
                     </span>
                     <div className="roster-info">
                       <strong>
-                        {p.name}
+                        {displayName(p)}
                         {mine && <small> (tu)</small>}
                       </strong>
                       <span>{mine ? `«${p.role || 'titolo da scegliere'}»` : '«Titolo top secret»'}</span>
                       <span className="roster-tags">
                         {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
-                        {p.plusOne && <em className="mode-tag">+1</em>}
+                        {p.partner === 'copresenter' && <em className="mode-tag">In coppia</em>}
+                        {p.partner === 'witness' && <em className="mode-tag">+1 testimone</em>}
                         <em className={'registry-status ' + st}>
                           {st === 'audience' ? 'Pubblico' : `Fascicolo ${statusLabel[st].toLowerCase()}`}
                         </em>

@@ -4691,3 +4691,112 @@ h1,
   --sans: 'Geist', system-ui, sans-serif;
   --mono: 'Geist Mono', ui-monospace, monospace;
 }
+
+/* ===================================================================
+   Sign-up refinements (27 Oct, 21:30)
+   =================================================================== */
+/* The evening's logo: small, deliberate, with room to breathe */
+.invite .entry-brand {
+  gap: 10px;
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.invite .entry-brand svg {
+  width: 30px;
+  height: auto;
+}
+.invite .invite-layout {
+  margin-top: clamp(64px, 14vh, 120px);
+}
+.invite .invite-intro {
+  margin-bottom: clamp(44px, 8vh, 72px);
+}
+.invite-lede strong {
+  margin-bottom: 18px;
+}
+/* Labels: bolder, like a conference slot request */
+label,
+.field-mode .label,
+.form-line > .label {
+  font-weight: 600 !important;
+  color: var(--ink);
+}
+.label-aside {
+  font-weight: 400;
+}
+/* Examples + generator under the qualification field */
+.examples-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.examples {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: 13px/1.45 var(--sans) !important;
+  color: var(--ink-soft);
+}
+.examples-row .line-action {
+  min-height: 40px;
+  white-space: nowrap;
+  font-size: 12px !important;
+  letter-spacing: 0.1em !important;
+}
+/* The +1 is a section of its own */
+.form-section {
+  margin: 26px 0 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 2px solid #6f5d3e;
+}
+.form-section legend {
+  padding: 0 10px 0 0;
+  font: 600 13px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink);
+}
+.section-note {
+  margin: 0 0 10px;
+  font: 14px/1.45 var(--sans) !important;
+  color: var(--ink-soft);
+}
+.ticks.stacked {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.ticks.stacked .tick span {
+  display: block;
+}
+/* Phone: the stamp opens the letter, top left */
+@media (max-width: 650px) {
+  .booking > .stamp {
+    margin: 4px auto 18px 2px;
+  }
+}
+/* The regia door: far below, quiet */
+.invite .entry-footer {
+  margin-top: 120px;
+  padding-bottom: 20px;
+}
+.invite .gm-door {
+  min-height: 40px !important;
+  border-color: transparent !important;
+  opacity: 0.45;
+  font-size: 11px !important;
+}
+.invite .gm-door:hover,
+.invite .gm-door:focus-visible {
+  opacity: 1;
+}
+.examples-row {
+  align-items: center;
+}
+.examples-row .line-action {
+  padding: 0 10px;
+}

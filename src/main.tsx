@@ -59,6 +59,7 @@ import '@fontsource/geist/400.css';
 import '@fontsource/geist/600.css';
 import '@fontsource/geist-mono/400.css';
 import '@fontsource/geist-mono/500.css';
+import '@fontsource/geist-mono/600.css';
 import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
@@ -739,7 +740,8 @@ function People({
                   {p.mode && p.mode !== 'none' && (
                     <em className="mode-tag">{modes.find((m) => m.key === p.mode)?.short}</em>
                   )}
-                  {p.plusOne && <em className="mode-tag">+1</em>}
+                  {p.partner === 'copresenter' && <em className="mode-tag">In coppia con {p.partnerName || '?'}</em>}
+                  {p.partner === 'witness' && <em className="mode-tag">+1 testimone</em>}
                   {dossierGaps(p).length > 0 && <em className="mode-tag todo">Fascicolo incompleto</em>}
                 </span>
                 {onAdmit && (
@@ -1305,16 +1307,25 @@ function Editor({
           </label>
         )}
         <label>
-          Collaboratore (+1)
+          Accompagnatore
           <select
-            value={p.plusOne == null ? '' : p.plusOne ? 'si' : 'no'}
-            onChange={(e) => setP({ ...p, plusOne: e.target.value === '' ? null : e.target.value === 'si' })}
+            value={p.partner ?? ''}
+            onChange={(e) => {
+              const partner = (e.target.value || null) as Participant['partner'];
+              setP({ ...p, partner, plusOne: partner !== null });
+            }}
           >
-            <option value="">Non ancora detto</option>
-            <option value="si">Sì, porta un collaboratore</option>
-            <option value="no">No, viene da solo</option>
+            <option value="">Viene da solo</option>
+            <option value="witness">Porta un testimone</option>
+            <option value="copresenter">Presenta con un co-relatore</option>
           </select>
         </label>
+        {p.partner && (
+          <label>
+            {p.partner === 'copresenter' ? 'Nome del co-relatore' : 'Nome del testimone'}
+            <input value={p.partnerName ?? ''} onChange={(e) => setP({ ...p, partnerName: e.target.value })} />
+          </label>
+        )}
         <Button type="submit" disabled={busy}>
           Salva fascicolo
           <Check size={17} />
