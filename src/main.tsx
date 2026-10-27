@@ -64,7 +64,7 @@ import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { DossierHome } from './dossier';
-import { Overview, RequestsBoard, TestLab } from './regia';
+import { Overview, RequestsBoard, SlideRemote, TestLab } from './regia';
 const blank: Participant = {
   id: '',
   name: '',
@@ -461,6 +461,7 @@ function App() {
                             )}
                           </p>
                           <div className="primary-actions">
+                            {s.phase === 'presenting' && person?.mode === 'slides' && <SlideRemote actor={actor} />}
                             {s.phase === 'presenting' && (
                               <Button
                                 disabled={busy || !connected}
@@ -954,17 +955,7 @@ function Guest({
           </div>
         )}
         {r?.presenterId === actor.participantId && s.phase === 'presenting' && me?.mode !== 'paper' && (
-          <div className="slide-placeholder">
-            <Button secondary disabled>
-              <ArrowLeft size={18} />
-              Precedente
-            </Button>
-            <Button secondary disabled>
-              Successiva
-              <ArrowRight size={18} />
-            </Button>
-            <small>Telecomando Slides non ancora collegato</small>
-          </div>
+          <SlideRemote actor={actor} />
         )}
       </section>
       {s.phase === 'waiting' && <DossierHome s={s} actor={actor} busy={busy} perform={perform} compact />}
@@ -1243,17 +1234,7 @@ function GmOwnTurn({
     return (
       <section className="panel gm-own-turn">
         <p className="eyebrow">STAI PRESENTANDO TU, {displayName(me).toUpperCase()}</p>
-        <div className="slide-placeholder">
-          <Button secondary disabled>
-            <ArrowLeft size={18} />
-            Precedente
-          </Button>
-          <Button secondary disabled>
-            Successiva
-            <ArrowRight size={18} />
-          </Button>
-          <small>Telecomando Slides non ancora collegato</small>
-        </div>
+        <SlideRemote actor={actor} />
       </section>
     );
   return null;
@@ -1309,7 +1290,7 @@ function Projector({ s }: { s: State }) {
             <p className="projector-note">
               {p?.mode === 'paper'
                 ? 'Presentazione dal vivo. Guardate il ricercatore, non lo schermo: lo schermo vi guarda già.'
-                : 'Le slide si aprono separatamente in questa alpha.'}
+                : 'Le slide vanno in onda tra un attimo.'}
             </p>
           )}
           {s.phase === 'voting' && <span className="phase-badge">Vota dal tuo telefono</span>}

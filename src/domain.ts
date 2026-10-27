@@ -1,5 +1,6 @@
 /** The GM's test deck, given to fake testers who present with slides. */
-export const TEST_DECK = 'https://docs.google.com/presentation/d/1wvHnevCRC5ULS4f80JO2EwpmQth2vts3zyAKK9SNJso/edit?usp=sharing';
+export const TEST_DECK =
+  'https://docs.google.com/presentation/d/1wvHnevCRC5ULS4f80JO2EwpmQth2vts3zyAKK9SNJso/edit?usp=sharing';
 /** The +1: comes along (witness) or presents together (co-speaker). */
 export type Partner = 'witness' | 'copresenter';
 export const cleanPartner = (v: unknown): Partner | null => (v === 'witness' || v === 'copresenter' ? v : null);
@@ -75,6 +76,8 @@ export type Action =
   /** Test evening only: fake testers who vote on command. */
   | { type: 'addBots'; n: number }
   | { type: 'botVotes' }
+  /** The presenter (or the GM) moves the slides; the helper on the projector Mac presses the arrow. */
+  | { type: 'slide'; dir: 'next' | 'prev' }
   /** GM: start the evening over. everyone=false keeps the requests; true empties the register too. */
   | { type: 'reset'; everyone: boolean }
   | { type: 'nextAward' }
@@ -313,6 +316,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
   const guestAllowed =
     action.type === 'vote' ||
     action.type === 'register' ||
+    action.type === 'slide' ||
     (action.type === 'participant' && action.participant.id === actor.participantId);
   if (!guestAllowed && actor.role !== 'gm') throw new Error('Solo la regia può fare questa operazione.');
   if (action.type === 'start') {
@@ -357,6 +361,12 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     const i = s.votes.findIndex((v) => v.roundId === vote.roundId && v.voterId === vote.voterId);
     if (i >= 0) s.votes[i] = vote;
     else s.votes.push(vote);
+  } else if (action.type === 'slide') {
+    const round = activeRound(s);
+    if (s.phase !== 'presenting' || !round) throw new Error('Le slide si cambiano solo durante la presentazione.');
+    if (actor.role !== 'gm' && actor.participantId !== round.presenterId)
+      throw new Error('Solo chi presenta può cambiare slide.');
+    // In the browser demo there is no helper: nothing else to do.
   } else if (action.type === 'addBots') {
     const names = [
       'Rettiliano',

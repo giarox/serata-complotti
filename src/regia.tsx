@@ -249,3 +249,44 @@ export function TestLab({
     </section>
   );
 }
+
+/** Phone remote for the slides: big Next, smaller Back. The helper on the projector Mac does the rest. */
+export function SlideRemote({ actor }: { actor: import('./domain').Actor }) {
+  const [error, setError] = useState(''),
+    [last, setLast] = useState<'next' | 'prev' | null>(null);
+  async function send(dir: 'next' | 'prev') {
+    setError('');
+    setLast(dir);
+    try {
+      await api.action(actor, { type: 'slide', dir });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      window.setTimeout(() => setLast(null), 250);
+    }
+  }
+  return (
+    <div className="slide-remote">
+      <button
+        type="button"
+        className={'remote-btn prev' + (last === 'prev' ? ' hit' : '')}
+        onClick={() => void send('prev')}
+      >
+        ← Indietro
+      </button>
+      <button
+        type="button"
+        className={'remote-btn next' + (last === 'next' ? ' hit' : '')}
+        onClick={() => void send('next')}
+      >
+        Avanti →
+      </button>
+      <small>Le slide cambiano sul proiettore. Un tocco = un passo, animazioni comprese.</small>
+      {error && (
+        <p role="alert" className="field-error">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}

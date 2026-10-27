@@ -23,7 +23,10 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await page.getByRole('button', { name: 'Inizia con ' + name }).click();
     if (name === 'Paolo') {
       await expect(speaker.getByRole('heading', { name: 'La parola è tua. Svegliali.' })).toBeVisible();
-      await expect(speaker.getByRole('button', { name: 'Successiva' })).toBeDisabled();
+      // The presenter's phone is the remote: taps go through without errors.
+      await speaker.getByRole('button', { name: 'Avanti →' }).click();
+      await speaker.getByRole('button', { name: '← Indietro' }).click();
+      await expect(speaker.locator('.slide-remote [role=alert]')).toHaveCount(0);
     }
     await page.getByRole('button', { name: 'Passa al question time' }).click();
     await expect(voter.getByRole('heading', { name: 'Fatti delle domande.' })).toBeVisible();

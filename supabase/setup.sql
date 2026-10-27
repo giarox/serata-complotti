@@ -33,6 +33,25 @@ alter table public.party_store drop constraint if exists party_store_id_check;
 alter table public.party_signal drop constraint if exists party_signal_id_check;
 insert into public.party_signal(id) values(false) on conflict do nothing;
 alter table public.party_members add column if not exists sandbox boolean not null default false;
+-- Slide commands for the helper on the projector Mac. One row per evening; only that evening's GM can read it.
+create table if not exists public.party_slide(
+ id boolean primary key,
+ seq bigint not null default 0,
+ log jsonb not null default '[]'::jsonb,
+ updated_at timestamptz not null default now()
+);
+alter table public.party_slide enable row level security;
+revoke all on public.party_slide from anon, authenticated;
+grant select on public.party_slide to authenticated;
+drop policy if exists "The evening's GM reads slide commands" on public.party_slide;
+create or replace function public.party_is_gm_of(ev boolean) returns boolean language sql stable security definer set search_path=public,pg_temp as $$
+ select exists(select 1 from public.party_members m where m.user_id=auth.uid() and m.role='gm' and m.sandbox = not ev);
+$$;
+revoke all on function public.party_is_gm_of(boolean) from public, anon;
+grant execute on function public.party_is_gm_of(boolean) to authenticated;
+create policy "The evening's GM reads slide commands" on public.party_slide for select to authenticated
+ using (public.party_is_gm_of(id));
+insert into public.party_slide(id) values(true),(false) on conflict do nothing;
 
 -- Dossier complete? Same rule as dossierGaps() in the app.
 create or replace function public.party_ready(p jsonb) returns boolean language sql immutable as $$
@@ -61,6 +80,16 @@ begin
   from public.party_store where id=true
  on conflict (id) do update set gm_hash=excluded.gm_hash;
  insert into public.party_signal(id) values(false) on conflict do nothing;
+end; $$;
+-- Queue one command for the helper (keeps the last 20 so quick taps are not lost).
+create or replace function public.party_slide_push(ev boolean, cmd text, deck text default '') returns void language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ insert into public.party_slide(id) values(ev) on conflict do nothing;
+ update public.party_slide set
+  log = coalesce((select jsonb_agg(e order by (e->>'seq')::bigint) from (select e from jsonb_array_elements(log) e order by (e->>'seq')::bigint desc limit 19) x), '[]'::jsonb)
+        || jsonb_build_array(jsonb_build_object('seq', seq+1, 'cmd', cmd, 'deck', coalesce(deck,''))),
+  seq = seq+1, updated_at = now()
+ where id=ev;
 end; $$;
 create or replace function public.party_actor() returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
  select jsonb_strip_nulls(jsonb_build_object('role',role,'participantId',person_id)) from public.party_members where user_id=auth.uid();
@@ -138,16 +167,25 @@ begin
  select state into s from public.party_store where id=ev for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
- if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset','addBots','botVotes') then raise exception 'Operazione non riconosciuta.'; end if;
- if kind not in ('vote','participant') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset','addBots','botVotes','slide') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind not in ('vote','participant','slide') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
+ if kind='slide' then
+  if phase<>'presenting' or r is null then raise exception 'Le slide si cambiano solo durante la presentazione.'; end if;
+  if actor->>'role'<>'gm' and actor->>'participantId' is distinct from r->>'presenterId' then raise exception 'Solo chi presenta può cambiare slide.'; end if;
+  if command->>'dir' is null or command->>'dir' not in ('next','prev') then raise exception 'Comando non valido.'; end if;
+  perform public.party_slide_push(ev, command->>'dir');
+  return;
+ end if;
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
   select v into p from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId';
   if p is null or (p->>'spectator')::boolean or exists(select 1 from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=p->>'id' and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Questo ricercatore non è disponibile.'; end if;
   rid:=gen_random_uuid()::text;
   s:=s||jsonb_build_object('phase','presenting','activeRoundId',rid,'rounds',(s->'rounds')||jsonb_build_array(jsonb_build_object('id',rid,'presenterId',p->>'id','closed',false)));
+  if p->>'mode'='slides' and coalesce(p->>'deckUrl','')<>'' then perform public.party_slide_push(ev, 'open', p->>'deckUrl'); end if;
  elsif kind in ('phase','cancel') then
   if r is null or command->>'roundId' is distinct from rid or (r->>'closed')::boolean then raise exception 'Il turno è cambiato.'; end if;
+  if phase='presenting' then perform public.party_slide_push(ev, 'close'); end if;
   if kind='cancel' then
    r:=r||'{"closed":true,"cancelled":true}'::jsonb;
    select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where v->>'roundId'<>rid;
@@ -203,7 +241,10 @@ begin
    into votes from jsonb_array_elements(s->'participants') b where coalesce((b->>'bot')::boolean,false) and b->>'id'<>r->>'presenterId';
   s:=jsonb_set(s,'{votes}',votes);
  elsif kind='back' then
-  if phase='questions' then s:=jsonb_set(s,'{phase}','"presenting"'::jsonb);
+  if phase='questions' then
+   s:=jsonb_set(s,'{phase}','"presenting"'::jsonb);
+   select v into p from jsonb_array_elements(s->'participants') v where v->>'id'=r->>'presenterId';
+   if p->>'mode'='slides' and coalesce(p->>'deckUrl','')<>'' then perform public.party_slide_push(ev, 'open', p->>'deckUrl'); end if;
   elsif phase='voting' then s:=jsonb_set(s,'{phase}','"questions"'::jsonb);
   elsif phase='results' then s:=s||'{"phase":"waiting","revealed":0}'::jsonb;
   elsif phase='waiting' then
@@ -314,7 +355,7 @@ begin
  return public.party_actor();
 end; $$;
 revoke all on function public.party_actor(),public.party_event(),public.party_ensure_sandbox(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean),public.party_ready(jsonb),public.party_mask(jsonb),public.party_check_name(text),public.party_norm(text) from public,anon;
-revoke all on function public.party_event(),public.party_ensure_sandbox() from authenticated;
+revoke all on function public.party_event(),public.party_ensure_sandbox(),public.party_slide_push(boolean,text,text) from public,anon,authenticated;
 grant execute on function public.party_actor(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean) to authenticated;
 -- Only a harmless revision number is broadcast; no scores, names or passwords.
 do $$ begin

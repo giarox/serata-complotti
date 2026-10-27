@@ -238,3 +238,18 @@ describe('fake testers', () => {
     expect(s.votes.filter((v) => v.roundId === rid)).toHaveLength(3);
   });
 });
+
+describe('slide remote', () => {
+  it('only the presenter or the GM, only while presenting', () => {
+    let s = register(register(initialState(), 'Ugo', 'ugo'), 'Bea', 'bea');
+    s = applyAction(s, gm, { type: 'participant', participant: { ...me(s, 'ugo'), role: 'R', mode: 'paper' } });
+    const ugo: Actor = { role: 'guest', participantId: 'ugo' };
+    expect(() => applyAction(s, ugo, { type: 'slide', dir: 'next' })).toThrow('presentazione');
+    s = applyAction(s, gm, { type: 'start', participantId: 'ugo' });
+    expect(() => applyAction(s, ugo, { type: 'slide', dir: 'next' })).not.toThrow();
+    expect(() => applyAction(s, gm, { type: 'slide', dir: 'prev' })).not.toThrow();
+    expect(() => applyAction(s, { role: 'guest', participantId: 'bea' }, { type: 'slide', dir: 'next' })).toThrow(
+      'Solo chi presenta',
+    );
+  });
+});

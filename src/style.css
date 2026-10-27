@@ -5770,3 +5770,58 @@ label,
 .sandbox-banner {
   position: relative;
 }
+
+/* Phone remote for the slides */
+.slide-remote {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+  margin-top: 18px;
+  width: 100%;
+}
+.remote-btn {
+  min-height: 96px;
+  border-radius: 6px;
+  border: 2px solid var(--brass);
+  background: transparent;
+  color: var(--bone);
+  font: 600 16px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.remote-btn.next {
+  background: var(--brass);
+  color: #1a150e;
+}
+.remote-btn.hit {
+  transform: scale(0.97);
+  filter: brightness(1.2);
+}
+.remote-btn:focus-visible {
+  outline: 3px solid var(--brass-hi);
+  outline-offset: 3px;
+}
+.slide-remote small {
+  grid-column: 1 / -1;
+  font: 13px/1.45 var(--sans);
+  color: var(--muted);
+  text-align: center;
+}
+.slide-remote .field-error {
+  grid-column: 1 / -1;
+}
+.live-panel .slide-remote .remote-btn {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.live-panel .slide-remote .remote-btn.next {
+  background: var(--ink);
+  color: var(--paper);
+}
+.live-panel .slide-remote small {
+  color: var(--ink-soft);
+}

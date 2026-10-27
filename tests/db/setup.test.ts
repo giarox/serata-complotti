@@ -406,6 +406,29 @@ describe('self-registration and own dossier', () => {
     await expect(act(gm, { type: 'addBots', n: 2 })).rejects.toThrow('solo nella serata di prova');
   });
 
+  it('queues slide commands from the presenter (or the GM) for the helper, readable only by the GM', async () => {
+    const anna = await user();
+    const { participantId: id } = await registerAs(anna, '', 'Anna Rossi');
+    const deck = 'https://docs.google.com/presentation/d/abcdefghijklmnop/edit';
+    await act(anna, {
+      type: 'participant',
+      participant: { id, name: 'Anna Rossi', role: 'R', title: '', deckUrl: deck, mode: 'slides', spectator: false },
+    });
+    await expect(act(anna, { type: 'slide', dir: 'next' })).rejects.toThrow('durante la presentazione');
+    await act(gm, { type: 'start', participantId: id });
+    await act(anna, { type: 'slide', dir: 'next' });
+    await act(gm, { type: 'slide', dir: 'prev' });
+    await expect(act(giulia, { type: 'slide', dir: 'next' })).rejects.toThrow('Solo chi presenta');
+    const roundId = (await snap(gm)).activeRoundId!;
+    await act(gm, { type: 'phase', phase: 'questions', roundId });
+    type Row = { seq: number; log: { cmd: string; deck: string }[] };
+    const row = (uid: string) => as<Row>(uid, 'select to_jsonb(t) as r from public.party_slide t where id = true');
+    const seen = await row(gm);
+    expect(seen.log.slice(-4).map((e) => e.cmd)).toEqual(['open', 'next', 'prev', 'close']);
+    expect(seen.log.slice(-4)[0].deck).toBe(deck);
+    expect(await row(anna)).toBeUndefined();
+  });
+
   it('keeps admission in the GM’s hands', async () => {
     const anna = await user();
     const { participantId: id } = await registerAs(anna, '', 'Anna Rossi');
