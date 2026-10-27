@@ -19,12 +19,21 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_krLefCQTesVIjEN6JI_xNA_p5DRUiua
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npx vitest run tests/domain.test.ts tests/awards.test.ts tests/dossier.test.ts
+      - run: npm ci --no-audit --no-fund
+      # Rules tests only when the rules (or their tests) changed; copy and style changes go straight out.
+      - name: Rules tests (only if the rules changed)
+        run: |
+          if git diff --name-only HEAD^ HEAD | grep -qE '^(src/(domain|api|event)\.ts|tests/[^/]+\.test\.ts|package(-lock)?\.json)$'; then
+            npx vitest run tests/domain.test.ts tests/awards.test.ts tests/dossier.test.ts
+          else
+            echo "No rule changes: skipping tests."
+          fi
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

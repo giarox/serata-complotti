@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:browser": "playwright test",
-    "make-init": "node supabase/make-init.mjs"
+    "make-init": "node supabase/make-init.mjs",
+    "check": "node scripts/check.mjs",
+    "check:full": "tsc -b --noEmit && vitest run && playwright test -c pw.local.config.ts"
   },
   "dependencies": {
     "@fontsource/antonio": "^5.3.0",
