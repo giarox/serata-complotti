@@ -167,7 +167,6 @@ function Booking({
         )}
         <Button type="submit" className="booking-cta" disabled={busy}>
           {busy ? 'Ti stiamo schedando…' : 'Blocca il mio posto'}
-          <ArrowRight size={18} />
         </Button>
         <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
           Ho già prenotato

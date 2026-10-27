@@ -3593,3 +3593,103 @@ input::placeholder {
   font-size: 15px !important;
   letter-spacing: 0;
 }
+
+/* ===================================================================
+   Typewritten dossier (27 Oct, evening). Two families only:
+   the typewriter is the voice of every word you read or type,
+   the tall condensed capitals are for headings and buttons.
+   No italics: a typewriter has none. One scale:
+     17px  labels, text, choices      18px  what you type
+     15px  hints, badges, footnotes   18px  buttons (caps)
+   =================================================================== */
+:root {
+  --serif: 'Special Elite', 'Courier New', monospace;
+}
+body,
+body * {
+  font-style: normal !important;
+}
+body {
+  font-family: var(--type);
+}
+p,
+li,
+.welcome-lede,
+.booking-lede,
+.invite-lede,
+.registry-sum,
+.checkbox {
+  font-family: var(--type);
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+label,
+.field-mode .label {
+  font: 17px/1.35 var(--type);
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.panel label,
+.sidebar label {
+  color: var(--bone);
+}
+input,
+select,
+.booking input,
+.entry-card input,
+.entry-card select,
+.modal input,
+.modal select {
+  font: 18px/1.3 var(--type);
+}
+input::placeholder {
+  opacity: 0.55;
+}
+.mode-chip strong {
+  font: 17px/1.3 var(--type);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+.mode-chip.chosen strong {
+  text-decoration-color: var(--stamp);
+  text-decoration-thickness: 2px;
+}
+.mode-chip span,
+.howto-inline,
+.field-hint,
+.footnote,
+.registry-status,
+.mode-tag,
+.person-info p,
+.person-info > span,
+.field-error {
+  font-family: var(--type) !important;
+  font-size: 15px !important;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.field-error {
+  font-weight: 400 !important;
+}
+.howto-inline strong,
+.welcome-lede strong {
+  font-weight: 400;
+  -webkit-text-stroke: 0.5px currentColor;
+}
+.welcome-todo {
+  font: 17px/1.5 var(--type);
+  -webkit-text-stroke: 0.4px currentColor;
+}
+.button,
+.choose-button,
+.booking-cta,
+.booking .button,
+.entry-card > .button {
+  font: 600 18px/1 var(--display) !important;
+}
+.booking > h2 + .booking-lede {
+  margin-top: 8px;
+}

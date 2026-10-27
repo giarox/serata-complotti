@@ -281,11 +281,6 @@ export function DossierHome({
             : 'Il tuo posto da ricercatore è bloccato.'}{' '}
           Puoi modificare il tuo seriosissimo titolo e il link alle slide fino alla <strong>{DEADLINE_LABEL}</strong>.
         </p>
-        {!audience && gaps.length > 0 && (
-          <p className="welcome-todo">
-            {gaps.length > 1 ? 'Mancano' : 'Manca'} ancora {andList(gaps.map((g) => gapWords[g] ?? g))}.
-          </p>
-        )}
         {!editing && (
           <Button secondary className="welcome-edit" onClick={() => setEditing(true)}>
             Modifica il mio fascicolo
@@ -319,10 +314,7 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
   return (
     <section className="panel registry" aria-labelledby="registry-title">
       <div className="panel-heading">
-        <div>
-          <p className="eyebrow">L’archivio del congresso</p>
-          <h2 id="registry-title">I ricercatori</h2>
-        </div>
+        <h2 id="registry-title">I ricercatori</h2>
       </div>
       <p className="registry-sum">
         {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}, {ready}{' '}
