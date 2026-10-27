@@ -101,9 +101,9 @@ function Booking({
     [busy, setBusy] = useState(false);
   function problem(): string | null {
     if (draft.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.';
-    if (!draft.mode) return 'Scegli come partecipi: con le slide, alla vecchia maniera o solo pubblico.';
-    if (draft.mode !== 'none' && !draft.role.trim())
-      return 'Manca il tuo seriosissimo titolo da ricercatore. Nessuna idea? Tira il dado.';
+    if (!draft.mode) return 'Scegli come presenti: con le slide o alla vecchia maniera.';
+    if (!draft.role.trim()) return 'Manca il tuo seriosissimo titolo da ricercatore. Nessuna idea? Tira il dado.';
+    if (draft.plusOne == null) return 'Dicci se porti un collaboratore: sì o no.';
     return dossierProblem(draft);
   }
   async function book() {

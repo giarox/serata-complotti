@@ -50,6 +50,7 @@ export const emptyDossier = (): Participant => ({
   deckUrl: '',
   mode: null,
   spectator: false,
+  plusOne: null,
 });
 /** Client-side check before saving; the server repeats it. */
 export function dossierProblem(d: Participant): string | null {
@@ -113,11 +114,11 @@ export function DossierFields({
 }: {
   value: Participant;
   onChange: (p: Participant) => void;
-  /** At booking: also offer “Solo pubblico”, and skip the title for the audience. */
+  /** At booking: slightly different wording (link can come later). */
   withAudience?: boolean;
 }) {
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
-  const askTitle = !(withAudience && value.mode === 'none');
+  const askTitle = true;
   return (
     <>
       {askTitle && (
@@ -136,11 +137,11 @@ export function DossierFields({
           </Button>
         </>
       )}
-      <div className="field-mode" role="radiogroup" aria-label={withAudience ? 'Come partecipi' : 'Come presenti'}>
-        <span className="label">{withAudience ? 'Come partecipi' : 'Come presenti'}</span>
-        <div className={'mode-chips' + (withAudience ? ' three' : '')}>
+      <div className="field-mode" role="radiogroup" aria-label="Come presenti">
+        <span className="label">Come presenti</span>
+        <div className="mode-chips">
           {modes
-            .filter((m) => withAudience || m.key !== 'none')
+            .filter((m) => m.key !== 'none')
             .map((m) => (
               <button
                 type="button"
@@ -177,6 +178,30 @@ export function DossierFields({
           </p>
         </div>
       )}
+      <div className="field-mode" role="radiogroup" aria-label="Porti un collaboratore?">
+        <span className="label">Porti un collaboratore?</span>
+        <p className="field-hint">L’invito vale per te più una persona, non di più.</p>
+        <div className="mode-chips">
+          {(
+            [
+              [true, 'Sì, porto un collaboratore', 'Una persona in più: partner, amico, parente.'],
+              [false, 'No, vengo da solo', 'Solo tu.'],
+            ] as const
+          ).map(([v, label, hint]) => (
+            <button
+              type="button"
+              role="radio"
+              aria-checked={value.plusOne === v}
+              key={label}
+              className={'mode-chip ' + (value.plusOne === v ? 'chosen' : '')}
+              onClick={() => set({ plusOne: v })}
+            >
+              <strong>{label}</strong>
+              <span>{hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </>
   );
 }
@@ -310,14 +335,16 @@ const modeTag: Record<string, string> = { slides: 'Slide', paper: 'Dal vivo', no
 export function Registry({ s, meId }: { s: State; meId?: string }) {
   const people = [...s.participants].sort((a, b) => order[statusOf(a)] - order[statusOf(b)]);
   const speakers = people.filter((p) => statusOf(p) !== 'audience'),
-    ready = speakers.filter((p) => statusOf(p) === 'ready').length;
+    ready = speakers.filter((p) => statusOf(p) === 'ready').length,
+    plusOnes = people.filter((p) => p.plusOne).length;
   return (
     <section className="panel registry" aria-labelledby="registry-title">
       <div className="panel-heading">
         <h2 id="registry-title">I ricercatori</h2>
       </div>
       <p className="registry-sum">
-        {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}, {ready}{' '}
+        {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}
+        {plusOnes > 0 && ` (+${plusOnes} ${plusOnes === 1 ? 'collaboratore' : 'collaboratori'})`}, {ready}{' '}
         {ready === 1 ? 'pronto' : 'pronti'}.{' '}
         {speakers.length > ready ? 'I ritardatari verranno segnalati alle autorità.' : 'Nessun ritardatario. Sospetto.'}
       </p>
@@ -337,6 +364,7 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
                   {mine ? p.role || 'Titolo da scegliere' : st === 'audience' ? 'Osservatore' : 'Titolo top secret'}
                 </p>
                 {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
+                {p.plusOne && <em className="mode-tag">+1 collaboratore</em>}
               </div>
               <span className={'registry-status ' + st}>
                 {st === 'ready' && <Check size={14} />}

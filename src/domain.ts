@@ -12,6 +12,8 @@ export type Participant = {
   mode: Mode | null;
   /** Kept in sync with mode === 'none' (older data and the vote rules use it). */
   spectator: boolean;
+  /** Brings one collaborator (+1, never more). null = not said yet. */
+  plusOne?: boolean | null;
   /** Only in a guest's view of someone else: details hidden, just whether the dossier is complete. */
   masked?: boolean;
   ready?: boolean;
@@ -155,6 +157,7 @@ function normalizeParticipant(p: Participant): Participant {
     deckUrl: p.deckUrl ?? '',
     mode,
     spectator: mode === 'none',
+    plusOne: typeof p.plusOne === 'boolean' ? p.plusOne : null,
   };
 }
 /** How a person is shown everywhere. */
@@ -367,7 +370,16 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     checkName(name);
     if (s.phase === 'results') throw new Error('La serata è finita: il registro è chiuso.');
     if (s.participants.some((p) => p.id === action.id)) throw new Error('Riprova, il codice agente era già preso.');
-    s.participants.push({ id: action.id, name, role: '', title: '', deckUrl: '', mode: null, spectator: false });
+    s.participants.push({
+      id: action.id,
+      name,
+      role: '',
+      title: '',
+      deckUrl: '',
+      mode: null,
+      spectator: false,
+      plusOne: null,
+    });
   } else if (action.type === 'participant') {
     const p = normalizeParticipant({ ...action.participant, name: cleanName(action.participant.name) });
     const existing = s.participants.find((x) => x.id === p.id);
@@ -394,6 +406,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       deckUrl: p.mode === 'slides' ? p.deckUrl.trim() : '',
       mode: p.mode,
       spectator: p.mode === 'none',
+      plusOne: p.plusOne ?? null,
     };
     const i = s.participants.findIndex((x) => x.id === p.id);
     if (i >= 0) s.participants[i] = clean;
@@ -415,6 +428,7 @@ function maskFor(s: State, actor: Actor, p: Participant): Participant {
     deckUrl: '',
     mode: p.mode,
     spectator: p.spectator,
+    plusOne: p.plusOne ?? null,
     masked: true,
     ready: dossierGaps(p).length === 0,
   };

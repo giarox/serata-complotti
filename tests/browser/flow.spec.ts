@@ -116,11 +116,14 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.getByRole('alert')).toContainText('nome');
   await page.getByLabel('Il tuo nome').fill('Giulia');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  await expect(page.getByRole('alert')).toContainText('Scegli come partecipi');
+  await expect(page.getByRole('alert')).toContainText('Scegli come presenti');
   await page.getByRole('radio', { name: /Con le slide/ }).click();
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('titolo');
   await page.getByLabel('Il tuo seriosissimo titolo da ricercatore').fill('Esperta di scie sospette');
+  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await expect(page.getByRole('alert')).toContainText('collaboratore');
+  await page.getByRole('radio', { name: /Sì, porto un collaboratore/ }).click();
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
@@ -167,13 +170,15 @@ test('a friend registers on one screen, then adds the Slides link before the dea
     .click();
   await gm.getByRole('button', { name: 'Conferma' }).click();
   await expect(gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' })).toHaveCount(0);
-  // A spectator, from the plain link: no password asked.
+  // Another researcher from the plain link: no password, no audience option.
   const other = await context.newPage();
   await other.goto('/');
   await other.getByLabel('Il tuo nome').fill('Ugo');
-  await other.getByRole('radio', { name: /Solo pubblico/ }).click();
-  await expect(other.getByLabel(/seriosissimo titolo/)).toHaveCount(0);
+  await expect(other.getByRole('radio', { name: /Solo pubblico/ })).toHaveCount(0);
+  await other.getByRole('radio', { name: /Alla vecchia maniera/ }).click();
+  await other.getByLabel(/seriosissimo titolo/).fill('Investigatore da gruppo Telegram');
+  await other.getByRole('radio', { name: /No, vengo da solo/ }).click();
   await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  await expect(other.locator('.welcome-lede')).toContainText('Sei tra il pubblico');
+  await expect(other.locator('.welcome-lede')).toContainText('posto da ricercatore');
   await expect(other.locator('.registry')).toContainText('Ugo');
 });

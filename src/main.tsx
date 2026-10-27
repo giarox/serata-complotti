@@ -352,7 +352,10 @@ function App() {
                       <span>
                         Al congresso
                         <strong>
-                          {s.participants.length.toString().padStart(2, '0')} <small>nomi in lista</small>
+                          {(s.participants.length + s.participants.filter((p) => p.plusOne).length)
+                            .toString()
+                            .padStart(2, '0')}{' '}
+                          <small>persone ({s.participants.filter((p) => p.plusOne).length} collaboratori)</small>
                         </strong>
                       </span>
                     </div>
@@ -729,6 +732,7 @@ function People({
                   {p.mode && p.mode !== 'none' && (
                     <em className="mode-tag">{modes.find((m) => m.key === p.mode)?.short}</em>
                   )}
+                  {p.plusOne && <em className="mode-tag">+1</em>}
                   {dossierGaps(p).length > 0 && <em className="mode-tag todo">Fascicolo incompleto</em>}
                 </span>
               </div>
@@ -1281,6 +1285,17 @@ function Editor({
             <input type="url" value={p.deckUrl} onChange={(e) => setP({ ...p, deckUrl: e.target.value })} />
           </label>
         )}
+        <label>
+          Collaboratore (+1)
+          <select
+            value={p.plusOne == null ? '' : p.plusOne ? 'si' : 'no'}
+            onChange={(e) => setP({ ...p, plusOne: e.target.value === '' ? null : e.target.value === 'si' })}
+          >
+            <option value="">Non ancora detto</option>
+            <option value="si">Sì, porta un collaboratore</option>
+            <option value="no">No, viene da solo</option>
+          </select>
+        </label>
         <Button type="submit" disabled={busy}>
           Salva fascicolo
           <Check size={17} />

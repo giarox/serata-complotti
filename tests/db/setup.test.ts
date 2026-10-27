@@ -389,14 +389,30 @@ describe('secrets on the server', () => {
     );
     await act(ugo, {
       type: 'participant',
-      participant: { id, name: 'Ugo', role: 'R', title: 'SEGRETO', deckUrl: '', mode: 'paper', spectator: false },
+      participant: {
+        id,
+        name: 'Ugo',
+        role: 'R',
+        title: 'SEGRETO',
+        deckUrl: '',
+        mode: 'paper',
+        spectator: false,
+        plusOne: true,
+      },
     });
     type Seen = { id: string; name: string; title: string; role: string; masked?: boolean; ready?: boolean };
     const seenBy = async (uid: string) =>
       (await as<{ participants: Seen[] }>(uid, 'select public.party_snapshot() as r')).participants.find(
         (p) => p.id === id,
       )!;
-    expect(await seenBy(giulia)).toMatchObject({ name: 'Ugo', title: '', role: '', masked: true, ready: true });
+    expect(await seenBy(giulia)).toMatchObject({
+      name: 'Ugo',
+      title: '',
+      role: '',
+      masked: true,
+      ready: true,
+      plusOne: true,
+    });
     expect(await seenBy(gm)).toMatchObject({ name: 'Ugo', title: 'SEGRETO', role: 'R' });
     expect(await seenBy(ugo)).toMatchObject({ title: 'SEGRETO' });
     await act(gm, { type: 'start', participantId: id });
