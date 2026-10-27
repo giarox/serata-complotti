@@ -259,7 +259,7 @@ function App() {
         <div className="workspace">
           <header className="topbar">
             <span className="breadcrumb">
-              {screen ? 'Sala proiezione' : actor.role === 'gm' ? 'Quartier generale' : 'Congresso clandestino'}{' '}
+              {screen ? 'Sala proiezione' : actor.role === 'gm' ? 'Quartier generale' : '1° Congresso'}{' '}
               <ChevronRight size={13} />{' '}
               <strong>
                 {screen
