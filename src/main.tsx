@@ -51,10 +51,13 @@ import {
   type State,
 } from './domain';
 import * as api from './api';
-import '@fontsource/antonio/500.css';
 import '@fontsource/antonio/600.css';
 import '@fontsource/antonio/700.css';
 import '@fontsource/special-elite/400.css';
+import '@fontsource/public-sans/400.css';
+import '@fontsource/public-sans/600.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';

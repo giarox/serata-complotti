@@ -140,7 +140,7 @@ export function DossierFields({
           </button>
         </div>
       </div>
-      <div className="form-line" role="radiogroup" aria-label="Come presenti">
+      <div className="form-line" role="radiogroup" aria-label="Come presenti" id="f-mode">
         <span className="label">Come presenti</span>
         <div className="ticks">
           {modes
@@ -183,7 +183,7 @@ export function DossierFields({
           </p>
         </div>
       )}
-      <div className="form-line">
+      <div className="form-line" id="f-plus">
         <button
           type="button"
           role="checkbox"
@@ -328,8 +328,8 @@ export function DossierHome({
       <section className="edit-box" aria-labelledby="edit-title">
         <h2 id="edit-title">Il posto è tuo. Il resto può aspettare.</h2>
         <p>
-          Puoi modificare titolo, modo di presentare, link alle slide e collaboratore fino alla{' '}
-          <strong>{DEADLINE_LABEL}</strong>.
+          Fino alla <strong>{DEADLINE_LABEL}</strong> puoi ancora completare o cambiare tutto qui sotto. Il tuo posto
+          resta tenuto.
         </p>
         {gaps.length > 0 && (
           <>
@@ -339,10 +339,38 @@ export function DossierHome({
             <Countdown />
           </>
         )}
+        <div className="edit-chips">
+          {(
+            [
+              ['f-role', 'Titolo'],
+              ['f-mode', 'Come presenti'],
+              ['f-deck', 'Link slide'],
+              ['f-plus', 'Collaboratore'],
+            ] as const
+          )
+            .filter(([field]) => field !== 'f-deck' || me.mode === 'slides')
+            .map(([field, label]) => (
+              <button
+                type="button"
+                key={field}
+                className="chip"
+                onClick={() => {
+                  setEditing(true);
+                  window.setTimeout(() => {
+                    const el = document.getElementById(field) ?? document.getElementById('fascicolo');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (el instanceof HTMLInputElement) el.focus({ preventScroll: true });
+                  }, 60);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+        </div>
         {!editing && (
-          <Button secondary className="welcome-edit" onClick={() => setEditing(true)}>
-            Modifica il fascicolo
-          </Button>
+          <button type="button" className="edit-link" onClick={() => setEditing(true)}>
+            Apri il fascicolo completo
+          </button>
         )}
       </section>
       {editing && sheet}
