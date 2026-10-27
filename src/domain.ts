@@ -107,13 +107,13 @@ export const modes: { key: Mode; label: string; short: string; hint: string }[] 
     key: 'slides',
     label: 'Con le slide',
     short: 'Slide',
-    hint: 'Google Slides, con video e animazioni.',
+    hint: 'Google Slides',
   },
   {
     key: 'paper',
     label: 'Alla vecchia maniera',
     short: 'Dal vivo',
-    hint: 'Fogli, oggetti sospetti, solo voce.',
+    hint: 'Fogli, oggetti, voce',
   },
   {
     key: 'none',

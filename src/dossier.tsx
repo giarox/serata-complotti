@@ -118,28 +118,31 @@ export function DossierFields({
   withAudience?: boolean;
 }) {
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
-  const askTitle = true;
   return (
     <>
-      {askTitle && (
-        <>
-          <label>
-            Il tuo seriosissimo titolo da ricercatore
-            <input
-              maxLength={80}
-              placeholder="Es. Ricercatore della seconda pagina di Google"
-              value={value.role}
-              onChange={(e) => set({ role: e.target.value })}
-            />
-          </label>
-          <Button secondary className="dice" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
-            <Dices size={18} /> Dammi un’idea
-          </Button>
-        </>
-      )}
-      <div className="field-mode" role="radiogroup" aria-label="Come presenti">
+      <div className="form-line">
+        <label htmlFor="f-role">Il tuo seriosissimo titolo</label>
+        <div className="line-with-action">
+          <input
+            id="f-role"
+            maxLength={80}
+            placeholder="Es. Ricercatore della seconda pagina di Google"
+            value={value.role}
+            onChange={(e) => set({ role: e.target.value })}
+          />
+          <button
+            type="button"
+            className="line-action"
+            aria-label="Dammi un’idea"
+            onClick={() => set({ role: pick(roleIdeas, value.role) })}
+          >
+            <Dices size={18} /> Idea
+          </button>
+        </div>
+      </div>
+      <div className="form-line" role="radiogroup" aria-label="Come presenti">
         <span className="label">Come presenti</span>
-        <div className="mode-chips">
+        <div className="ticks">
           {modes
             .filter((m) => m.key !== 'none')
             .map((m) => (
@@ -148,59 +151,52 @@ export function DossierFields({
                 role="radio"
                 aria-checked={value.mode === m.key}
                 key={m.key}
-                className={'mode-chip ' + (value.mode === m.key ? 'chosen' : '')}
+                className={'tick ' + (value.mode === m.key ? 'chosen' : '')}
                 onClick={() => set({ mode: m.key })}
               >
-                <strong>{m.label}</strong>
-                <span>{m.hint}</span>
+                <i aria-hidden="true" />
+                <span>
+                  <strong>{m.label}</strong>
+                  <small>{m.hint}</small>
+                </span>
               </button>
             ))}
         </div>
       </div>
       {value.mode === 'slides' && (
-        <div className="slides-field">
-          <label>
-            Link Google Slides
-            <input
-              type="url"
-              inputMode="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              placeholder="https://docs.google.com/presentation/…"
-              value={value.deckUrl}
-              onChange={(e) => set({ deckUrl: e.target.value })}
-            />
-          </label>
+        <div className="form-line">
+          <label htmlFor="f-deck">Link Google Slides</label>
+          <input
+            id="f-deck"
+            type="url"
+            inputMode="url"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="https://docs.google.com/presentation/…"
+            value={value.deckUrl}
+            onChange={(e) => set({ deckUrl: e.target.value })}
+          />
           <p className="howto-inline">
-            <strong>Non sai dove trovarlo?</strong> In Google Slides: <b>Condividi</b> → <b>Chiunque abbia il link</b> →{' '}
-            <b>Copia link</b>.{withAudience && ' Non è pronto? Aggiungilo dopo.'}
+            <strong>Non sai dove trovarlo?</strong> Condividi → Chiunque abbia il link → Copia link.
+            {withAudience && ' Non è pronto? Aggiungilo dopo.'}
           </p>
         </div>
       )}
-      <div className="field-mode" role="radiogroup" aria-label="Porti un collaboratore?">
-        <span className="label">Porti un collaboratore?</span>
-        <p className="field-hint">L’invito vale per te più una persona, non di più.</p>
-        <div className="mode-chips">
-          {(
-            [
-              [true, 'Sì, porto un collaboratore', 'Una persona in più: partner, amico, parente.'],
-              [false, 'No, vengo da solo', 'Solo tu.'],
-            ] as const
-          ).map(([v, label, hint]) => (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={value.plusOne === v}
-              key={label}
-              className={'mode-chip ' + (value.plusOne === v ? 'chosen' : '')}
-              onClick={() => set({ plusOne: v })}
-            >
-              <strong>{label}</strong>
-              <span>{hint}</span>
-            </button>
-          ))}
-        </div>
+      <div className="form-line">
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={!!value.plusOne}
+          className={'tick plus-one ' + (value.plusOne ? 'chosen' : '')}
+          onClick={() => set({ plusOne: !value.plusOne })}
+        >
+          <i aria-hidden="true" />
+          <span>
+            <strong>Porto un collaboratore</strong>
+            <small>Una persona in più, non di più.</small>
+          </span>
+        </button>
       </div>
     </>
   );

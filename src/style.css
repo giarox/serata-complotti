@@ -3728,3 +3728,190 @@ label select {
 .person-info p {
   font-size: 15px !important;
 }
+
+/* ===================================================================
+   Paper form, compact (27 Oct, night): fields are typed on printed
+   lines, choices are tick boxes, the +1 is one box. Everything fits
+   a phone screen. Kept last.
+   =================================================================== */
+.booking {
+  padding: 26px 22px 22px;
+}
+.booking > h2:first-of-type {
+  font-size: 28px;
+  margin: 34px 0 2px;
+}
+@media (min-width: 651px) {
+  .booking {
+    padding: 32px 36px 28px;
+  }
+  .booking > h2:first-of-type {
+    margin-top: 4px;
+  }
+}
+.form-line {
+  margin-top: 16px;
+}
+.form-line > label,
+.form-line > .label {
+  display: block;
+  margin: 0 0 2px;
+}
+.booking .form-line input {
+  margin: 0;
+  width: 100%;
+  min-height: 42px;
+  padding: 6px 2px 4px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid #6f5d3e;
+  border-radius: 0;
+}
+.booking .form-line input:focus {
+  outline: none;
+  border-bottom-color: var(--stamp);
+  background: #ffffff30;
+}
+.line-with-action {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.line-with-action input {
+  flex: 1;
+  min-width: 0;
+}
+.line-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--ink);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 15px/1 var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.line-action:hover {
+  background: #00000014;
+}
+/* Tick boxes, as on a printed form */
+.ticks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.tick {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px;
+  text-align: left;
+  border: 1.5px solid #a99772;
+  border-radius: 3px;
+  background: #ffffff1f;
+  color: var(--ink);
+  cursor: pointer;
+}
+.tick > i {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  position: relative;
+}
+.tick.chosen {
+  border-color: var(--stamp);
+  background: #ffffff55;
+}
+.tick.chosen > i::after {
+  content: '✕';
+  position: absolute;
+  inset: -6px 0 0 -1px;
+  font: 22px/1 var(--type);
+  color: var(--stamp);
+}
+.tick strong {
+  display: block;
+  font: 17px/1.25 var(--type);
+}
+.tick small {
+  display: block;
+  margin-top: 2px;
+  font: 14px/1.35 var(--type);
+  color: var(--ink-soft);
+}
+.tick:focus-visible,
+.line-action:focus-visible {
+  outline: 3px solid var(--brass);
+  outline-offset: 2px;
+}
+.form-line .howto-inline {
+  margin-top: 6px;
+  font-size: 14px !important;
+}
+.booking-cta {
+  margin-top: 20px;
+}
+.booking-alt {
+  margin-top: 10px;
+}
+/* Shorter hero so the form starts on the first screen */
+.invite-layout {
+  margin-top: 8px;
+}
+.invite-intro {
+  margin-bottom: 22px;
+}
+.invite-lede {
+  font-size: 15px !important;
+  line-height: 1.5;
+}
+.invite-lede strong {
+  font-size: clamp(28px, 7.5vw, 44px);
+  margin-bottom: 10px;
+}
+.form-line > .label {
+  font: 14px/1.4 var(--type);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+.tick > i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tick.chosen > i::after {
+  position: static;
+  inset: auto;
+  font: 20px/1 var(--type);
+  margin-top: -2px;
+}
+@media (max-width: 650px) {
+  .booking > h2:first-of-type {
+    margin-top: 52px;
+  }
+}
+@media (max-width: 650px) {
+  .ticks {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .ticks .tick span {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 10px;
+  }
+}

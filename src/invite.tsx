@@ -96,14 +96,13 @@ function Booking({
   onEnter: (a: Actor) => void;
   onReturning: () => void;
 }) {
-  const [draft, setDraft] = useState<Participant>(emptyDossier),
+  const [draft, setDraft] = useState<Participant>(() => ({ ...emptyDossier(), plusOne: false })),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   function problem(): string | null {
     if (draft.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.';
     if (!draft.mode) return 'Scegli come presenti: con le slide o alla vecchia maniera.';
     if (!draft.role.trim()) return 'Manca il tuo seriosissimo titolo da ricercatore. Nessuna idea? Tira il dado.';
-    if (draft.plusOne == null) return 'Dicci se porti un collaboratore: sì o no.';
     return dossierProblem(draft);
   }
   async function book() {
@@ -150,15 +149,16 @@ function Booking({
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Blocca il tuo posto</h2>
-        <label className="field-name">
-          Il tuo nome
+        <div className="form-line">
+          <label htmlFor="f-name">Il tuo nome</label>
           <input
+            id="f-name"
             autoComplete="given-name"
             maxLength={40}
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
-        </label>
+        </div>
         <DossierFields value={draft} onChange={setDraft} withAudience />
         {error && (
           <p role="alert" className="field-error">

@@ -120,10 +120,8 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByRole('radio', { name: /Con le slide/ }).click();
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('titolo');
-  await page.getByLabel('Il tuo seriosissimo titolo da ricercatore').fill('Esperta di scie sospette');
-  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  await expect(page.getByRole('alert')).toContainText('collaboratore');
-  await page.getByRole('radio', { name: /Sì, porto un collaboratore/ }).click();
+  await page.getByLabel('Il tuo seriosissimo titolo').fill('Esperta di scie sospette');
+  await page.getByRole('checkbox', { name: /Porto un collaboratore/ }).click();
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
@@ -135,7 +133,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.getByRole('heading', { name: 'Benvenuto nel congresso, Giulia.' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
-  await expect(page.getByLabel('Il tuo seriosissimo titolo da ricercatore')).toHaveValue('Esperta di scie sospette');
+  await expect(page.getByLabel('Il tuo seriosissimo titolo')).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.registry'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
@@ -177,7 +175,6 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(other.getByRole('radio', { name: /Solo pubblico/ })).toHaveCount(0);
   await other.getByRole('radio', { name: /Alla vecchia maniera/ }).click();
   await other.getByLabel(/seriosissimo titolo/).fill('Investigatore da gruppo Telegram');
-  await other.getByRole('radio', { name: /No, vengo da solo/ }).click();
   await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(other.locator('.welcome-lede')).toContainText('posto da ricercatore');
   await expect(other.locator('.registry')).toContainText('Ugo');
