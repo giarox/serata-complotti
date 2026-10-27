@@ -3693,3 +3693,38 @@ input::placeholder {
 .booking > h2 + .booking-lede {
   margin-top: 8px;
 }
+
+/* Typewriter hierarchy: SMALL CAPS-LIKE UPPERCASE for structure
+   (labels, badges, tags, kickers), sentence case for content. */
+label,
+.field-mode .label {
+  font: 14px/1.4 var(--type);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+label input,
+label select {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mode-chip strong {
+  font-size: 18px;
+}
+.registry-status,
+.mode-tag {
+  font-size: 12px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em !important;
+}
+.howto-inline strong {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+}
+.countdown > .mono,
+.welcome .stamp {
+  letter-spacing: 0.12em;
+}
+.person-info p {
+  font-size: 15px !important;
+}
