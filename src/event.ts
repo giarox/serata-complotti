@@ -4,4 +4,4 @@ export const EVENT_DAY = '31 ottobre';
 export const DOSSIER_DEADLINE = new Date('2026-10-31T00:00:00+01:00');
 export const DEADLINE_LABEL = 'mezzanotte del 30 ottobre';
 export const EVENT_TIME = '18:30';
-export const VENUE = 'Palacomplotti (Casa nostra)';
+export const VENUE = 'Palacomplotti';

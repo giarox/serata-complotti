@@ -134,6 +134,7 @@ export function DossierFields({
     <>
       <fieldset className="form-section first">
         <legend>Relatore</legend>
+        <p className="section-note">Chi sei e cosa ti autorizza a parlare. Nessuno verificherà.</p>
         {nameField}
         <div className="form-line">
           <label htmlFor="f-role">
@@ -156,8 +157,8 @@ export function DossierFields({
       </fieldset>
       <fieldset className="form-section">
         <legend>Presentazione</legend>
-        <div className="form-line" role="radiogroup" aria-label="Modalità di presentazione" id="f-mode">
-          <span className="label">Modalità</span>
+        <p className="section-note">Come intendi esporre la verità al congresso.</p>
+        <div className="form-line choices" role="radiogroup" aria-label="Modalità di presentazione" id="f-mode">
           <div className="ticks">
             {modes
               .filter((m) => m.key !== 'none')
@@ -203,18 +204,14 @@ export function DossierFields({
       <fieldset className="form-section" id="f-plus">
         <legend>Accompagnatore</legend>
         <p className="section-note">
-          Puoi includere <strong>una sola persona</strong>: un testimone passivo oppure un co-relatore attivo.
+          Puoi portare <strong>una sola persona</strong>: un testimone passivo oppure un co-relatore attivo.
         </p>
         <div className="ticks stacked" role="radiogroup" aria-label="Accompagnatore">
           {(
             [
-              [null, 'Vengo da solo', 'Nessun accompagnatore.'],
-              ['witness', 'Porto un testimone', 'Viene con te ma non presenta. Osserva e al massimo annuisce.'],
-              [
-                'copresenter',
-                'Presento con un co-relatore',
-                'Sale sul palco con te e conferma tutto, anche le parti inventate.',
-              ],
+              [null, 'Vengo da solo', 'Meglio soli che male informati.'],
+              ['witness', 'Porto un testimone', 'Viene con me ma non presenta. Osserva e al massimo annuisce.'],
+              ['copresenter', 'Porto un co-relatore', 'Viene con me e presenta. Conferma tutto, anche le invenzioni.'],
             ] as const
           ).map(([v, label, hint]) => (
             <button
@@ -323,9 +320,9 @@ export function DossierHome({
   const adm = me.admission ?? 'pending';
   const head = {
     pending: [
-      'Richiesta acquisita.',
+      'Richiesta inoltrata.',
       'In fase di valutazione.',
-      'Figure non meglio identificate stanno esaminando il tuo fascicolo. I poteri forti decideranno: controlla qui il tuo esito nelle prossime ore.',
+      'Figure non meglio identificate stanno esaminando il tuo fascicolo: controlla qui il tuo esito nelle prossime ore.',
     ],
     admitted: [
       'Esito: ammesso.',
@@ -338,7 +335,11 @@ export function DossierHome({
       'Per ora i posti sono pieni. Se qualcuno sparisce misteriosamente, verrai ripescato. Ricontrolla qui.',
     ],
   }[adm];
-  const toggleLabel = !editing ? 'Modifica fascicolo' : dirty ? 'Salva modifiche al fascicolo' : 'Nascondi fascicolo';
+  const toggleLabel = !editing
+    ? 'Modifica il fascicolo allegato'
+    : dirty
+      ? 'Salva modifiche al fascicolo'
+      : 'Nascondi il fascicolo';
   return (
     <section className="booked">
       <p className="receipt-kicker">Richiesta di ammissione / {passNo}</p>
@@ -390,55 +391,34 @@ export function DossierHome({
             <dt>Luogo</dt>
             <dd>{VENUE}</dd>
           </div>
-        </dl>
-      </article>
-
-      <section className="edit-box" aria-labelledby="edit-title">
-        <h2 id="edit-title">Il fascicolo allegato alla richiesta</h2>
-        <p>
-          È quello che hai compilato per richiedere l’ammissione. Puoi modificarlo fino alla{' '}
-          <strong>{DEADLINE_LABEL}</strong>.
-        </p>
-        <ul className="dossier-recap">
-          <li>
-            <span>Relatore</span>
-            <b>{me.name}</b>
-          </li>
-          <li>
-            <span>Qualifica</span>
-            <b>{me.role || '—'}</b>
-          </li>
-          <li>
-            <span>Modalità</span>
-            <b>{modeLabel}</b>
-          </li>
           {me.mode === 'slides' && (
-            <li className={me.deckUrl ? '' : 'missing'}>
-              <span>Link slide</span>
-              <b>{me.deckUrl ? 'Link allegato' : 'Link mancante'}</b>
-            </li>
+            <div className={'pass-wide' + (me.deckUrl ? '' : ' missing')}>
+              <dt>Link slide</dt>
+              <dd>{me.deckUrl ? 'Allegato al fascicolo' : 'Mancante: aggiungilo modificando il fascicolo'}</dd>
+            </div>
           )}
-          <li>
-            <span>Accompagnatore</span>
-            <b>{partnerText(me)}</b>
-          </li>
-        </ul>
-        {gaps.length > 0 && <Countdown />}
-        <Button
-          secondary
-          className="welcome-edit"
-          disabled={busy}
-          onClick={() => {
-            if (!editing) return setEditing(true);
-            if (dirty) return void save();
-            setDraft(null);
-            setError('');
-            setEditing(false);
-          }}
-        >
-          {toggleLabel}
-        </Button>
-      </section>
+        </dl>
+        <div className="pass-actions">
+          <Button
+            secondary
+            className="pass-edit"
+            disabled={busy}
+            onClick={() => {
+              if (!editing) return setEditing(true);
+              if (dirty) return void save();
+              setDraft(null);
+              setError('');
+              setEditing(false);
+            }}
+          >
+            {toggleLabel}
+          </Button>
+          <p>
+            Puoi modificare il fascicolo fino alla <strong>{DEADLINE_LABEL}</strong>.
+          </p>
+          {gaps.length > 0 && <Countdown />}
+        </div>
+      </article>
       {editing && sheet}
       <Registry s={s} meId={me.id} />
     </section>
@@ -497,7 +477,7 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
   return (
     <section className="roster" aria-labelledby="registry-title">
       <header className="roster-head">
-        <h2 id="registry-title">Chi è dentro</h2>
+        <h2 id="registry-title">Registro delle richieste</h2>
       </header>
       <dl className="roster-stats">
         {stats.map(([label, n]) => (

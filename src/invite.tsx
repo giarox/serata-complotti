@@ -4,7 +4,7 @@ import type { Actor, Participant } from './domain';
 import * as api from './api';
 import { Button, Mark, Stamp } from './ui';
 import { DossierFields, dossierProblem, emptyDossier } from './dossier';
-import { EVENT_DAY, EVENT_TIME } from './event';
+import { EVENT_DAY, EVENT_TIME, VENUE } from './event';
 
 type Step = 'book' | 'returning' | 'gm';
 const KEY = 'complotti-invite-key';
@@ -135,26 +135,28 @@ function Booking({
   return (
     <div className="invite-layout">
       <section className="invite-intro event-head">
-        <p className="event-kicker">{EVENT_DAY} — 1° Congresso clandestino dei ricercatori indipendenti</p>
+        <p className="event-kicker">1° Congresso clandestino dei ricercatori indipendenti</p>
         <h1 className="event-title">
           <span>Siccome non cielo dicono,</span>
           <span>cielo diciamo noi.</span>
         </h1>
         <dl className="event-meta">
           <div>
-            <dt>Ore</dt>
+            <dt>Data</dt>
+            <dd>{EVENT_DAY}</dd>
+          </div>
+          <div>
+            <dt>Orario</dt>
             <dd>{EVENT_TIME}</dd>
           </div>
           <div>
             <dt>Sede</dt>
-            <dd>Palacomplotti</dd>
-          </div>
-          <div>
-            <dt>Ingresso</dt>
-            <dd>Su ammissione</dd>
+            <dd>{VENUE}</dd>
           </div>
         </dl>
-        <p className="event-sub">I posti sono pochi: richiedi l’ammissione e i poteri forti decideranno chi entra.</p>
+        <p className="event-sub">
+          I posti sono limitatissimi: richiedi l’ammissione e i poteri forti la valuteranno accuratamente.
+        </p>
       </section>
       <form
         className="booking letter on-paper"
@@ -165,10 +167,7 @@ function Booking({
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Richiesta di ammissione</h2>
-        <p className="booking-lede">
-          Compila il fascicolo da allegare alla richiesta. Le richieste verranno protocollate in ordine di arrivo:
-          l’orario esatto è già stato annotato.
-        </p>
+        <p className="booking-lede">Compila il fascicolo da allegare alla richiesta.</p>
         <DossierFields
           value={draft}
           onChange={setDraft}

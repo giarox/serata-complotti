@@ -131,10 +131,10 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByLabel('Link Google Slides').fill('');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   // After booking: countdown (link still missing), then the dossier, then the registry.
-  await page.getByRole('button', { name: 'Modifica fascicolo' }).click();
+  await page.getByRole('button', { name: 'Modifica il fascicolo allegato' }).click();
   await expect(page.locator('.pass-name', { hasText: 'Giulia' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
-  await expect(page.locator('.dossier-recap')).toContainText('Link mancante');
+  await expect(page.locator('.guest-pass')).toContainText('Mancante');
   await expect(page.getByLabel(/Qualifica/)).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
@@ -147,7 +147,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
   await page.getByRole('button', { name: 'Salva modifiche al fascicolo' }).last().click();
-  await expect(page.locator('.dossier-recap')).toContainText('Link allegato');
+  await expect(page.locator('.guest-pass')).toContainText('Allegato al fascicolo');
   await expect(page.getByRole('timer')).toHaveCount(0);
   // No talk title at all: no spoilers, not even for the GM.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
@@ -178,6 +178,6 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await other.getByRole('radio', { name: /Senza tecnologia/ }).click();
   await other.getByLabel(/Qualifica/).fill('Investigatore da gruppo Telegram');
   await other.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
-  await expect(other.locator('.welcome-lede')).toContainText('poteri forti');
+  await expect(other.locator('.welcome-lede')).toContainText('Figure non meglio identificate');
   await expect(other.locator('.roster')).toContainText('Ugo');
 });

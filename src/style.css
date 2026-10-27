@@ -5164,3 +5164,118 @@ label,
   font: 17px/1.5 var(--type) !important;
   color: var(--brass-hi);
 }
+
+/* ===================================================================
+   27 Oct, 22:45 — dividers vs inputs, sections, pass actions
+   =================================================================== */
+.event-head {
+  border-top: 0;
+  padding-top: 0;
+}
+/* Section headers are tabs, never lines: lines are only for writing on */
+.form-section,
+.form-section.first {
+  border: 0 !important;
+  margin: 34px 0 0 !important;
+  padding: 0 !important;
+}
+.form-section.first {
+  margin-top: 26px !important;
+}
+.form-section legend {
+  display: inline-block;
+  padding: 5px 10px 4px !important;
+  background: var(--ink);
+  color: var(--paper) !important;
+  border-radius: 2px;
+  font: 600 12px/1.3 var(--mono) !important;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.form-section > .section-note {
+  margin: 10px 0 0 !important;
+  font: 14px/1.55 var(--sans) !important;
+  color: var(--ink-soft);
+}
+.form-section > .section-note + .form-line,
+.form-line.choices {
+  margin-top: 14px !important;
+}
+.form-section > .section-note + .ticks {
+  margin-top: 14px !important;
+}
+/* Qualification: same writing line as every other field, two lines tall */
+.booking .form-line textarea {
+  background: linear-gradient(
+      to bottom,
+      transparent calc(50% - 1px),
+      #6f5d3e55 calc(50% - 1px),
+      #6f5d3e55 50%,
+      transparent 50%
+    )
+    no-repeat;
+  border-bottom: 2px solid #6f5d3e !important;
+  min-height: 0;
+  height: calc(2 * 1.5em + 12px);
+  padding: 6px 2px;
+}
+.booking .form-line textarea:focus {
+  border-bottom-color: var(--stamp) !important;
+}
+/* Pass: wide row and the edit control at the bottom of the ticket */
+.pass-fields > .pass-wide {
+  grid-column: 1 / -1;
+  border-right: 0 !important;
+  padding-left: 0 !important;
+  border-top: 1px solid #a9977266;
+}
+.pass-fields > .pass-wide.missing dd {
+  color: var(--stamp);
+}
+.pass-fields > div:nth-last-child(-n + 2):not(.pass-wide) {
+  border-bottom: 0;
+}
+.pass-actions {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1.5px dashed #a99772;
+}
+.pass-actions .pass-edit {
+  width: 100%;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+.pass-actions .pass-edit:hover:not(:disabled) {
+  background: #00000014;
+}
+.pass-actions p {
+  margin: 10px 0 0 !important;
+  font: 13px/1.5 var(--sans) !important;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.pass-actions p strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.pass-actions .countdown {
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+.pass-actions .countdown > .mono {
+  color: var(--stamp);
+}
+.pass-actions .countdown-digits span {
+  font: 24px/1 var(--type);
+  color: var(--ink);
+}
+.pass-actions .countdown-digits small {
+  color: var(--ink-soft);
+}
+.pass-actions .pass-edit {
+  letter-spacing: 0.06em !important;
+  font-size: 13px !important;
+  padding: 0 10px;
+}
