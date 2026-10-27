@@ -130,16 +130,16 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByLabel('Link Google Slides').fill('');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   // After booking: countdown (link still missing), then the dossier, then the registry.
-  await expect(page.getByRole('heading', { name: 'Benvenuto nel congresso, Giulia.' })).toBeVisible();
+  await expect(page.locator('.pass-name', { hasText: 'Giulia' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
   await expect(page.getByLabel('Il tuo seriosissimo titolo')).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
-    ['.countdown', '#fascicolo', '.registry'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
+    ['.countdown', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
   expect(order[0]).toBeLessThan(order[1]);
   expect(order[1]).toBeLessThan(order[2]);
-  const registry = page.locator('.registry');
+  const registry = page.locator('.roster');
   await expect(registry.locator('.registry-row.me')).toContainText('Incompleto');
   await expect(registry).toContainText('Paolo');
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
@@ -176,6 +176,6 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await other.getByRole('radio', { name: /Alla vecchia maniera/ }).click();
   await other.getByLabel(/seriosissimo titolo/).fill('Investigatore da gruppo Telegram');
   await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  await expect(other.locator('.welcome-lede')).toContainText('posto da ricercatore');
-  await expect(other.locator('.registry')).toContainText('Ugo');
+  await expect(other.locator('.welcome-lede')).toContainText('teoria');
+  await expect(other.locator('.roster')).toContainText('Ugo');
 });

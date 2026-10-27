@@ -289,26 +289,62 @@ export function DossierHome({
         {sheet}
       </details>
     );
+  const passNo = String(s.participants.findIndex((p) => p.id === me.id) + 1).padStart(3, '0');
+  const modeLabel = me.mode ? modes.find((m) => m.key === me.mode)?.label : 'Modo da scegliere';
   return (
     <section className="booked">
-      <div className="welcome">
-        <Stamp className="ok" sub="Iscrizione confermata">
-          Sei dentro
-        </Stamp>
-        <h1>Benvenuto nel congresso, {me.name}.</h1>
-        <p className="welcome-lede">
-          {audience
-            ? 'Sei tra il pubblico: il 31 ottobre ascolti, fai domande e voti.'
-            : 'Il tuo posto da ricercatore è bloccato.'}{' '}
-          Puoi modificare il tuo seriosissimo titolo e il link alle slide fino alla <strong>{DEADLINE_LABEL}</strong>.
+      <p className="receipt-kicker">Ricevuta d’iscrizione / {passNo}</p>
+      <h1 className="receipt-title">
+        Posto bloccato.
+        <br />
+        Sei nel congresso.
+      </h1>
+      <p className="welcome-lede">Il 31 ottobre porta la tua teoria e la faccia di chi l’ha scoperta.</p>
+
+      <article className="guest-pass" aria-label="Il tuo pass">
+        <header>
+          <span>Pass / SC-{passNo}</span>
+          <span className="pass-live">Posto riservato</span>
+        </header>
+        <div className="pass-body">
+          <div>
+            <span className="pass-label">Ricercatore</span>
+            <strong className="pass-name">{me.name}</strong>
+            <span className="pass-role">{me.role ? `«${me.role}»` : 'Titolo ancora da scegliere'}</span>
+            <span className="pass-meta">
+              {modeLabel} · collaboratore: {me.plusOne ? 'sì (+1)' : 'no'}
+            </span>
+          </div>
+          <div className="pass-seal" aria-hidden="true">
+            <span>N. {passNo}</span>
+          </div>
+        </div>
+        <footer>
+          <span>31 ottobre</span>
+          <strong>Luogo: top secret</strong>
+        </footer>
+      </article>
+
+      <section className="edit-box" aria-labelledby="edit-title">
+        <h2 id="edit-title">Il posto è tuo. Il resto può aspettare.</h2>
+        <p>
+          Puoi modificare titolo, modo di presentare, link alle slide e collaboratore fino alla{' '}
+          <strong>{DEADLINE_LABEL}</strong>.
         </p>
+        {gaps.length > 0 && (
+          <>
+            <p className="edit-todo">
+              {gaps.length > 1 ? 'Mancano' : 'Manca'} ancora {andList(gaps.map((g) => gapWords[g] ?? g))}.
+            </p>
+            <Countdown />
+          </>
+        )}
         {!editing && (
           <Button secondary className="welcome-edit" onClick={() => setEditing(true)}>
-            Modifica il mio fascicolo
+            Modifica il fascicolo
           </Button>
         )}
-      </div>
-      {!audience && gaps.length > 0 && <Countdown />}
+      </section>
       {editing && sheet}
       <Registry s={s} meId={me.id} />
     </section>
@@ -333,43 +369,49 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
   const speakers = people.filter((p) => statusOf(p) !== 'audience'),
     ready = speakers.filter((p) => statusOf(p) === 'ready').length,
     plusOnes = people.filter((p) => p.plusOne).length;
+  const initials = (n: string) =>
+    n
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase();
   return (
-    <section className="panel registry" aria-labelledby="registry-title">
-      <div className="panel-heading">
-        <h2 id="registry-title">I ricercatori</h2>
-      </div>
-      <p className="registry-sum">
-        {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}
-        {plusOnes > 0 && ` (+${plusOnes} ${plusOnes === 1 ? 'collaboratore' : 'collaboratori'})`}, {ready}{' '}
-        {ready === 1 ? 'pronto' : 'pronti'}.{' '}
-        {speakers.length > ready ? 'I ritardatari verranno segnalati alle autorità.' : 'Nessun ritardatario. Sospetto.'}
-      </p>
-      <div className="people-list">
-        {people.map((p, i) => {
+    <section className="roster" aria-labelledby="registry-title">
+      <header className="roster-head">
+        <h2 id="registry-title">Gli altri ricercatori</h2>
+        <span>
+          {speakers.length} iscritti{plusOnes > 0 && ` +${plusOnes}`} · {ready} pronti
+        </span>
+      </header>
+      <ol className="roster-list">
+        {people.map((p) => {
           const st = statusOf(p),
             mine = p.id === meId;
           return (
-            <article key={p.id} className={'person-row registry-row ' + st + (mine ? ' me' : '')}>
-              <div className={'person-avatar color-' + (i % 4)}>{p.name.slice(0, 1)}</div>
-              <div className="person-info">
-                <h3>
-                  {p.name}
-                  {mine && <span className="tiny-status">Tu</span>}
-                </h3>
-                <p>
-                  {mine ? p.role || 'Titolo da scegliere' : st === 'audience' ? 'Osservatore' : 'Titolo top secret'}
-                </p>
-                {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
-                {p.plusOne && <em className="mode-tag">+1 collaboratore</em>}
-              </div>
-              <span className={'registry-status ' + st}>
-                {st === 'ready' && <Check size={14} />}
-                {statusLabel[st]}
+            <li key={p.id} className={'roster-row registry-row ' + st + (mine ? ' me' : '')}>
+              <span className="roster-badge" aria-hidden="true">
+                {initials(p.name)}
               </span>
-            </article>
+              <div className="roster-info">
+                <strong>
+                  {p.name}
+                  {mine && <small> (tu)</small>}
+                </strong>
+                <span>{mine ? `«${p.role || 'titolo da scegliere'}»` : '«Titolo top secret»'}</span>
+                <span className="roster-tags">
+                  {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
+                  {p.plusOne && <em className="mode-tag">+1</em>}
+                  <em className={'registry-status ' + st}>{statusLabel[st]}</em>
+                </span>
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ol>
+      <p className="roster-foot">
+        {speakers.length > ready ? 'I ritardatari verranno segnalati alle autorità.' : 'Nessun ritardatario. Sospetto.'}
+      </p>
     </section>
   );
 }
