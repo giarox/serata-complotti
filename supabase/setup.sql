@@ -52,7 +52,8 @@ declare st public.party_store;
 begin
  if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
  select * into st from public.party_store where id=true;
- if not found or passcode is null or length(passcode)>200 or (extensions.crypt(public.party_norm(passcode),st.guest_hash) is distinct from st.guest_hash and extensions.crypt(trim(passcode),st.gm_hash) is distinct from st.gm_hash) then
+ -- Open registration: guests send no word. A non-empty passcode is the GM PIN and must match.
+ if not found or length(coalesce(passcode,''))>200 or (coalesce(trim(passcode),'')<>'' and extensions.crypt(trim(passcode),st.gm_hash) is distinct from st.gm_hash) then
   perform pg_sleep(1.5); raise exception 'Password non corretta.';
  end if;
  return (select coalesce(jsonb_agg(jsonb_build_object('id',p->>'id','name',p->>'name')), '[]'::jsonb) from jsonb_array_elements(st.state->'participants') p);
@@ -64,7 +65,7 @@ begin
  select * into st from public.party_store where id=true for update;
  if not found then raise exception 'Congresso non configurato.'; end if;
  expected:=case when as_gm then st.gm_hash else st.guest_hash end;
- if passcode is null or length(passcode)>200 or extensions.crypt(case when as_gm then trim(passcode) else public.party_norm(passcode) end,expected) is distinct from expected then
+ if as_gm and (passcode is null or length(passcode)>200 or extensions.crypt(trim(passcode),expected) is distinct from expected) then
   perform pg_sleep(1.5); raise exception 'Password non corretta.';
  end if;
  select * into existing from public.party_members where user_id=auth.uid();
@@ -228,9 +229,7 @@ begin
  if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
  select * into st from public.party_store where id=true for update;
  if not found then raise exception 'Congresso non configurato.'; end if;
- if passcode is null or length(passcode)>200 or extensions.crypt(public.party_norm(passcode),st.guest_hash) is distinct from st.guest_hash then
-  perform pg_sleep(1.5); raise exception 'Password non corretta.';
- end if;
+ -- Open registration: whoever has the link can sign up (passcode is ignored).
  select * into existing from public.party_members where user_id=auth.uid();
  if found then return public.party_actor(); end if;
  nm:=regexp_replace(trim(coalesce(full_name,'')),'\s+',' ','g');

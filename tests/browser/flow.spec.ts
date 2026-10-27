@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 /** A guest already on the list opens the invite link on a new phone. */
 async function returning(page: Page, id: string) {
-  await page.goto('/#invito=NONCIELODICONO');
+  await page.goto('/#invito=vecchio-link');
   await page.getByRole('button', { name: 'Ho già prenotato' }).click();
   await page.getByLabel('Chi sei').selectOption(id);
   await page.getByRole('button', { name: 'Sono io' }).click();
@@ -9,7 +9,7 @@ async function returning(page: Page, id: string) {
 test('GM, presenter, voter and projector complete two rounds', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
-  await page.getByLabel('PIN della regia').fill('2480');
+  await page.getByLabel('PIN della regia').fill('0000');
   await page.getByRole('button', { name: 'Continua', exact: true }).click();
   await page.getByRole('button', { name: 'Entra in regia', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tieni insieme il complotto.' })).toBeVisible();
@@ -66,7 +66,7 @@ test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await page.goto('/');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
-  await page.getByLabel('PIN della regia').fill('2480');
+  await page.getByLabel('PIN della regia').fill('0000');
   await page.getByRole('button', { name: 'Continua', exact: true }).click();
   await page.getByRole('button', { name: 'Entra in regia', exact: true }).click();
   await page.getByRole('button', { name: 'Fascicoli', exact: true }).click();
@@ -79,7 +79,7 @@ test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
 test('GM with a name votes from the regia and sees the provisional award rules', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
-  await page.getByLabel('PIN della regia').fill('2480');
+  await page.getByLabel('PIN della regia').fill('0000');
   await page.getByRole('button', { name: 'Continua', exact: true }).click();
   await page.getByLabel('Il tuo nome').selectOption('gianluca');
   await page.getByRole('button', { name: 'Entra in regia', exact: true }).click();
@@ -107,9 +107,9 @@ test('GM with a name votes from the regia and sees the provisional award rules',
 });
 test('a friend registers on one screen, then adds the Slides link before the deadline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/#invito=NONCIELODICONO');
+  await page.goto('/#invito=vecchio-link');
   await expect(page.getByRole('heading', { name: 'Blocca il tuo posto' })).toBeVisible();
-  expect(page.url()).not.toContain('NONCIELODICONO');
+  expect(page.url()).not.toContain('vecchio-link');
   // One screen: name, silly title and how they take part.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
@@ -129,7 +129,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByLabel('Link Google Slides').fill('');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   // After booking: countdown (link still missing), then the dossier, then the registry.
-  await expect(page.getByRole('heading', { name: 'Benvenuto, Giulia.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Benvenuto nel congresso, Giulia.' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
   await expect(page.getByLabel('Il tuo seriosissimo titolo da ricercatore')).toHaveValue('Esperta di scie sospette');
@@ -152,7 +152,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   const gm = await context.newPage();
   await gm.goto('/');
   await gm.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
-  await gm.getByLabel('PIN della regia').fill('2480');
+  await gm.getByLabel('PIN della regia').fill('0000');
   await gm.getByRole('button', { name: 'Continua', exact: true }).click();
   await gm.getByRole('button', { name: 'Entra in regia', exact: true }).click();
   const row = gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' });
@@ -167,17 +167,13 @@ test('a friend registers on one screen, then adds the Slides link before the dea
     .click();
   await gm.getByRole('button', { name: 'Conferma' }).click();
   await expect(gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' })).toHaveCount(0);
-  // A spectator, from a link without the key: the word works in lowercase too.
+  // A spectator, from the plain link: no password asked.
   const other = await context.newPage();
   await other.goto('/');
   await other.getByLabel('Il tuo nome').fill('Ugo');
   await other.getByRole('radio', { name: /Solo pubblico/ }).click();
   await expect(other.getByLabel(/seriosissimo titolo/)).toHaveCount(0);
-  await other.getByLabel(/Parola d’ordine/).fill('sbagliata');
   await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  await expect(other.getByRole('alert')).toContainText('Parola d’ordine sbagliata');
-  await other.getByLabel(/Parola d’ordine/).fill('non cielo dicono');
-  await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  await expect(other.locator('.booking .stamp')).toContainText('Ammesso');
-  await expect(other.getByRole('heading', { name: 'Sei tra il pubblico.' })).toBeVisible();
+  await expect(other.locator('.welcome-lede')).toContainText('Sei tra il pubblico');
+  await expect(other.locator('.registry')).toContainText('Ugo');
 });

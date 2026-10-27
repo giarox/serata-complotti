@@ -82,22 +82,6 @@ export function Entry({ onEnter }: { onEnter: (a: Actor) => void }) {
   );
 }
 
-function KeyField({ code, setCode }: { code: string; setCode: (c: string) => void }) {
-  return (
-    <label className="key-field">
-      Parola d’ordine (nel messaggio d’invito)
-      <input
-        autoCapitalize="characters"
-        autoCorrect="off"
-        spellCheck={false}
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-      />
-      {!api.live && <span className="field-hint">Demo: NONCIELODICONO</span>}
-    </label>
-  );
-}
-
 /** The only registration screen: name, silly title and how they take part, all at once. */
 function Booking({
   code,
@@ -120,7 +104,6 @@ function Booking({
     if (!draft.mode) return 'Scegli come partecipi: con le slide, alla vecchia maniera o solo pubblico.';
     if (draft.mode !== 'none' && !draft.role.trim())
       return 'Manca il tuo seriosissimo titolo da ricercatore. Nessuna idea? Tira il dado.';
-    if (!fromLink && !code.trim()) return 'Manca la parola d’ordine: è nel messaggio d’invito.';
     return dossierProblem(draft);
   }
   async function book() {
@@ -154,7 +137,7 @@ function Booking({
     <div className="invite-layout">
       <section className="invite-intro">
         <p className="invite-lede">
-          <strong>Siccome non cielo dicono, ce lo diciamo noi.</strong> {EVENT_DAY}: congresso clandestino dei
+          <strong>Siccome non cielo dicono, cielo diciamo noi.</strong> {EVENT_DAY}: congresso clandestino dei
           ricercatori indipendenti. Iscriviti qui sotto, ci vuole un minuto.
         </p>
       </section>
@@ -167,7 +150,6 @@ function Booking({
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Blocca il tuo posto</h2>
-        {!fromLink && <KeyField code={code} setCode={setCode} />}
         <label className="field-name">
           Il tuo nome
           <input
@@ -250,7 +232,6 @@ function ReturningStep({
     <form className="entry-card step-card" onSubmit={submit}>
       <h2>Bentornato. Chi sei?</h2>
       <p>Telefono nuovo o pagina chiusa? Scegliti dalla lista.</p>
-      {(!fromLink || !names.length) && !names.length && <KeyField code={code} setCode={setCode} />}
       {names.length > 0 && (
         <label>
           Chi sei
@@ -346,7 +327,7 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
         <div className="demo-credentials">
           <strong>DEMO LOCALE</strong>
           <p>
-            PIN regia: <code>2480</code> · Ospiti: <code>NONCIELODICONO</code>
+            PIN regia demo: <code>{api.DEMO_PIN}</code>
           </p>
         </div>
       )}

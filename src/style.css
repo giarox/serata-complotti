@@ -3480,3 +3480,116 @@ select {
     padding-right: 190px;
   }
 }
+
+/* ===================================================================
+   Type pass (27 Oct, pm): Garamond for reading and labels, the tall
+   capitals only for headings and buttons. One scale:
+   18px labels / inputs / text, 16px hints, 17px buttons.
+   =================================================================== */
+label,
+.field-mode .label {
+  font: 600 18px/1.3 var(--serif);
+  text-transform: none;
+  letter-spacing: 0;
+}
+input,
+select,
+.booking input,
+.entry-card input,
+.entry-card select,
+.modal input,
+.modal select {
+  font: 18px/1.3 var(--serif);
+}
+input::placeholder {
+  font-style: italic;
+  opacity: 0.75;
+}
+.mode-chip strong {
+  font: 600 18px/1.25 var(--serif);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mode-chip span,
+.howto-inline,
+.field-hint,
+.footnote {
+  font-family: var(--serif);
+  font-size: 16px !important;
+  font-style: normal;
+}
+.field-error {
+  font: 600 16px/1.4 var(--serif) !important;
+}
+.booking-lede,
+.welcome-lede,
+.invite-lede,
+.registry-sum,
+.checkbox {
+  font: 18px/1.5 var(--serif);
+}
+.invite-lede strong {
+  font-family: var(--display);
+}
+
+/* Success screen */
+.welcome {
+  position: relative;
+  padding: 8px 0 26px;
+}
+.welcome > .stamp {
+  position: absolute;
+  top: -6px;
+  right: 0;
+  font-size: 26px;
+}
+.welcome h1 {
+  color: var(--brass);
+  padding-right: 150px;
+  margin-bottom: 14px;
+}
+.welcome-lede {
+  color: var(--bone);
+  max-width: 620px;
+}
+.welcome-lede strong {
+  color: var(--brass-hi);
+  font-weight: 600;
+}
+.welcome-todo {
+  margin-top: 12px;
+  font: 600 18px/1.4 var(--serif);
+  color: #e0705c;
+}
+.welcome-edit {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 360px;
+}
+.booked .registry {
+  margin-top: 34px;
+}
+.registry .person-row .registry-status {
+  flex-shrink: 0;
+}
+.registry .person-info p {
+  font-size: 16px;
+}
+.registry-row.me {
+  background: #ffffff08;
+}
+@media (max-width: 650px) {
+  .welcome h1 {
+    padding-right: 0;
+    padding-top: 70px;
+  }
+  .welcome-edit {
+    max-width: none;
+  }
+}
+.registry-status,
+.mode-tag {
+  font-family: var(--serif) !important;
+  font-size: 15px !important;
+  letter-spacing: 0;
+}

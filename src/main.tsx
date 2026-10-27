@@ -56,6 +56,7 @@ import '@fontsource/antonio/600.css';
 import '@fontsource/antonio/700.css';
 import '@fontsource/eb-garamond/400.css';
 import '@fontsource/eb-garamond/400-italic.css';
+import '@fontsource/eb-garamond/600.css';
 import '@fontsource/special-elite/400.css';
 import './style.css';
 import { Button, Mark, Stamp } from './ui';

@@ -2,7 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { applyAction, initialState, makeId, normalize, snapshot, type State, type Action, type Actor } from './domain';
 /** Demo-mode check, same normalisation as the database: guests' word ignores case and spaces. */
 const demoOk = (code: string, gm: boolean) =>
-  gm ? code.trim() === '2480' : code.replace(/\s+/g, '').toUpperCase() === 'NONCIELODICONO';
+  // Local demo only: a fake PIN, never the real one. Guests need nothing.
+  gm ? code.trim() === DEMO_PIN : true;
+export const DEMO_PIN = '0000';
 const env = (import.meta as unknown as { env: Record<string, string> }).env;
 export const live = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
 const client = live ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY) : null;

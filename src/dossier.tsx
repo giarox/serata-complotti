@@ -198,7 +198,8 @@ export function DossierHome({
   const me = s.participants.find((p) => p.id === actor.participantId);
   const [draft, setDraft] = useState<Participant | null>(null),
     [error, setError] = useState(''),
-    [saved, setSaved] = useState(false);
+    [saved, setSaved] = useState(false),
+    [editing, setEditing] = useState(() => !me || dossierGaps(me).length > 0);
   if (!me) return null;
   const value = draft ?? me,
     gaps = dossierGaps(me),
@@ -269,9 +270,30 @@ export function DossierHome({
     );
   return (
     <section className="booked">
-      <h1>Benvenuto, {me.name}.</h1>
+      <div className="welcome">
+        <Stamp className="ok" sub="Iscrizione confermata">
+          Sei dentro
+        </Stamp>
+        <h1>Benvenuto nel congresso, {me.name}.</h1>
+        <p className="welcome-lede">
+          {audience
+            ? 'Sei tra il pubblico: il 31 ottobre ascolti, fai domande e voti.'
+            : 'Il tuo posto da ricercatore è bloccato.'}{' '}
+          Puoi modificare il tuo seriosissimo titolo e il link alle slide fino alla <strong>{DEADLINE_LABEL}</strong>.
+        </p>
+        {!audience && gaps.length > 0 && (
+          <p className="welcome-todo">
+            {gaps.length > 1 ? 'Mancano' : 'Manca'} ancora {andList(gaps.map((g) => gapWords[g] ?? g))}.
+          </p>
+        )}
+        {!editing && (
+          <Button secondary className="welcome-edit" onClick={() => setEditing(true)}>
+            Modifica il mio fascicolo
+          </Button>
+        )}
+      </div>
       {!audience && gaps.length > 0 && <Countdown />}
-      {sheet}
+      {editing && sheet}
       <Registry s={s} meId={me.id} />
     </section>
   );
@@ -287,51 +309,60 @@ const statusLabel: Record<Status, string> = {
 };
 const order: Record<Status, number> = { ready: 0, booked: 1, audience: 2 };
 
-/** Who else is in and how far along they are. Names and status only: titles stay secret. */
+const modeTag: Record<string, string> = { slides: 'Slide', paper: 'Dal vivo', none: 'Pubblico' };
+
+/** Everyone who signed up, as mugshots. Others' titles stay secret until they present. */
 export function Registry({ s, meId }: { s: State; meId?: string }) {
   const people = [...s.participants].sort((a, b) => order[statusOf(a)] - order[statusOf(b)]);
   const speakers = people.filter((p) => statusOf(p) !== 'audience'),
     ready = speakers.filter((p) => statusOf(p) === 'ready').length;
   return (
-    <section className="registry" aria-labelledby="registry-title">
-      <div className="registry-head">
-        <h2 id="registry-title">Gli altri ricercatori</h2>
-        <p>
-          {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}, {ready}{' '}
-          {ready === 1 ? 'pronto' : 'pronti'}.{' '}
-          {speakers.length > ready
-            ? 'I ritardatari verranno segnalati alle autorità.'
-            : 'Nessun ritardatario. Sospetto.'}
-        </p>
+    <section className="panel registry" aria-labelledby="registry-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">L’archivio del congresso</p>
+          <h2 id="registry-title">I ricercatori</h2>
+        </div>
       </div>
-      <ol className="registry-list">
-        {people.map((p) => {
-          const st = statusOf(p);
+      <p className="registry-sum">
+        {speakers.length === 1 ? '1 ricercatore' : `${speakers.length} ricercatori`}, {ready}{' '}
+        {ready === 1 ? 'pronto' : 'pronti'}.{' '}
+        {speakers.length > ready ? 'I ritardatari verranno segnalati alle autorità.' : 'Nessun ritardatario. Sospetto.'}
+      </p>
+      <div className="people-list">
+        {people.map((p, i) => {
+          const st = statusOf(p),
+            mine = p.id === meId;
           return (
-            <li key={p.id} className={'registry-row ' + st + (p.id === meId ? ' me' : '')}>
-              <span className="registry-name">
-                {p.name}
-                {p.id === meId && <small>tu</small>}
-              </span>
+            <article key={p.id} className={'person-row registry-row ' + st + (mine ? ' me' : '')}>
+              <div className={'person-avatar color-' + (i % 4)}>{p.name.slice(0, 1)}</div>
+              <div className="person-info">
+                <h3>
+                  {p.name}
+                  {mine && <span className="tiny-status">Tu</span>}
+                </h3>
+                <p>
+                  {mine ? p.role || 'Titolo da scegliere' : st === 'audience' ? 'Osservatore' : 'Titolo top secret'}
+                </p>
+                {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
+              </div>
               <span className={'registry-status ' + st}>
                 {st === 'ready' && <Check size={14} />}
                 {statusLabel[st]}
               </span>
-            </li>
+            </article>
           );
         })}
-      </ol>
+      </div>
     </section>
   );
 }
 
-/** GM tool: build the invite link with the event password inside, ready to paste in a chat. */
+/** GM tool: the invite link, ready to paste in a chat. Whoever has it can register. */
 export function InvitePanel() {
-  const [code, setCode] = useState(''),
-    [copied, setCopied] = useState(false);
-  const base = location.origin + location.pathname;
-  const link = code.trim() ? `${base}#invito=${encodeURIComponent(code.trim())}` : '';
-  const message = `🕵️ Documento riservato. Siccome non cielo dicono, ce lo diciamo noi: il ${EVENT_DAY} si riunisce il congresso dei ricercatori indipendenti. Blocca il tuo posto prima che lo cancellino: ${link}`;
+  const [copied, setCopied] = useState(false);
+  const link = location.origin + location.pathname;
+  const message = `🕵️ Documento riservato. Siccome non cielo dicono, cielo diciamo noi: il ${EVENT_DAY} si riunisce il congresso dei ricercatori indipendenti. Blocca il tuo posto prima che lo cancellino: ${link}`;
   return (
     <section className="panel invite-panel">
       <div className="panel-heading">
@@ -341,44 +372,24 @@ export function InvitePanel() {
         </div>
         <MessageCircle size={22} />
       </div>
-      <p className="footnote">
-        Scrivi la parola d’ordine degli ospiti: il link la contiene già, così i tuoi amici non devono digitare niente.
-      </p>
-      <label>
-        Parola d’ordine degli ospiti
-        <input
-          autoCapitalize="characters"
-          autoCorrect="off"
-          spellCheck={false}
-          value={code}
-          onChange={(e) => {
-            setCode(e.target.value);
-            setCopied(false);
+      <p className="invite-link">{link}</p>
+      <div className="result-actions">
+        <Button
+          onClick={() => {
+            void navigator.clipboard?.writeText(message).then(() => setCopied(true));
           }}
-        />
-      </label>
-      {link && (
-        <>
-          <p className="invite-link">{link}</p>
-          <div className="result-actions">
-            <Button
-              onClick={() => {
-                void navigator.clipboard?.writeText(message).then(() => setCopied(true));
-              }}
-            >
-              <Copy size={17} /> {copied ? 'Copiato' : 'Copia messaggio'}
-            </Button>
-            <a
-              className="button secondary"
-              href={`https://wa.me/?text=${encodeURIComponent(message)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MessageCircle size={17} /> Manda su WhatsApp
-            </a>
-          </div>
-        </>
-      )}
+        >
+          <Copy size={17} /> {copied ? 'Copiato' : 'Copia messaggio'}
+        </Button>
+        <a
+          className="button secondary"
+          href={`https://wa.me/?text=${encodeURIComponent(message)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MessageCircle size={17} /> Manda su WhatsApp
+        </a>
+      </div>
     </section>
   );
 }

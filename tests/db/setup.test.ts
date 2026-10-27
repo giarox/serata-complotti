@@ -98,12 +98,12 @@ describe('access', () => {
     await expect(as(null, 'select public.party_snapshot() as r')).rejects.toThrow(/permission denied/);
   });
 
-  it('shows names only with a valid password, and lets only the GM password into the regia', async () => {
+  it('shows names to any signed-in guest, checks a typed PIN, and lets only the GM PIN into the regia', async () => {
     const stranger = await user();
     await expect(as(stranger, 'select public.party_names($1) as r', ['sbagliata'])).rejects.toThrow(
       'Password non corretta',
     );
-    expect(await as<unknown[]>(stranger, 'select public.party_names($1) as r', [GUEST])).toHaveLength(roster.length);
+    expect(await as<unknown[]>(stranger, 'select public.party_names($1) as r', [''])).toHaveLength(roster.length);
     expect(await as<unknown[]>(stranger, 'select public.party_names($1) as r', [GM])).toHaveLength(roster.length);
     await expect(join(stranger, GUEST, null, true)).rejects.toThrow('Password non corretta');
     await expect(snap(stranger)).rejects.toThrow('Entra nel congresso');
@@ -267,12 +267,11 @@ describe('self-registration and own dossier', () => {
   const people = async (uid: string) =>
     (await as<{ participants: P[] }>(uid, 'select public.party_snapshot() as r')).participants;
 
-  it('registers with the event password (any case, any spaces) and just a name', async () => {
+  it('registers anyone with the link: no password, just a name', async () => {
     const anna = await user();
-    await expect(registerAs(anna, 'sbagliata', 'Anna Rossi')).rejects.toThrow('Password non corretta');
     await expect(registerAs(anna, GUEST, 'A')).rejects.toThrow('nome');
     await expect(registerAs(anna, GUEST, 'x'.repeat(41))).rejects.toThrow('nome');
-    const actor = await registerAs(anna, ' noncielodicono   test ', '  Anna   Rossi ');
+    const actor = await registerAs(anna, '', '  Anna   Rossi ');
     expect(actor.role).toBe('guest');
     expect(actor.participantId).toMatch(/^anna-rossi-[0-9a-f]{4}$/);
     const me = (await people(anna)).find((p) => p.id === actor.participantId)!;
