@@ -131,9 +131,10 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByLabel('Link Google Slides').fill('');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   // After booking: countdown (link still missing), then the dossier, then the registry.
+  await page.getByRole('button', { name: 'Modifica fascicolo' }).click();
   await expect(page.locator('.pass-name', { hasText: 'Giulia' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
-  await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
+  await expect(page.locator('.dossier-recap')).toContainText('Link mancante');
   await expect(page.getByLabel(/Qualifica/)).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
@@ -141,12 +142,12 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   expect(order[0]).toBeLessThan(order[1]);
   expect(order[1]).toBeLessThan(order[2]);
   const registry = page.locator('.roster');
-  await expect(registry.locator('.registry-row.me')).toContainText('Fascicolo incompleto');
+  await expect(registry.locator('.registry-row.me')).toContainText('+ testimone');
   await expect(registry).toContainText('Paolo');
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
-  await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
-  await expect(page.locator('.booking .stamp')).toContainText('Ammesso');
+  await page.getByRole('button', { name: 'Salva modifiche al fascicolo' }).last().click();
+  await expect(page.locator('.dossier-recap')).toContainText('Link allegato');
   await expect(page.getByRole('timer')).toHaveCount(0);
   // No talk title at all: no spoilers, not even for the GM.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
@@ -159,7 +160,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await gm.getByRole('button', { name: 'Entra in regia', exact: true }).click();
   const row = gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' });
   await expect(row).toContainText('Giulia');
-  await expect(row).toContainText('Slide');
+  await expect(row).toContainText('Con tecnologia');
   // The GM can remove anyone, from the dossier list.
   await gm.getByRole('button', { name: 'I fascicoli' }).first().click();
   await gm
@@ -177,6 +178,6 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await other.getByRole('radio', { name: /Senza tecnologia/ }).click();
   await other.getByLabel(/Qualifica/).fill('Investigatore da gruppo Telegram');
   await other.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
-  await expect(other.locator('.welcome-lede')).toContainText('regia');
+  await expect(other.locator('.welcome-lede')).toContainText('poteri forti');
   await expect(other.locator('.roster')).toContainText('Ugo');
 });

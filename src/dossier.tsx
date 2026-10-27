@@ -13,7 +13,7 @@ import {
   type Partner,
   type State,
 } from './domain';
-import { DEADLINE_LABEL, DOSSIER_DEADLINE, EVENT_DAY } from './event';
+import { DEADLINE_LABEL, DOSSIER_DEADLINE, EVENT_DAY, EVENT_TIME, VENUE } from './event';
 import { Button, Stamp } from './ui';
 
 export const roleIdeas = [
@@ -258,54 +258,34 @@ export function DossierHome({
   const me = s.participants.find((p) => p.id === actor.participantId);
   const [draft, setDraft] = useState<Participant | null>(null),
     [error, setError] = useState(''),
-    [saved, setSaved] = useState(false),
-    [editing, setEditing] = useState(() => !me || dossierGaps(me).length > 0);
+    [editing, setEditing] = useState(compact);
   if (!me) return null;
   const value = draft ?? me,
     gaps = dossierGaps(me),
     blocker = editBlocker(s, actor, me.id),
-    audience = me.mode === 'none',
     dirty = draft !== null && JSON.stringify(draft) !== JSON.stringify(me);
-  const change = (p: Participant) => {
-    setDraft(p);
-    setSaved(false);
-  };
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function save() {
     const problem = dossierProblem(value);
     if (problem) return setError(problem);
     setError('');
-    if (await perform({ type: 'participant', participant: value })) {
-      setDraft(null);
-      setSaved(true);
-    }
+    if (await perform({ type: 'participant', participant: value })) setDraft(null);
   }
   const sheet = (
-    <form className="booking on-paper" onSubmit={submit} id="fascicolo">
-      {gaps.length === 0 ? (
-        <Stamp className="ok" sub={audience ? 'Spettatore' : 'Fascicolo completo'}>
-          Ammesso
-        </Stamp>
-      ) : (
-        <Stamp sub="Posto bloccato">Prenotato</Stamp>
-      )}
+    <form
+      className="booking on-paper"
+      id="fascicolo"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+    >
+      <h2>Il fascicolo</h2>
       {blocker ? (
         <p className="footnote">{blocker}</p>
-      ) : audience ? (
-        <>
-          <h2>Sei tra il pubblico.</h2>
-          <p className="booking-lede">Vuoi presentare anche tu? Scegli come.</p>
-          <DossierFields value={value} onChange={change} />
-        </>
       ) : (
         <>
-          <h2>{gaps.length ? 'Il tuo fascicolo' : 'Fascicolo completo. Sospetto.'}</h2>
-          <p className="booking-lede">
-            {gaps.length
-              ? `${gaps.length > 1 ? 'Mancano' : 'Manca'} ancora ${andList(gaps.map((g) => gapWords[g] ?? g))}.`
-              : 'Puoi modificarlo fino al tuo turno.'}
-          </p>
-          <DossierFields value={value} onChange={change} />
+          <p className="booking-lede">Modifica quello che vuoi, poi salva. Il resto della richiesta non cambia.</p>
+          <DossierFields value={value} onChange={setDraft} />
         </>
       )}
       {error && (
@@ -315,7 +295,7 @@ export function DossierHome({
       )}
       {!blocker && (
         <Button type="submit" className="booking-cta" disabled={busy || !dirty}>
-          {busy ? 'Salvataggio…' : saved && !dirty ? 'Salvato' : 'Salva il fascicolo'}
+          {busy ? 'Salvataggio…' : dirty ? 'Salva modifiche al fascicolo' : 'Nessuna modifica'}
           <Check size={18} />
         </Button>
       )}
@@ -329,25 +309,26 @@ export function DossierHome({
       </details>
     );
   const passNo = String(s.participants.findIndex((p) => p.id === me.id) + 1).padStart(3, '0');
-  const modeLabel = me.mode ? modes.find((m) => m.key === me.mode)?.label : 'Modo da scegliere';
+  const modeLabel = me.mode ? (modes.find((m) => m.key === me.mode)?.label ?? '—') : 'Da scegliere';
   const adm = me.admission ?? 'pending';
   const head = {
     pending: [
-      'Richiesta ricevuta.',
-      'La regia valuta.',
-      'I posti sono pochi e la regia sceglie chi entra. Torna qui nei prossimi giorni per scoprire se sei stato ammesso.',
+      'Richiesta acquisita.',
+      'In fase di valutazione.',
+      'Figure non meglio identificate stanno esaminando il tuo fascicolo. I poteri forti decideranno: controlla qui il tuo esito nelle prossime ore.',
     ],
     admitted: [
-      'Ammissione accolta.',
+      'Esito: ammesso.',
       'Sei nel congresso.',
-      'Il 31 ottobre porta la tua teoria e la faccia di chi l’ha scoperta.',
+      `I poteri forti si sono espressi a tuo favore. Ci vediamo il ${EVENT_DAY} alle ${EVENT_TIME}.`,
     ],
     reserve: [
-      'Sei in riserva.',
+      'Esito: riserva.',
       'Non perdere la speranza.',
-      'Per ora i posti sono pieni. Se si libera una sedia, la regia pescherà dalla riserva. Ricontrolla qui.',
+      'Per ora i posti sono pieni. Se qualcuno sparisce misteriosamente, verrai ripescato. Ricontrolla qui.',
     ],
   }[adm];
+  const toggleLabel = !editing ? 'Modifica fascicolo' : dirty ? 'Salva modifiche al fascicolo' : 'Nascondi fascicolo';
   return (
     <section className="booked">
       <p className="receipt-kicker">Richiesta d’ammissione / {passNo}</p>
@@ -363,17 +344,15 @@ export function DossierHome({
           <span>Pass / SC-{passNo}</span>
           <span className={'pass-live ' + adm}>{admissionLabel[adm]}</span>
         </header>
+        <p className="pass-event">1° Congresso clandestino dei ricercatori indipendenti</p>
         <div className="pass-body">
           <div>
-            <span className="pass-label">Ricercatore</span>
+            <span className="pass-label">Relatore</span>
             <strong className="pass-name">{me.name}</strong>
-            <span className="pass-role">{me.role ? `«${me.role}»` : 'Titolo ancora da scegliere'}</span>
-            <span className="pass-meta">
-              {modeLabel} · {partnerText(me)}
-            </span>
+            <span className="pass-role">{me.role ? `«${me.role}»` : 'Qualifica da indicare'}</span>
           </div>
           {adm === 'admitted' ? (
-            <Stamp className="ok pass-stamp" sub="Dalla regia">
+            <Stamp className="ok pass-stamp" sub="Dai poteri forti">
               Ammesso
             </Stamp>
           ) : (
@@ -382,61 +361,69 @@ export function DossierHome({
             </div>
           )}
         </div>
-        <footer>
-          <span>31 ottobre</span>
-          <strong>Luogo: top secret</strong>
-        </footer>
+        <dl className="pass-fields">
+          <div>
+            <dt>Modalità</dt>
+            <dd>{modeLabel}</dd>
+          </div>
+          <div>
+            <dt>Accompagnatore</dt>
+            <dd>{partnerText(me)}</dd>
+          </div>
+          <div>
+            <dt>Data</dt>
+            <dd>
+              {EVENT_DAY}, ore {EVENT_TIME}
+            </dd>
+          </div>
+          <div>
+            <dt>Luogo</dt>
+            <dd>{VENUE}</dd>
+          </div>
+        </dl>
       </article>
 
       <section className="edit-box" aria-labelledby="edit-title">
-        <h2 id="edit-title">
-          {adm === 'admitted' ? 'Il posto è tuo. Il resto può aspettare.' : 'Intanto prepara il fascicolo.'}
-        </h2>
+        <h2 id="edit-title">Il fascicolo allegato alla richiesta</h2>
         <p>
-          Fino alla <strong>{DEADLINE_LABEL}</strong> puoi completare o cambiare tutto qui sotto.
-          {adm === 'admitted' ? ' Il tuo posto resta tenuto.' : ' Un fascicolo completo aiuta la regia a decidere.'}
+          È quello che hai compilato per richiedere l’ammissione. Puoi modificarlo fino alla{' '}
+          <strong>{DEADLINE_LABEL}</strong>.
         </p>
-        {gaps.length > 0 && (
-          <>
-            <p className="edit-todo">
-              {gaps.length > 1 ? 'Mancano' : 'Manca'} ancora {andList(gaps.map((g) => gapWords[g] ?? g))}.
-            </p>
-            <Countdown />
-          </>
-        )}
-        <div className="edit-chips">
-          {(
-            [
-              ['f-role', 'Qualifica'],
-              ['f-mode', 'Modalità'],
-              ['f-deck', 'Link slide'],
-              ['f-plus', 'Accompagnatore'],
-            ] as const
-          )
-            .filter(([field]) => field !== 'f-deck' || me.mode === 'slides')
-            .map(([field, label]) => (
-              <button
-                type="button"
-                key={field}
-                className="chip"
-                onClick={() => {
-                  setEditing(true);
-                  window.setTimeout(() => {
-                    const el = document.getElementById(field) ?? document.getElementById('fascicolo');
-                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    if (el instanceof HTMLInputElement) el.focus({ preventScroll: true });
-                  }, 60);
-                }}
-              >
-                {label}
-              </button>
-            ))}
-        </div>
-        {!editing && (
-          <button type="button" className="edit-link" onClick={() => setEditing(true)}>
-            Apri il fascicolo completo
-          </button>
-        )}
+        <ul className="dossier-recap">
+          <li>
+            <span>Qualifica</span>
+            <b>{me.role || '—'}</b>
+          </li>
+          <li>
+            <span>Modalità</span>
+            <b>{modeLabel}</b>
+          </li>
+          {me.mode === 'slides' && (
+            <li className={me.deckUrl ? '' : 'missing'}>
+              <span>Slide</span>
+              <b>{me.deckUrl ? 'Link allegato' : 'Link mancante'}</b>
+            </li>
+          )}
+          <li>
+            <span>Accompagnatore</span>
+            <b>{partnerText(me)}</b>
+          </li>
+        </ul>
+        {gaps.length > 0 && <Countdown />}
+        <Button
+          secondary
+          className="welcome-edit"
+          disabled={busy}
+          onClick={() => {
+            if (!editing) return setEditing(true);
+            if (dirty) return void save();
+            setDraft(null);
+            setError('');
+            setEditing(false);
+          }}
+        >
+          {toggleLabel}
+        </Button>
       </section>
       {editing && sheet}
       <Registry s={s} meId={me.id} />
@@ -457,10 +444,10 @@ const order: Record<Status, number> = { ready: 0, booked: 1, audience: 2 };
 /** “con il co-relatore Camilla”, “testimone: sì”… for the pass. */
 const partnerText = (p: Participant) =>
   p.partner === 'copresenter'
-    ? `co-relatore: ${p.partnerName || 'da indicare'}`
+    ? `Co-relatore: ${p.partnerName || 'da indicare'}`
     : p.partner === 'witness'
-      ? `testimone: ${p.partnerName || 'sì'}`
-      : 'senza accompagnatore';
+      ? `Testimone: ${p.partnerName || 'da indicare'}`
+      : 'Nessuno';
 
 const modeTag: Record<string, string> = { slides: 'Slide', paper: 'Dal vivo', none: 'Pubblico' };
 export const admissionLabel: Record<Admission, string> = {
@@ -476,11 +463,16 @@ const groups: [Admission, string][] = [
 
 /** Everyone who signed up, as mugshots. Others' titles stay secret until they present. */
 export function Registry({ s, meId }: { s: State; meId?: string }) {
-  const people = [...s.participants].sort((a, b) => order[statusOf(a)] - order[statusOf(b)]);
+  const people = [...s.participants];
   const admOf = (p: Participant) => p.admission ?? 'pending';
-  const admitted = people.filter((p) => admOf(p) === 'admitted').length,
-    waiting = people.filter((p) => admOf(p) === 'pending').length,
-    plusOnes = people.filter((p) => p.plusOne).length;
+  const count = (f: (p: Participant) => boolean) => people.filter(f).length;
+  const stats: [string, number][] = [
+    ['Richieste', people.length],
+    ['Ammessi', count((p) => admOf(p) === 'admitted')],
+    ['Testimoni', count((p) => p.partner === 'witness')],
+    ['Co-relatori', count((p) => p.partner === 'copresenter')],
+  ];
+  const waiting = count((p) => admOf(p) === 'pending');
   const initials = (n: string) =>
     n
       .split(/\s+/)
@@ -492,10 +484,15 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
     <section className="roster" aria-labelledby="registry-title">
       <header className="roster-head">
         <h2 id="registry-title">Chi è dentro</h2>
-        <span>
-          {admitted} ammessi · {waiting} in attesa{plusOnes > 0 && ` · ${plusOnes} +1`}
-        </span>
       </header>
+      <dl className="roster-stats">
+        {stats.map(([label, n]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{n}</dd>
+          </div>
+        ))}
+      </dl>
       {groups.map(([adm, title]) => {
         const list = people.filter((p) => admOf(p) === adm);
         if (!list.length) return null;
@@ -506,26 +503,26 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
             </h3>
             <ol className="roster-list">
               {list.map((p) => {
-                const st = statusOf(p),
-                  mine = p.id === meId;
+                const mine = p.id === meId;
                 return (
-                  <li key={p.id} className={'roster-row registry-row ' + st + (mine ? ' me' : '')}>
+                  <li key={p.id} className={'roster-row registry-row' + (mine ? ' me' : '')}>
                     <span className="roster-badge" aria-hidden="true">
                       {initials(p.name)}
                     </span>
                     <div className="roster-info">
                       <strong>
-                        {displayName(p)}
+                        {p.name}
                         {mine && <small> (tu)</small>}
                       </strong>
-                      <span>{mine ? `«${p.role || 'titolo da scegliere'}»` : '«Titolo top secret»'}</span>
+                      <span>{mine ? `«${p.role || 'qualifica da indicare'}»` : '«Qualifica top secret»'}</span>
                       <span className="roster-tags">
-                        {p.mode && p.mode !== 'none' && <em className="mode-tag">{modeTag[p.mode]}</em>}
-                        {p.partner === 'copresenter' && <em className="mode-tag">In coppia</em>}
-                        {p.partner === 'witness' && <em className="mode-tag">+1 testimone</em>}
-                        <em className={'registry-status ' + st}>
-                          {st === 'audience' ? 'Pubblico' : `Fascicolo ${statusLabel[st].toLowerCase()}`}
-                        </em>
+                        {p.mode && p.mode !== 'none' && (
+                          <em className="mode-tag">{modes.find((m) => m.key === p.mode)?.label}</em>
+                        )}
+                        {p.partner === 'witness' && <em className="mode-tag">+ testimone</em>}
+                        {p.partner === 'copresenter' && (
+                          <em className="mode-tag">+ co-relatore{p.partnerName ? `: ${p.partnerName}` : ''}</em>
+                        )}
                       </span>
                     </div>
                   </li>
@@ -537,8 +534,8 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
       })}
       <p className="roster-foot">
         {waiting > 0
-          ? 'La regia sta valutando. Ricontrolla questa pagina: le decisioni arrivano senza preavviso.'
-          : 'Il congresso è al completo. Sospetto.'}
+          ? 'I poteri forti stanno valutando. Gli esiti compaiono qui senza preavviso.'
+          : 'Tutte le richieste sono state esaminate. Sospetto.'}
       </p>
     </section>
   );

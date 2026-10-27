@@ -4,7 +4,7 @@ import type { Actor, Participant } from './domain';
 import * as api from './api';
 import { Button, Mark, Stamp } from './ui';
 import { DossierFields, dossierProblem, emptyDossier } from './dossier';
-import { EVENT_DAY } from './event';
+import { EVENT_DAY, EVENT_TIME } from './event';
 
 type Step = 'book' | 'returning' | 'gm';
 const KEY = 'complotti-invite-key';
@@ -142,12 +142,12 @@ function Booking({
         </h1>
         <dl className="event-meta">
           <div>
-            <dt>Edizione</dt>
-            <dd>I</dd>
+            <dt>Ore</dt>
+            <dd>{EVENT_TIME}</dd>
           </div>
           <div>
             <dt>Sede</dt>
-            <dd>Top secret</dd>
+            <dd>Palacomplotti</dd>
           </div>
           <div>
             <dt>Ingresso</dt>

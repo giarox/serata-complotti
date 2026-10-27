@@ -117,13 +117,13 @@ export const modes: { key: Mode; label: string; short: string; hint: string }[] 
   {
     key: 'slides',
     label: 'Con tecnologia',
-    short: 'Slide',
+    short: 'Con tecnologia',
     hint: 'Slide proiettate. Rischio intercettazione: alto.',
   },
   {
     key: 'paper',
     label: 'Senza tecnologia',
-    short: 'Dal vivo',
+    short: 'Senza tecnologia',
     hint: 'Carta, oggetti, voce. Non tracciabile.',
   },
   {
