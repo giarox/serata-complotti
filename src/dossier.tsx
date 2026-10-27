@@ -60,7 +60,8 @@ export const emptyDossier = (): Participant => ({
 /** Client-side check before saving; the server repeats it. */
 export function dossierProblem(d: Participant): string | null {
   if (d.name.trim().length < 2) return 'Scrivi il nome del relatore.';
-  if (d.partner === 'copresenter' && (d.partnerName ?? '').trim().length < 2) return 'Scrivi il nome del co-relatore.';
+  if (d.partner && (d.partnerName ?? '').trim().length < 2)
+    return d.partner === 'copresenter' ? 'Scrivi il nome del co-relatore.' : 'Scrivi il nome del testimone.';
   if (d.mode === 'slides' && d.deckUrl.trim() && !slidesUrlPattern.test(d.deckUrl.trim()))
     return 'Quello non sembra un link di Google Slides: deve iniziare con https://docs.google.com/presentation/';
   return null;
@@ -132,7 +133,13 @@ export function DossierFields({
         <label htmlFor="f-role">
           Qualifica <span className="label-aside">(non verificabile)</span>
         </label>
-        <input id="f-role" maxLength={80} value={value.role} onChange={(e) => set({ role: e.target.value })} />
+        <textarea
+          id="f-role"
+          rows={2}
+          maxLength={80}
+          value={value.role}
+          onChange={(e) => set({ role: e.target.value.replace(/\n/g, ' ') })}
+        />
         <div className="examples-row">
           <p className="examples">Es. «Investigatrice da gruppo Telegram»</p>
           <button type="button" className="line-action" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
@@ -185,13 +192,19 @@ export function DossierFields({
       )}
       <fieldset className="form-section" id="f-plus">
         <legend>Accompagnatore</legend>
-        <p className="section-note">L’invito vale per te più una persona al massimo.</p>
+        <p className="section-note">
+          Puoi includere <strong>una sola persona</strong>: un testimone passivo oppure un co-relatore attivo.
+        </p>
         <div className="ticks stacked" role="radiogroup" aria-label="Accompagnatore">
           {(
             [
               [null, 'Vengo da solo', 'Nessun accompagnatore.'],
-              ['witness', 'Porto un testimone', 'Viene con te ma non presenta. Osserva, annuisce, conferma.'],
-              ['copresenter', 'Presento con un co-relatore', 'Sale sul palco con te: la teoria è di entrambi.'],
+              ['witness', 'Porto un testimone', 'Viene con te ma non presenta. Osserva e al massimo annuisce.'],
+              [
+                'copresenter',
+                'Presento con un co-relatore',
+                'Sale sul palco con te e conferma tutto, anche le parti inventate.',
+              ],
             ] as const
           ).map(([v, label, hint]) => (
             <button
@@ -214,7 +227,6 @@ export function DossierFields({
           <div className="form-line">
             <label htmlFor="f-partner">
               {partner === 'copresenter' ? 'Nome del co-relatore' : 'Nome del testimone'}
-              {partner === 'witness' && <span className="label-aside"> (facoltativo)</span>}
             </label>
             <input
               id="f-partner"

@@ -4800,3 +4800,217 @@ label,
 .examples-row .line-action {
   padding: 0 10px;
 }
+
+/* ===================================================================
+   Event header + letter rhythm (27 Oct, 21:50)
+   =================================================================== */
+.invite .invite-layout {
+  margin-top: clamp(48px, 10vh, 96px);
+}
+.invite .invite-intro {
+  margin-bottom: clamp(36px, 6vh, 56px);
+}
+/* The 1st congress: a programme header, not a paragraph */
+.event-head {
+  text-align: left;
+  border-top: 3px double #8a7752;
+  border-bottom: 1px solid #8a775266;
+  padding: 18px 0 20px;
+}
+.event-kicker {
+  margin: 0 0 16px !important;
+  font: 500 12px/1.5 var(--mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--red);
+}
+.event-title {
+  margin: 0;
+  color: var(--bone);
+  font-family: var(--type);
+  /* each line stays on one line: the size follows the screen width */
+  font-size: min(52px, calc((100vw - 40px) / 14.6));
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  -webkit-text-stroke: 0.6px currentColor;
+}
+.event-title span {
+  display: block;
+  white-space: nowrap;
+}
+@media (min-width: 821px) {
+  .event-title {
+    font-size: 52px;
+  }
+}
+.event-meta {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  justify-content: start;
+  gap: 0;
+  margin: 20px 0 0;
+  border-top: 1px solid #8a775266;
+  border-bottom: 1px solid #8a775266;
+}
+.event-meta > div {
+  padding: 10px 16px 10px 0;
+  margin-right: 16px;
+  border-right: 1px solid #8a775266;
+}
+.event-meta > div:last-child {
+  border-right: 0;
+  margin-right: 0;
+}
+.event-meta dt {
+  font: 500 10px/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+}
+.event-meta dd {
+  margin: 2px 0 0;
+  font: 16px/1.35 var(--type);
+  color: var(--brass-hi);
+}
+.event-sub {
+  margin: 16px 0 0 !important;
+  font: 16px/1.55 var(--sans) !important;
+  color: var(--muted);
+}
+
+/* Letter rhythm: more air, harmonised line-heights across the three faces */
+.booking > h2:first-of-type {
+  line-height: 1.2 !important;
+  margin-bottom: 10px !important;
+}
+.booking-lede {
+  font: 15px/1.6 var(--sans) !important;
+  margin: 0 0 4px !important;
+}
+.form-line,
+.booking .form-line {
+  margin-top: 28px;
+}
+.form-line > label,
+.form-line > .label {
+  line-height: 1.5 !important;
+  margin-bottom: 8px !important;
+}
+.booking .form-line input,
+.booking .form-line textarea {
+  font: 18px/1.5 var(--type) !important;
+  padding: 6px 2px 6px;
+}
+/* Two ruled lines for the qualification */
+.booking .form-line textarea {
+  display: block;
+  width: 100%;
+  margin: 0;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--ink);
+  min-height: calc(2 * 1.5em + 12px);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(1.5em + 4px),
+    #6f5d3e calc(1.5em + 4px),
+    #6f5d3e calc(1.5em + 6px)
+  );
+  background-position: 0 2px;
+}
+.booking .form-line textarea:focus {
+  outline: none;
+  background-color: #ffffff30;
+}
+.examples-row {
+  margin-top: 12px;
+}
+.examples {
+  line-height: 1.55 !important;
+}
+.ticks {
+  gap: 10px !important;
+  margin-top: 4px;
+}
+.tick {
+  padding: 12px 12px;
+  gap: 12px;
+}
+.tick strong {
+  line-height: 1.35 !important;
+}
+.tick small {
+  margin-top: 4px !important;
+  line-height: 1.5 !important;
+}
+.form-section {
+  margin-top: 36px !important;
+  padding-top: 20px !important;
+}
+.form-section legend {
+  line-height: 1.5;
+}
+.section-note {
+  margin-bottom: 14px !important;
+  line-height: 1.55 !important;
+}
+.section-note strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.howto-inline {
+  margin-top: 10px !important;
+  line-height: 1.55 !important;
+}
+.booking-cta {
+  margin-top: 32px !important;
+}
+.booking-alt {
+  margin-top: 12px !important;
+}
+/* Dark buttons on paper stay dark on hover (no light-on-light) */
+.booking .button:not(.secondary):hover:not(:disabled),
+.letter .button:not(.secondary):hover:not(:disabled),
+.on-paper .button:not(.secondary):hover:not(:disabled),
+.entry-card .button:not(.secondary):hover:not(:disabled),
+.modal .button:not(.secondary):hover:not(:disabled),
+.wizard .button:not(.secondary):hover:not(:disabled),
+.dossier-sheet .button:hover:not(:disabled),
+.live-panel .button:not(.secondary):hover:not(:disabled) {
+  background: #4a3f30;
+  border-color: #4a3f30;
+  color: var(--paper);
+}
+.invite-intro .event-title {
+  font-size: min(52px, calc((100vw - 40px) / 14.6));
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--bone);
+  padding-bottom: 0;
+  margin: 0;
+}
+@media (min-width: 821px) {
+  .invite-intro .event-title {
+    font-size: 52px;
+  }
+}
+.event-meta dd {
+  white-space: nowrap;
+}
+.examples-row .line-action {
+  letter-spacing: 0.04em !important;
+  font-size: 11.5px !important;
+}
+.event-meta {
+  display: flex;
+  flex-wrap: wrap;
+}
+@media (min-width: 651px) {
+  .booking > .booking-lede {
+    padding-right: 200px;
+  }
+}

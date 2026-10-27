@@ -134,11 +134,27 @@ function Booking({
   }
   return (
     <div className="invite-layout">
-      <section className="invite-intro">
-        <p className="invite-lede">
-          <strong>Siccome non cielo dicono, cielo diciamo noi.</strong> {EVENT_DAY}: congresso clandestino dei
-          ricercatori indipendenti. I posti sono pochi: richiedi l’ammissione e la regia deciderà chi entra.
-        </p>
+      <section className="invite-intro event-head">
+        <p className="event-kicker">{EVENT_DAY} — 1° Congresso clandestino dei ricercatori indipendenti</p>
+        <h1 className="event-title">
+          <span>Siccome non cielo dicono,</span>
+          <span>cielo diciamo noi.</span>
+        </h1>
+        <dl className="event-meta">
+          <div>
+            <dt>Edizione</dt>
+            <dd>I</dd>
+          </div>
+          <div>
+            <dt>Sede</dt>
+            <dd>Top secret</dd>
+          </div>
+          <div>
+            <dt>Ingresso</dt>
+            <dd>Su ammissione</dd>
+          </div>
+        </dl>
+        <p className="event-sub">I posti sono pochi: richiedi l’ammissione e la regia deciderà chi entra.</p>
       </section>
       <form
         className="booking letter on-paper"
@@ -150,7 +166,7 @@ function Booking({
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Richiesta di ammissione</h2>
         <p className="booking-lede">
-          Le richieste vengono protocollate in ordine di arrivo. Si dice in giro che conti.
+          Le richieste verranno protocollate in ordine di arrivo. L’orario esatto è già stato annotato.
         </p>
         <div className="form-line">
           <label htmlFor="f-name">Nome del relatore</label>

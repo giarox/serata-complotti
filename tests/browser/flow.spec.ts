@@ -122,6 +122,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.getByRole('alert')).toContainText('qualifica');
   await page.getByLabel(/Qualifica/).fill('Esperta di scie sospette');
   await page.getByRole('radio', { name: /Porto un testimone/ }).click();
+  await page.getByLabel('Nome del testimone').fill('Ugo');
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
