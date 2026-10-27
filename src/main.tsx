@@ -63,7 +63,8 @@ import '@fontsource/geist-mono/600.css';
 import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
-import { DossierHome, InvitePanel } from './dossier';
+import { DossierHome } from './dossier';
+import { Overview, RequestsBoard } from './regia';
 const blank: Participant = {
   id: '',
   name: '',
@@ -589,40 +590,18 @@ function App() {
                   </div>
                 </>
               )}
-              {tab === 'fascicoli' && <InvitePanel />}
+              {tab === 'fascicoli' && <Overview s={s} />}
               {tab === 'fascicoli' && (
-                <section className="panel">
-                  <div className="panel-heading">
-                    <div>
-                      <p className="eyebrow">L’ARCHIVIO DEL CONGRESSO</p>
-                      <h2>Ricercatori e infiltrati</h2>
-                    </div>
-                    <Button
-                      secondary
-                      disabled={s.phase !== 'waiting'}
-                      onClick={() => setEditing({ ...blank, id: crypto.randomUUID() })}
-                    >
-                      <Plus size={17} />
-                      Aggiungi un nome
-                    </Button>
-                  </div>
-                  <People
-                    s={s}
-                    onSelect={setSelected}
-                    onEdit={setEditing}
-                    onRelease={(p) => setConfirm({ type: 'release', participantId: p.id })}
-                    onRemove={(p) => setConfirm({ type: 'remove', participantId: p.id })}
-                    onAdmit={(p, admission) => void perform({ type: 'participant', participant: { ...p, admission } })}
-                    all
-                  />
-                  <p className="footnote">
-                    Gli ospiti si iscrivono da soli con il link d’invito e completano il fascicolo dal telefono. Tu puoi
-                    correggere tutto da qui.
-                    {api.live
-                      ? ' Se qualcuno ha scelto il nome sbagliato, usa “Libera” e fallo rientrare.'
-                      : ' Nella versione collegata potrai liberare un nome scelto per errore.'}
-                  </p>
-                </section>
+                <RequestsBoard
+                  s={s}
+                  busy={busy}
+                  onAdmit={(p, admission) => void perform({ type: 'participant', participant: { ...p, admission } })}
+                  onEdit={setEditing}
+                  onRemove={(p) => setConfirm({ type: 'remove', participantId: p.id })}
+                  onRelease={(p) => setConfirm({ type: 'release', participantId: p.id })}
+                  onAdd={() => setEditing({ ...blank, id: crypto.randomUUID() })}
+                  isPresenting={(p) => presenter(s)?.id === p.id}
+                />
               )}
               {tab === 'premi' && (
                 <>

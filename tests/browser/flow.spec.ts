@@ -73,7 +73,7 @@ test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Modifica Paolo' }).click();
   await page.getByLabel('Nome', { exact: true }).fill('Paolo Demo');
   await page.getByRole('button', { name: 'Salva fascicolo' }).click();
-  await expect(page.getByRole('heading', { name: 'Paolo Demo', exact: true })).toBeVisible();
+  await expect(page.locator('.req-name', { hasText: 'Paolo Demo' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 test('GM with a name votes from the regia and sees the provisional award rules', async ({ page, context }) => {
@@ -165,13 +165,19 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(row).toContainText('Con tecnologia');
   // The GM can remove anyone, from the dossier list.
   await gm.getByRole('button', { name: 'I fascicoli' }).first().click();
+  await expect(gm.locator('.overview')).toContainText('Richieste');
+  const card = gm.locator('.req-card').filter({ hasText: 'Esperta di scie sospette' });
+  await expect(card).toContainText('+ testimone');
+  await card.getByRole('radio', { name: 'Ammesso' }).click();
+  await gm.getByRole('tab', { name: /Ammessi/ }).click();
+  await expect(gm.locator('.req-card').filter({ hasText: 'Esperta di scie sospette' })).toBeVisible();
   await gm
-    .locator('.person-row')
+    .locator('.req-card')
     .filter({ hasText: 'Esperta di scie sospette' })
     .getByRole('button', { name: 'Elimina Giulia' })
     .click();
   await gm.getByRole('button', { name: 'Conferma' }).click();
-  await expect(gm.locator('.person-row').filter({ hasText: 'Esperta di scie sospette' })).toHaveCount(0);
+  await expect(gm.locator('.req-card').filter({ hasText: 'Esperta di scie sospette' })).toHaveCount(0);
   // Another researcher from the plain link: no password, no audience option.
   const other = await context.newPage();
   await other.goto('/');

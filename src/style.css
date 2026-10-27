@@ -5498,3 +5498,250 @@ label,
 .pass-fields > div:nth-last-child(-n + 2) {
   border-bottom: 0;
 }
+
+/* ===================================================================
+   Regia · Fascicoli (27 Oct, 23:40): overview of headcount + request
+   cards with one-tap decisions. Phone first, two columns on desktop.
+   =================================================================== */
+.overview .panel-heading,
+.board .panel-heading {
+  margin-bottom: 4px;
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 12px 0 0;
+}
+@media (min-width: 900px) {
+  .overview-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.ov {
+  padding: 12px 12px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: #ffffff06;
+}
+.ov dt {
+  font: 500 11px/1.3 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.ov dd {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ov dd strong {
+  font: 34px/1 var(--type);
+  color: var(--bone);
+  font-weight: 400;
+}
+.ov dd span {
+  font: 13px/1.3 var(--sans);
+  color: var(--muted);
+}
+.ov.pending {
+  border-color: #c9902a88;
+}
+.ov.pending dt {
+  color: #e0b25c;
+}
+.ov.admitted {
+  border-color: #3f7a4588;
+}
+.ov.admitted dt {
+  color: #8fc495;
+}
+.overview-note {
+  margin: 12px 0 14px !important;
+  font: 14px/1.5 var(--sans) !important;
+  color: var(--muted);
+}
+.overview-note strong {
+  color: var(--bone);
+  font-weight: 600;
+}
+.board {
+  margin-top: 18px;
+}
+.board-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 10px 0 14px;
+  padding-bottom: 2px;
+}
+.board-tabs button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bone);
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.board-tabs button span {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+.board-tabs button.on {
+  background: var(--bone);
+  color: #1a150e;
+  border-color: var(--bone);
+}
+.board-empty {
+  padding: 18px 0 22px;
+  color: var(--muted);
+}
+.board-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+@media (min-width: 1100px) {
+  .board-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.req-card {
+  padding: 14px 14px 10px;
+  border: 1px solid var(--rule);
+  border-left: 4px solid #c9902a;
+  border-radius: 3px;
+  background: #ffffff07;
+}
+.req-card.admitted {
+  border-left-color: #3f7a45;
+}
+.req-card.reserve {
+  border-left-color: #6b6253;
+}
+.req-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.req-name {
+  font: 600 18px/1.25 var(--sans);
+  color: var(--bone);
+}
+.req-count {
+  flex-shrink: 0;
+  font: 500 11px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.req-role {
+  margin: 4px 0 0 !important;
+  font: 15px/1.4 var(--type) !important;
+  color: var(--brass-hi);
+}
+.req-facts {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.req-facts li {
+  font: 13px/1.4 var(--sans);
+  color: var(--muted);
+}
+.req-facts li.warn {
+  color: var(--red);
+}
+.req-decide {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin-top: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.decide {
+  min-height: 44px;
+  border: 0;
+  border-left: 1px solid var(--rule);
+  background: transparent;
+  color: var(--bone);
+  font: 500 12px/1.1 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.decide:first-child {
+  border-left: 0;
+}
+.decide:hover:not(:disabled) {
+  background: #ffffff10;
+}
+.decide:disabled {
+  cursor: default;
+}
+.decide.on.pending {
+  background: #c9902a;
+  color: #1a150e;
+}
+.decide.on.admitted {
+  background: #3f7a45;
+  color: #f2efe6;
+}
+.decide.on.reserve {
+  background: #6b6253;
+  color: #f2efe6;
+}
+.decide:focus-visible,
+.board-tabs button:focus-visible,
+.tool:focus-visible {
+  outline: 3px solid var(--brass-hi);
+  outline-offset: 2px;
+}
+.req-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 6px;
+}
+.tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tool:hover:not(:disabled) {
+  color: var(--bone);
+}
+.tool.danger:hover:not(:disabled) {
+  color: var(--red);
+}
+.tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.decide.on:disabled {
+  opacity: 1;
+}

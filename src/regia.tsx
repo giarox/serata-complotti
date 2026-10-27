@@ -1,0 +1,186 @@
+import React, { useState } from 'react';
+import { LockKeyholeOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { modes, type Admission, type Participant, type State } from './domain';
+import * as api from './api';
+import { Button } from './ui';
+
+/** How many people a request brings: the speaker plus their witness or co-speaker. */
+export const headcount = (p: Participant) => 1 + (p.partner || p.plusOne ? 1 : 0);
+const admOf = (p: Participant): Admission => p.admission ?? 'pending';
+const sum = (list: Participant[]) => list.reduce((n, p) => n + headcount(p), 0);
+const people = (n: number) => (n === 1 ? '1 persona' : `${n} persone`);
+
+/** The numbers the GM needs before deciding: requests, people, and what admitting everyone would mean. */
+export function Overview({ s }: { s: State }) {
+  const all = s.participants,
+    by = (a: Admission) => all.filter((p) => admOf(p) === a);
+  const pending = by('pending'),
+    admitted = by('admitted'),
+    reserve = by('reserve');
+  const cells: [string, Participant[], string][] = [
+    ['Richieste', all, 'all'],
+    ['Da valutare', pending, 'pending'],
+    ['Ammessi', admitted, 'admitted'],
+    ['Riserva', reserve, 'reserve'],
+  ];
+  return (
+    <section className="panel overview">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Effettivi</p>
+          <h2>Chi potrebbe esserci</h2>
+        </div>
+      </div>
+      <dl className="overview-grid">
+        {cells.map(([label, list, key]) => (
+          <div key={key} className={'ov ' + key}>
+            <dt>{label}</dt>
+            <dd>
+              <strong>{list.length}</strong>
+              <span>{people(sum(list))}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="overview-note">
+        In sala ora: <strong>{people(sum(admitted))}</strong>
+        {pending.length > 0 && (
+          <>
+            {' '}
+            · ammettendo tutte le richieste da valutare: <strong>{people(sum(admitted) + sum(pending))}</strong>
+          </>
+        )}
+        . Accompagnatori richiesti: {all.filter((p) => p.partner === 'witness').length} testimoni e{' '}
+        {all.filter((p) => p.partner === 'copresenter').length} co-relatori.
+      </p>
+    </section>
+  );
+}
+
+const admissionChoices: [Admission, string][] = [
+  ['pending', 'Da valutare'],
+  ['admitted', 'Ammesso'],
+  ['reserve', 'Riserva'],
+];
+
+/** Every request as a card, filterable by status, with one-tap decisions. Built for the phone first. */
+export function RequestsBoard({
+  s,
+  busy,
+  onAdmit,
+  onEdit,
+  onRemove,
+  onRelease,
+  onAdd,
+  isPresenting,
+}: {
+  s: State;
+  busy: boolean;
+  onAdmit: (p: Participant, a: Admission) => void;
+  onEdit: (p: Participant) => void;
+  onRemove: (p: Participant) => void;
+  onRelease: (p: Participant) => void;
+  onAdd: () => void;
+  isPresenting: (p: Participant) => boolean;
+}) {
+  const count = (a: Admission | 'all') => s.participants.filter((p) => a === 'all' || admOf(p) === a).length;
+  const [filter, setFilter] = useState<Admission | 'all'>(() => (count('pending') > 0 ? 'pending' : 'all'));
+  const list = s.participants.filter((p) => filter === 'all' || admOf(p) === filter);
+  const tabs: [Admission | 'all', string][] = [
+    ['pending', 'Da valutare'],
+    ['admitted', 'Ammessi'],
+    ['reserve', 'Riserva'],
+    ['all', 'Tutte'],
+  ];
+  return (
+    <section className="panel board">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Fascicoli</p>
+          <h2>Le richieste</h2>
+        </div>
+        <Button secondary disabled={s.phase !== 'waiting'} onClick={onAdd}>
+          <Plus size={17} /> Aggiungi
+        </Button>
+      </div>
+      <div className="board-tabs" role="tablist" aria-label="Filtra le richieste">
+        {tabs.map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={filter === key}
+            className={filter === key ? 'on' : ''}
+            onClick={() => setFilter(key)}
+          >
+            {label} <span>{count(key)}</span>
+          </button>
+        ))}
+      </div>
+      {list.length === 0 ? (
+        <p className="board-empty">Nessuna richiesta qui.</p>
+      ) : (
+        <ul className="board-list">
+          {list.map((p) => {
+            const adm = admOf(p),
+              mode = modes.find((m) => m.key === p.mode)?.label,
+              locked = isPresenting(p);
+            return (
+              <li key={p.id} className={'req-card ' + adm}>
+                <div className="req-head">
+                  <strong className="req-name">{p.name}</strong>
+                  <span className="req-count">{headcount(p) === 1 ? '1 persona' : '2 persone'}</span>
+                </div>
+                <p className="req-role">{p.role ? `«${p.role}»` : 'Qualifica non indicata'}</p>
+                <ul className="req-facts">
+                  <li>{mode ?? 'Modalità non scelta'}</li>
+                  {p.mode === 'slides' && (
+                    <li className={p.deckUrl ? '' : 'warn'}>{p.deckUrl ? 'Link slide ok' : 'Link slide mancante'}</li>
+                  )}
+                  {p.partner === 'witness' && <li>+ testimone: {p.partnerName || '?'}</li>}
+                  {p.partner === 'copresenter' && <li>+ co-relatore: {p.partnerName || '?'}</li>}
+                </ul>
+                <div className="req-decide" role="radiogroup" aria-label={'Ammissione di ' + p.name}>
+                  {admissionChoices.map(([a, label]) => (
+                    <button
+                      key={a}
+                      role="radio"
+                      aria-checked={adm === a}
+                      className={'decide ' + a + (adm === a ? ' on' : '')}
+                      disabled={busy || adm === a}
+                      onClick={() => onAdmit(p, a)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="req-tools">
+                  <button
+                    className="tool"
+                    aria-label={'Modifica ' + p.name}
+                    disabled={locked || s.phase === 'results'}
+                    onClick={() => onEdit(p)}
+                  >
+                    <Pencil size={15} /> Modifica
+                  </button>
+                  {api.live && s.claimed?.includes(p.id) && (
+                    <button className="tool" aria-label={'Libera ' + p.name} onClick={() => onRelease(p)}>
+                      <LockKeyholeOpen size={15} /> Libera telefono
+                    </button>
+                  )}
+                  <button
+                    className="tool danger"
+                    aria-label={'Elimina ' + p.name}
+                    disabled={locked}
+                    onClick={() => onRemove(p)}
+                  >
+                    <Trash2 size={15} /> Elimina
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
