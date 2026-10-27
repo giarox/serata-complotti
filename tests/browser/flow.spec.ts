@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 /** A guest already on the list opens the invite link on a new phone. */
 async function returning(page: Page, id: string) {
   await page.goto('/#invito=vecchio-link');
-  await page.getByRole('button', { name: 'Sono già ammesso' }).click();
+  await page.getByRole('button', { name: 'Ho già fatto richiesta' }).click();
   await page.getByLabel('Chi sei').selectOption(id);
   await page.getByRole('button', { name: 'Sono io' }).click();
 }
@@ -114,7 +114,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('nome');
-  await page.getByLabel('Nome del relatore').fill('Giulia');
+  await page.getByLabel('Nome', { exact: true }).fill('Giulia');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('modalità di presentazione');
   await page.getByRole('radio', { name: /Con tecnologia/ }).click();
@@ -173,7 +173,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   // Another researcher from the plain link: no password, no audience option.
   const other = await context.newPage();
   await other.goto('/');
-  await other.getByLabel('Nome del relatore').fill('Ugo');
+  await other.getByLabel('Nome', { exact: true }).fill('Ugo');
   await expect(other.getByRole('radio', { name: /Solo pubblico/ })).toHaveCount(0);
   await other.getByRole('radio', { name: /Senza tecnologia/ }).click();
   await other.getByLabel(/Qualifica/).fill('Investigatore da gruppo Telegram');

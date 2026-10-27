@@ -118,78 +118,88 @@ export function DossierFields({
   value,
   onChange,
   withAudience = false,
+  nameField,
 }: {
   value: Participant;
   onChange: (p: Participant) => void;
   /** At booking: slightly different wording (link can come later). */
   withAudience?: boolean;
+  /** The name field, shown first in the speaker section (booking only). */
+  nameField?: React.ReactNode;
 }) {
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
   const partner = value.partner ?? null;
   const setPartner = (v: Partner | null) => set({ partner: v, plusOne: v !== null });
   return (
     <>
-      <div className="form-line">
-        <label htmlFor="f-role">
-          Qualifica <span className="label-aside">(non verificabile)</span>
-        </label>
-        <textarea
-          id="f-role"
-          rows={2}
-          maxLength={80}
-          value={value.role}
-          onChange={(e) => set({ role: e.target.value.replace(/\n/g, ' ') })}
-        />
-        <div className="examples-row">
-          <p className="examples">Es. «Investigatrice da gruppo Telegram»</p>
-          <button type="button" className="line-action" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
-            <Dices size={16} /> Genera qualifica
-          </button>
-        </div>
-      </div>
-      <div className="form-line" role="radiogroup" aria-label="Modalità di presentazione" id="f-mode">
-        <span className="label">Modalità di presentazione</span>
-        <div className="ticks">
-          {modes
-            .filter((m) => m.key !== 'none')
-            .map((m) => (
-              <button
-                type="button"
-                role="radio"
-                aria-checked={value.mode === m.key}
-                key={m.key}
-                className={'tick ' + (value.mode === m.key ? 'chosen' : '')}
-                onClick={() => set({ mode: m.key })}
-              >
-                <i aria-hidden="true" />
-                <span>
-                  <strong>{m.label}</strong>
-                  <small>{m.hint}</small>
-                </span>
-              </button>
-            ))}
-        </div>
-      </div>
-      {value.mode === 'slides' && (
+      <fieldset className="form-section first">
+        <legend>Relatore</legend>
+        {nameField}
         <div className="form-line">
-          <label htmlFor="f-deck">Link Google Slides</label>
-          <input
-            id="f-deck"
-            type="url"
-            inputMode="url"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="https://docs.google.com/presentation/…"
-            value={value.deckUrl}
-            onChange={(e) => set({ deckUrl: e.target.value })}
+          <label htmlFor="f-role">
+            Qualifica <span className="label-aside">(non verificabile)</span>
+          </label>
+          <textarea
+            id="f-role"
+            rows={2}
+            maxLength={80}
+            value={value.role}
+            onChange={(e) => set({ role: e.target.value.replace(/\n/g, ' ') })}
           />
-          <p className="howto-inline">
-            <strong>Non sai dove trovarlo?</strong> Condividi → Chiunque abbia il link → Copia link.
-            {withAudience && ' Non è pronto? Aggiungilo dopo.'}
-          </p>
+          <div className="examples-row">
+            <p className="examples">Es. «Investigatrice da gruppo Telegram»</p>
+            <button type="button" className="line-action" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
+              <Dices size={16} /> Genera qualifica
+            </button>
+          </div>
         </div>
-      )}
+      </fieldset>
+      <fieldset className="form-section">
+        <legend>Presentazione</legend>
+        <div className="form-line" role="radiogroup" aria-label="Modalità di presentazione" id="f-mode">
+          <span className="label">Modalità</span>
+          <div className="ticks">
+            {modes
+              .filter((m) => m.key !== 'none')
+              .map((m) => (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={value.mode === m.key}
+                  key={m.key}
+                  className={'tick ' + (value.mode === m.key ? 'chosen' : '')}
+                  onClick={() => set({ mode: m.key })}
+                >
+                  <i aria-hidden="true" />
+                  <span>
+                    <strong>{m.label}</strong>
+                    <small>{m.hint}</small>
+                  </span>
+                </button>
+              ))}
+          </div>
+        </div>
+        {value.mode === 'slides' && (
+          <div className="form-line">
+            <label htmlFor="f-deck">Link Google Slides</label>
+            <input
+              id="f-deck"
+              type="url"
+              inputMode="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="https://docs.google.com/presentation/…"
+              value={value.deckUrl}
+              onChange={(e) => set({ deckUrl: e.target.value })}
+            />
+            <p className="howto-inline">
+              <strong>Non sai dove trovarlo?</strong> Condividi → Chiunque abbia il link → Copia link.
+              {withAudience && ` Non è pronto? Puoi aggiungerlo fino alla ${DEADLINE_LABEL}.`}
+            </p>
+          </div>
+        )}
+      </fieldset>
       <fieldset className="form-section" id="f-plus">
         <legend>Accompagnatore</legend>
         <p className="section-note">
@@ -279,7 +289,7 @@ export function DossierHome({
         void save();
       }}
     >
-      <h2>Il fascicolo</h2>
+      <h2>Modifica il fascicolo</h2>
       {blocker ? (
         <p className="footnote">{blocker}</p>
       ) : (
@@ -331,7 +341,7 @@ export function DossierHome({
   const toggleLabel = !editing ? 'Modifica fascicolo' : dirty ? 'Salva modifiche al fascicolo' : 'Nascondi fascicolo';
   return (
     <section className="booked">
-      <p className="receipt-kicker">Richiesta d’ammissione / {passNo}</p>
+      <p className="receipt-kicker">Richiesta di ammissione / {passNo}</p>
       <h1 className="receipt-title">
         {head[0]}
         <br />
@@ -391,6 +401,10 @@ export function DossierHome({
         </p>
         <ul className="dossier-recap">
           <li>
+            <span>Relatore</span>
+            <b>{me.name}</b>
+          </li>
+          <li>
             <span>Qualifica</span>
             <b>{me.role || '—'}</b>
           </li>
@@ -400,7 +414,7 @@ export function DossierHome({
           </li>
           {me.mode === 'slides' && (
             <li className={me.deckUrl ? '' : 'missing'}>
-              <span>Slide</span>
+              <span>Link slide</span>
               <b>{me.deckUrl ? 'Link allegato' : 'Link mancante'}</b>
             </li>
           )}

@@ -5134,3 +5134,16 @@ label,
     letter-spacing: 0.02em;
   }
 }
+/* One flow: the letter is split in the same sections as the pass and the recap */
+.form-section.first {
+  margin-top: 24px !important;
+}
+.form-section .form-line:first-of-type {
+  margin-top: 12px;
+}
+.booking-next {
+  margin: 14px 0 0 !important;
+  font: 13px/1.55 var(--sans) !important;
+  color: var(--ink-soft);
+  text-align: center;
+}

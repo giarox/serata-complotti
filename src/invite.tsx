@@ -154,7 +154,7 @@ function Booking({
             <dd>Su ammissione</dd>
           </div>
         </dl>
-        <p className="event-sub">I posti sono pochi: richiedi l’ammissione e la regia deciderà chi entra.</p>
+        <p className="event-sub">I posti sono pochi: richiedi l’ammissione e i poteri forti decideranno chi entra.</p>
       </section>
       <form
         className="booking letter on-paper"
@@ -166,19 +166,26 @@ function Booking({
         <Stamp sub="Non divulgare">Top secret</Stamp>
         <h2>Richiesta di ammissione</h2>
         <p className="booking-lede">
-          Le richieste verranno protocollate in ordine di arrivo. L’orario esatto è già stato annotato.
+          Compila il fascicolo da allegare alla richiesta. Le richieste verranno protocollate in ordine di arrivo:
+          l’orario esatto è già stato annotato.
         </p>
-        <div className="form-line">
-          <label htmlFor="f-name">Nome del relatore</label>
-          <input
-            id="f-name"
-            autoComplete="given-name"
-            maxLength={40}
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          />
-        </div>
-        <DossierFields value={draft} onChange={setDraft} withAudience />
+        <DossierFields
+          value={draft}
+          onChange={setDraft}
+          withAudience
+          nameField={
+            <div className="form-line">
+              <label htmlFor="f-name">Nome</label>
+              <input
+                id="f-name"
+                autoComplete="given-name"
+                maxLength={40}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              />
+            </div>
+          }
+        />
         {error && (
           <p role="alert" className="field-error">
             {error}
@@ -187,8 +194,11 @@ function Booking({
         <Button type="submit" className="booking-cta" disabled={busy}>
           {busy ? 'Ti stiamo schedando…' : 'Richiedi l’ammissione'}
         </Button>
+        <p className="booking-next">
+          Dopo l’invio riceverai il tuo pass. L’esito della valutazione comparirà lì: torna a controllarlo.
+        </p>
         <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
-          Sono già ammesso
+          Ho già fatto richiesta
         </Button>
       </form>
     </div>
@@ -249,7 +259,7 @@ function ReturningStep({
   return (
     <form className="entry-card step-card" onSubmit={submit}>
       <h2>Bentornato. Chi sei?</h2>
-      <p>Telefono nuovo o pagina chiusa? Scegliti dalla lista.</p>
+      <p>Ritrova la tua richiesta e il tuo pass: scegliti dalla lista.</p>
       {names.length > 0 && (
         <label>
           Chi sei
