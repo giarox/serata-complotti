@@ -138,7 +138,7 @@ export function DossierFields({
         {nameField}
         <div className="form-line">
           <label htmlFor="f-role">
-            Qualifica <span className="label-aside">(non verificabile)</span>
+            Qualifica accademica <span className="label-aside">(autocertificata)</span>
           </label>
           <textarea
             id="f-role"
@@ -195,8 +195,9 @@ export function DossierFields({
               onChange={(e) => set({ deckUrl: e.target.value })}
             />
             <p className="howto-inline">
-              <strong>Non sai dove trovarlo?</strong> Condividi → Chiunque abbia il link → Copia link.
-              {withAudience && ' Puoi aggiungerlo anche dopo.'}
+              <strong>Non sai dove trovarlo?</strong>
+              <br />
+              Clicca su Condividi → Chiunque abbia il link → Copia link, poi incollalo qui.
             </p>
           </div>
         )}
@@ -357,7 +358,7 @@ export function DossierHome({
           <span>Pass / SC-{passNo}</span>
           <span className={'pass-live ' + adm}>{admissionLabel[adm]}</span>
         </header>
-        <p className="pass-event">1° Congresso clandestino dei ricercatori indipendenti</p>
+        <p className="pass-event">1° Congresso dei ricercatori indipendenti</p>
         <div className="pass-body">
           <div>
             <span className="pass-label">Relatore</span>

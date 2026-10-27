@@ -103,6 +103,8 @@ function Booking({
     if (draft.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.';
     if (!draft.mode) return 'Scegli la modalità di presentazione: con o senza tecnologia.';
     if (!draft.role.trim()) return 'Manca la qualifica. Nessuna idea? Tocca “Genera qualifica”.';
+    if (draft.mode === 'slides' && !draft.deckUrl.trim())
+      return 'Incolla il link delle slide: serve già per inviare la richiesta.';
     return dossierProblem(draft);
   }
   async function book() {
@@ -135,7 +137,7 @@ function Booking({
   return (
     <div className="invite-layout">
       <section className="invite-intro event-head">
-        <p className="event-kicker">1° Congresso clandestino dei ricercatori indipendenti</p>
+        <p className="event-kicker">1° Congresso dei ricercatori indipendenti</p>
         <h1 className="event-title">
           <span>Siccome non cielo dicono,</span>
           <span>cielo diciamo noi.</span>

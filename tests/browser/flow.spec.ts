@@ -120,24 +120,27 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await page.getByRole('radio', { name: /Con tecnologia/ }).click();
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('qualifica');
-  await page.getByLabel(/Qualifica/).fill('Esperta di scie sospette');
+  await page.getByLabel(/Qualifica accademica/).fill('Esperta di scie sospette');
   await page.getByRole('radio', { name: /Porto un testimone/ }).click();
   await page.getByLabel('Nome del testimone').fill('Ugo');
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  // Slides not ready yet: book anyway, add the link later.
+  // The link is required to send the request.
   await page.getByLabel('Link Google Slides').fill('');
   await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
-  // After booking: countdown (link still missing), then the dossier, then the registry.
-  await page.getByRole('button', { name: 'Modifica il fascicolo allegato' }).click();
+  await expect(page.getByRole('alert')).toContainText('link delle slide');
+  await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/old/edit');
+  await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
+  // After booking: the pass, then (on demand) the dossier, then the register.
   await expect(page.locator('.pass-name', { hasText: 'Giulia' })).toBeVisible();
-  await expect(page.getByRole('timer')).toContainText('giorni');
-  await expect(page.locator('.guest-pass')).toContainText('Mancante');
-  await expect(page.getByLabel(/Qualifica/)).toHaveValue('Esperta di scie sospette');
+  await expect(page.locator('.guest-pass')).toContainText('Allegato al fascicolo');
+  await expect(page.getByRole('timer')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Modifica il fascicolo allegato' }).click();
+  await expect(page.getByLabel(/Qualifica accademica/)).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
-    ['.countdown', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
+    ['.guest-pass', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
   expect(order[0]).toBeLessThan(order[1]);
   expect(order[1]).toBeLessThan(order[2]);
@@ -147,8 +150,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
   await page.getByRole('button', { name: 'Salva modifiche al fascicolo' }).last().click();
-  await expect(page.locator('.guest-pass')).toContainText('Allegato al fascicolo');
-  await expect(page.getByRole('timer')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Nascondi il fascicolo' })).toBeVisible();
   // No talk title at all: no spoilers, not even for the GM.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
   // The GM sees the congress title and mode; two Giulia are fine.
@@ -176,7 +178,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await other.getByLabel('Nome', { exact: true }).fill('Ugo');
   await expect(other.getByRole('radio', { name: /Solo pubblico/ })).toHaveCount(0);
   await other.getByRole('radio', { name: /Senza tecnologia/ }).click();
-  await other.getByLabel(/Qualifica/).fill('Investigatore da gruppo Telegram');
+  await other.getByLabel(/Qualifica accademica/).fill('Investigatore da gruppo Telegram');
   await other.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(other.locator('.welcome-lede')).toContainText('Figure non meglio identificate');
   await expect(other.locator('.roster')).toContainText('Ugo');
