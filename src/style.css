@@ -4569,3 +4569,30 @@ h1,
 .gm-door {
   letter-spacing: 0.08em !important;
 }
+
+/* Fonts v3: Arimo for reading, JetBrains Mono for the mono voice */
+:root {
+  --sans: 'Arimo', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+.label-aside {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+/* Stamps get real room on phones: they sit in the flow, above the title */
+@media (max-width: 650px) {
+  .booking > .stamp {
+    position: relative;
+    top: auto;
+    right: auto;
+    display: block;
+    width: max-content;
+    margin: 6px 4px 18px auto;
+    font-size: 24px;
+  }
+  .booking > h2:first-of-type {
+    margin-top: 0 !important;
+    padding-right: 0;
+  }
+}

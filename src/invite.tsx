@@ -102,7 +102,7 @@ function Booking({
   function problem(): string | null {
     if (draft.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.';
     if (!draft.mode) return 'Scegli come presenti: con le slide o alla vecchia maniera.';
-    if (!draft.role.trim()) return 'Manca il tuo seriosissimo titolo da ricercatore. Nessuna idea? Tira il dado.';
+    if (!draft.role.trim()) return 'Manca il tuo titolo da ricercatore. Nessuna idea? Tocca “Idea”.';
     return dossierProblem(draft);
   }
   async function book() {
@@ -148,7 +148,7 @@ function Booking({
         }}
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
-        <h2>Blocca il tuo posto</h2>
+        <h2>Richiesta di ammissione</h2>
         <div className="form-line">
           <label htmlFor="f-name">Il tuo nome</label>
           <input
@@ -166,10 +166,10 @@ function Booking({
           </p>
         )}
         <Button type="submit" className="booking-cta" disabled={busy}>
-          {busy ? 'Ti stiamo schedando…' : 'Blocca il mio posto'}
+          {busy ? 'Ti stiamo schedando…' : 'Richiedi l’ammissione'}
         </Button>
         <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
-          Ho già prenotato
+          Sono già ammesso
         </Button>
       </form>
     </div>

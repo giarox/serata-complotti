@@ -121,7 +121,9 @@ export function DossierFields({
   return (
     <>
       <div className="form-line">
-        <label htmlFor="f-role">Il tuo seriosissimo titolo</label>
+        <label htmlFor="f-role">
+          Titolo da ricercatore <span className="label-aside">(certificato seriamente, eh)</span>
+        </label>
         <div className="line-with-action">
           <input
             id="f-role"
@@ -295,7 +297,7 @@ export function DossierHome({
     <section className="booked">
       <p className="receipt-kicker">Ricevuta d’iscrizione / {passNo}</p>
       <h1 className="receipt-title">
-        Posto bloccato.
+        Ammissione accolta.
         <br />
         Sei nel congresso.
       </h1>

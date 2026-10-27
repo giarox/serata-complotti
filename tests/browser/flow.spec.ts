@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 /** A guest already on the list opens the invite link on a new phone. */
 async function returning(page: Page, id: string) {
   await page.goto('/#invito=vecchio-link');
-  await page.getByRole('button', { name: 'Ho già prenotato' }).click();
+  await page.getByRole('button', { name: 'Sono già ammesso' }).click();
   await page.getByLabel('Chi sei').selectOption(id);
   await page.getByRole('button', { name: 'Sono io' }).click();
 }
@@ -108,32 +108,32 @@ test('GM with a name votes from the regia and sees the provisional award rules',
 test('a friend registers on one screen, then adds the Slides link before the deadline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#invito=vecchio-link');
-  await expect(page.getByRole('heading', { name: 'Blocca il tuo posto' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Richiesta di ammissione' })).toBeVisible();
   expect(page.url()).not.toContain('vecchio-link');
   // One screen: name, silly title and how they take part.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('nome');
   await page.getByLabel('Il tuo nome').fill('Giulia');
-  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('Scegli come presenti');
   await page.getByRole('radio', { name: /Con le slide/ }).click();
-  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('titolo');
-  await page.getByLabel('Il tuo seriosissimo titolo').fill('Esperta di scie sospette');
+  await page.getByLabel(/Titolo da ricercatore/).fill('Esperta di scie sospette');
   await page.getByRole('checkbox', { name: /Porto un collaboratore/ }).click();
   await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
-  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(page.getByRole('alert')).toContainText('Google Slides');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   // Slides not ready yet: book anyway, add the link later.
   await page.getByLabel('Link Google Slides').fill('');
-  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await page.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   // After booking: countdown (link still missing), then the dossier, then the registry.
   await expect(page.locator('.pass-name', { hasText: 'Giulia' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
-  await expect(page.getByLabel('Il tuo seriosissimo titolo')).toHaveValue('Esperta di scie sospette');
+  await expect(page.getByLabel(/Titolo da ricercatore/)).toHaveValue('Esperta di scie sospette');
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.roster'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
@@ -174,8 +174,8 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   await other.getByLabel('Il tuo nome').fill('Ugo');
   await expect(other.getByRole('radio', { name: /Solo pubblico/ })).toHaveCount(0);
   await other.getByRole('radio', { name: /Alla vecchia maniera/ }).click();
-  await other.getByLabel(/seriosissimo titolo/).fill('Investigatore da gruppo Telegram');
-  await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await other.getByLabel(/Titolo da ricercatore/).fill('Investigatore da gruppo Telegram');
+  await other.getByRole('button', { name: 'Richiedi l’ammissione' }).click();
   await expect(other.locator('.welcome-lede')).toContainText('teoria');
   await expect(other.locator('.roster')).toContainText('Ugo');
 });
