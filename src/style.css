@@ -5485,3 +5485,16 @@ label,
   outline: 3px solid var(--brass);
   outline-offset: 2px;
 }
+/* Roster stats: numbers aligned on the bottom even when a label wraps */
+.roster-stats > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.roster-stats dd {
+  margin-top: 6px;
+}
+/* Pass without date/venue: the last row needs no bottom rule */
+.pass-fields > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}

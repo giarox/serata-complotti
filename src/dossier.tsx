@@ -13,7 +13,7 @@ import {
   type Partner,
   type State,
 } from './domain';
-import { DEADLINE_LABEL, DOSSIER_DEADLINE, EVENT_DAY, EVENT_TIME, VENUE } from './event';
+import { DEADLINE_LABEL, DOSSIER_DEADLINE, EVENT_DAY, EVENT_TIME } from './event';
 import { Button, Stamp } from './ui';
 
 export const roleIdeas = [
@@ -384,16 +384,6 @@ export function DossierHome({
             <dt>Accompagnatore</dt>
             <dd>{partnerText(me)}</dd>
           </div>
-          <div>
-            <dt>Data</dt>
-            <dd>
-              {EVENT_DAY}, ore {EVENT_TIME}
-            </dd>
-          </div>
-          <div>
-            <dt>Luogo</dt>
-            <dd>{VENUE}</dd>
-          </div>
           {me.mode === 'slides' && (
             <div className={'pass-wide' + (me.deckUrl ? '' : ' missing')}>
               <dt>Link slide</dt>
@@ -448,13 +438,13 @@ const partnerText = (p: Participant) =>
 
 const modeTag: Record<string, string> = { slides: 'Slide', paper: 'Dal vivo', none: 'Pubblico' };
 export const admissionLabel: Record<Admission, string> = {
-  pending: 'In attesa di giudizio',
+  pending: 'In valutazione',
   admitted: 'Ammesso',
   reserve: 'In riserva',
 };
 const groups: [Admission, string][] = [
   ['admitted', 'Ammessi'],
-  ['pending', 'In attesa di giudizio'],
+  ['pending', 'In valutazione'],
   ['reserve', 'In riserva'],
 ];
 
