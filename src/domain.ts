@@ -68,6 +68,8 @@ export type Action =
   | { type: 'reveal' }
   /** GM: one step back (questions→presentation, voting→questions, reopen the last vote, leave the reveal). */
   | { type: 'back' }
+  /** GM: start the evening over. everyone=false keeps the requests; true empties the register too. */
+  | { type: 'reset'; everyone: boolean }
   | { type: 'nextAward' }
   | { type: 'participant'; participant: Participant }
   | { type: 'register'; id: string; name: string }
@@ -348,6 +350,13 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     const i = s.votes.findIndex((v) => v.roundId === vote.roundId && v.voterId === vote.voterId);
     if (i >= 0) s.votes[i] = vote;
     else s.votes.push(vote);
+  } else if (action.type === 'reset') {
+    s.rounds = [];
+    s.votes = [];
+    s.activeRoundId = null;
+    s.phase = 'waiting';
+    s.revealed = 0;
+    if (action.everyone) s.participants = [];
   } else if (action.type === 'back') {
     if (s.phase === 'questions') s.phase = 'presenting';
     else if (s.phase === 'voting') s.phase = 'questions';

@@ -115,7 +115,7 @@ begin
  select state into s from public.party_store where id=true for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
- if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset') then raise exception 'Operazione non riconosciuta.'; end if;
  if kind not in ('vote','participant') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
@@ -154,6 +154,14 @@ begin
   ballot:=jsonb_build_object('credibility',ballot->'credibility','delivery',ballot->'delivery','research',ballot->'research','supercazzola',ballot->'supercazzola','roundId',rid,'voterId',actor->>'participantId');
   select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where not(v->>'roundId'=rid and v->>'voterId'=actor->>'participantId');
   s:=jsonb_set(s,'{votes}',votes||jsonb_build_array(ballot));
+ elsif kind='reset' then
+  -- GM only: start the evening over. With everyone=true the register is emptied and guest phones unlinked.
+  s:=s||jsonb_build_object('rounds','[]'::jsonb,'votes','[]'::jsonb,'activeRoundId',null,'phase','waiting','revealed',0);
+  if coalesce((command->>'everyone')::boolean,false) then
+   s:=jsonb_set(s,'{participants}','[]'::jsonb);
+   delete from public.party_members where role='guest';
+   update public.party_members set person_id=null where role='gm';
+  end if;
  elsif kind='back' then
   if phase='questions' then s:=jsonb_set(s,'{phase}','"presenting"'::jsonb);
   elsif phase='voting' then s:=jsonb_set(s,'{phase}','"questions"'::jsonb);

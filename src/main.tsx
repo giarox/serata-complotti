@@ -663,6 +663,28 @@ function App() {
                   </p>
                 </>
               )}
+              {tab !== 'fascicoli' && (
+                <section className="panel reset-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">Prove generali</p>
+                      <h2>Ricomincia la serata</h2>
+                    </div>
+                  </div>
+                  <p className="footnote">
+                    Hai fatto un giro di prova? Azzera turni, voti e verdetto: le richieste e le ammissioni restano. Per
+                    partire da zero puoi svuotare anche il registro.
+                  </p>
+                  <div className="result-actions">
+                    <Button secondary disabled={busy} onClick={() => setConfirm({ type: 'reset', everyone: false })}>
+                      Azzera turni e voti
+                    </Button>
+                    <Button secondary disabled={busy} onClick={() => setConfirm({ type: 'reset', everyone: true })}>
+                      Svuota anche il registro
+                    </Button>
+                  </div>
+                </section>
+              )}
               <footer>
                 <span>LA VERITÀ È QUI DENTRO. FORSE.</span>
                 <span>SERATA COMPLOTTI / N. 001</span>
@@ -723,26 +745,34 @@ function App() {
                 ? 'Liberare questo nome?'
                 : confirm.type === 'remove'
                   ? 'Eliminare questa persona?'
-                  : confirm.type === 'reveal'
-                    ? 'È il momento della verità?'
-                    : confirm.type === 'phase' && confirm.phase === 'voting'
-                      ? 'Aprire la votazione?'
-                      : 'Chiudere la votazione?'
+                  : confirm.type === 'reset'
+                    ? confirm.everyone
+                      ? 'Svuotare tutto?'
+                      : 'Azzerare la serata?'
+                    : confirm.type === 'reveal'
+                      ? 'È il momento della verità?'
+                      : confirm.type === 'phase' && confirm.phase === 'voting'
+                        ? 'Aprire la votazione?'
+                        : 'Chiudere la votazione?'
           }
           onClose={() => setConfirm(null)}
         >
           <p>
             {confirm.type === 'cancel'
               ? 'Il turno e gli eventuali voti verranno esclusi. Il ricercatore tornerà disponibile.'
-              : confirm.type === 'remove'
-                ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
-                : confirm.type === 'release'
-                  ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
-                  : confirm.type === 'reveal'
-                    ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
-                    : confirm.type === 'phase' && confirm.phase === 'voting'
-                      ? `Si voterà per ${person ? displayName(person) : ''}.`
-                      : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
+              : confirm.type === 'reset'
+                ? confirm.everyone
+                  ? `Spariscono turni, voti, verdetto e tutte le ${s.participants.length} richieste; i telefoni degli ospiti vengono scollegati. Non si può annullare.`
+                  : `Spariscono turni, voti e verdetto. Le ${s.participants.length} richieste e le ammissioni restano. Non si può annullare.`
+                : confirm.type === 'remove'
+                  ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
+                  : confirm.type === 'release'
+                    ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
+                    : confirm.type === 'reveal'
+                      ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
+                      : confirm.type === 'phase' && confirm.phase === 'voting'
+                        ? `Si voterà per ${person ? displayName(person) : ''}.`
+                        : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
           </p>
           <Button disabled={busy} onClick={() => void perform(confirm)}>
             Conferma

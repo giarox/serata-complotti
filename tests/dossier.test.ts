@@ -207,3 +207,18 @@ describe('going back (GM)', () => {
     expect(() => applyAction(s, { role: 'guest', participantId: 'ugo' }, { type: 'back' })).toThrow('regia');
   });
 });
+
+describe('reset (GM)', () => {
+  it('clears turns and votes, and optionally the register', () => {
+    let s = register(initialState(), 'Ugo', 'ugo');
+    s = applyAction(s, gm, { type: 'participant', participant: { ...me(s, 'ugo'), role: 'R', mode: 'paper' } });
+    s = applyAction(s, gm, { type: 'start', participantId: 'ugo' });
+    const soft = applyAction(s, gm, { type: 'reset', everyone: false });
+    expect(soft).toMatchObject({ phase: 'waiting', rounds: [], votes: [], activeRoundId: null });
+    expect(soft.participants.some((p) => p.id === 'ugo')).toBe(true);
+    expect(applyAction(s, gm, { type: 'reset', everyone: true }).participants).toEqual([]);
+    expect(() => applyAction(s, { role: 'guest', participantId: 'ugo' }, { type: 'reset', everyone: false })).toThrow(
+      'regia',
+    );
+  });
+});
