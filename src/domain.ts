@@ -122,7 +122,7 @@ export const modes: { key: Mode; label: string; short: string; hint: string }[] 
     key: 'slides',
     label: 'Con tecnologia',
     short: 'Con tecnologia',
-    hint: 'Slide proiettate. Rischio intercettazione: alto.',
+    hint: 'Slide proiettate. Rischio 5G.',
   },
   {
     key: 'paper',

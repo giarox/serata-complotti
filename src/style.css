@@ -5444,3 +5444,44 @@ label,
 .form-section legend {
   margin-bottom: 8px !important;
 }
+
+/* 27 Oct, 23:20 — inputs look like inputs even when idle; generator as a link */
+.booking .form-line input,
+.booking .form-line textarea {
+  background-color: #ffffff1c !important;
+}
+.booking .form-line input:focus,
+.booking .form-line textarea:focus {
+  background-color: #ffffff4d !important;
+}
+.examples-row {
+  display: block;
+  margin-top: 8px;
+}
+.examples-row .examples {
+  margin: 0;
+}
+.link-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 0;
+  min-height: 32px;
+  border: 0;
+  background: none;
+  color: var(--stamp);
+  font: 500 12px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.link-action:hover {
+  color: #8a1c12;
+}
+.link-action:focus-visible {
+  outline: 3px solid var(--brass);
+  outline-offset: 2px;
+}

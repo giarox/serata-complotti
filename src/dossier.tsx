@@ -149,7 +149,7 @@ export function DossierFields({
           />
           <div className="examples-row">
             <p className="examples">Es. «Investigatrice da gruppo Telegram»</p>
-            <button type="button" className="line-action" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
+            <button type="button" className="link-action" onClick={() => set({ role: pick(roleIdeas, value.role) })}>
               <Dices size={16} /> Genera qualifica
             </button>
           </div>
@@ -209,7 +209,7 @@ export function DossierFields({
         <div className="ticks stacked" role="radiogroup" aria-label="Accompagnatore">
           {(
             [
-              [null, 'Vengo da solo', 'Meglio soli che male informati.'],
+              [null, 'Agisco da solo', 'Meglio soli che male informati.'],
               ['witness', 'Porto un testimone', 'Viene con me ma non presenta. Osserva e al massimo annuisce.'],
               ['copresenter', 'Porto un co-relatore', 'Viene con me e presenta. Conferma tutto, anche le invenzioni.'],
             ] as const

@@ -194,9 +194,6 @@ function Booking({
         <Button type="submit" className="booking-cta" disabled={busy}>
           {busy ? 'Ti stiamo schedando…' : 'Richiedi l’ammissione'}
         </Button>
-        <p className="booking-next">
-          Dopo l’invio riceverai il tuo pass. L’esito della valutazione comparirà lì: torna a controllarlo.
-        </p>
         <div className="booking-alt-wrap">
           <Button secondary className="booking-alt" disabled={busy} onClick={onReturning}>
             Ho già fatto richiesta
