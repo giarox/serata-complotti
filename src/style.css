@@ -4685,3 +4685,9 @@ h1,
   text-align: left;
   white-space: nowrap;
 }
+
+/* Fonts v4: Geist for reading, Geist Mono for the mono voice */
+:root {
+  --sans: 'Geist', system-ui, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, monospace;
+}
