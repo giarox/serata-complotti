@@ -5745,3 +5745,28 @@ label,
 .decide.on:disabled {
   opacity: 1;
 }
+
+/* Test evening */
+.sandbox-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 8px 16px;
+  background: repeating-linear-gradient(-45deg, #c9902a 0 14px, #b8801f 14px 28px);
+  color: #1a150e;
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+.sandbox-banner strong {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-right: 8px;
+}
+.testlab,
+.reset-panel {
+  margin-top: 18px;
+}
+.sandbox-banner {
+  position: relative;
+}

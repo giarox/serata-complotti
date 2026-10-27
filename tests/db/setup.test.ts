@@ -373,6 +373,39 @@ describe('self-registration and own dossier', () => {
     await expect(act(anna, { type: 'back' })).rejects.toThrow('Solo la regia');
   });
 
+  it('keeps the test evening completely apart from the real one', async () => {
+    const realBefore = await snap(gm);
+    const tester = await user();
+    const t = await as<{ participantId: string }>(tester, 'select public.party_register($1, $2, true) as r', [
+      '',
+      'Camilla',
+    ]);
+    const testGm = await user();
+    expect(await as(testGm, 'select public.party_join($1, null, true, true) as r', [GM])).toEqual({ role: 'gm' });
+    await expect(as(await user(), 'select public.party_join($1, null, true, true) as r', ['0000'])).rejects.toThrow(
+      'Password non corretta',
+    );
+    type S = Snap & { participants: { id: string; bot?: boolean }[]; sandbox: boolean };
+    const testView = await as<S>(testGm, 'select public.party_snapshot() as r');
+    expect(testView.sandbox).toBe(true);
+    expect(testView.participants.map((p) => p.id)).toEqual([t.participantId]);
+    await act(testGm, { type: 'addBots', n: 3 });
+    await act(testGm, { type: 'start', participantId: t.participantId });
+    const rid = (await as<S>(testGm, 'select public.party_snapshot() as r')).activeRoundId!;
+    await act(testGm, { type: 'phase', phase: 'questions', roundId: rid });
+    await act(testGm, { type: 'phase', phase: 'voting', roundId: rid });
+    await act(testGm, { type: 'botVotes' });
+    expect((await as<S>(testGm, 'select public.party_snapshot() as r')).voteCount).toBe(3);
+    await act(testGm, { type: 'reset', everyone: true });
+    // The real evening did not move, and its guests are still linked.
+    const realAfter = await as<S>(gm, 'select public.party_snapshot() as r');
+    expect(realAfter.sandbox).toBe(false);
+    expect(realAfter.participants.length).toBe((realBefore as S).participants.length);
+    expect(realAfter.participants.some((p) => p.id === t.participantId || p.bot)).toBe(false);
+    expect(await as(giulia, 'select public.party_actor() as r')).toEqual({ role: 'guest', participantId: 'giulia' });
+    await expect(act(gm, { type: 'addBots', n: 2 })).rejects.toThrow('solo nella serata di prova');
+  });
+
   it('keeps admission in the GM’s hands', async () => {
     const anna = await user();
     const { participantId: id } = await registerAs(anna, '', 'Anna Rossi');

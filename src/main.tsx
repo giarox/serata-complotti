@@ -64,7 +64,7 @@ import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { DossierHome } from './dossier';
-import { Overview, RequestsBoard } from './regia';
+import { Overview, RequestsBoard, TestLab } from './regia';
 const blank: Participant = {
   id: '',
   name: '',
@@ -157,7 +157,18 @@ function App() {
         <p>Apertura del fascicolo…</p>
       </div>
     );
-  if (!actor) return <Entry onEnter={enter} />;
+  const testBanner = api.sandbox && (
+    <div className="sandbox-banner" role="note">
+      <strong>Serata di prova</strong> Quello che succede qui non tocca la serata vera.
+    </div>
+  );
+  if (!actor)
+    return (
+      <>
+        {testBanner}
+        <Entry onEnter={enter} />
+      </>
+    );
   if (!s)
     return (
       <div className="loading">
@@ -197,569 +208,582 @@ function App() {
             : '';
   const me = s.participants.find((p) => p.id === actor.participantId);
   return (
-    <div className={screen ? 'app screen-mode' : 'app'}>
-      {!screen && actor.role === 'gm' && (
-        <aside className="sidebar">
-          <a className="brand" href="#" onClick={(e) => e.preventDefault()}>
-            <Mark />
-            <div>
-              SERATA
-              <br />
-              COMPLOTTI<span>CONGRESSO N. 001</span>
-            </div>
-          </a>
-          <div className="sidebar-label">IL QUARTIER GENERALE</div>
-          <nav>
-            {[
-              ['regia', Radio, 'Regia della serata'],
-              ['fascicoli', Users, 'I fascicoli'],
-              ['premi', Trophy, 'Il verdetto'],
-            ].map(([id, Icon, label]) => (
-              <button key={String(id)} className={tab === id ? 'nav-active' : ''} onClick={() => setTab(String(id))}>
-                {React.createElement(Icon as typeof Radio, { size: iconSize })}
-                {String(label)}
-                {id === 'regia' && <i className="dot" />}
-              </button>
-            ))}
-            <button onClick={() => setScreen(true)}>
-              <Monitor size={iconSize} />
-              Vista proiettore
-              <ArrowUpRight size={15} />
-            </button>
-          </nav>
-          <div className="sidebar-bottom">
-            <div className="mini-dossier">
-              <LockKeyhole size={20} />
-              <span>
-                Accesso riservato
+    <>
+      {testBanner}
+      <div className={screen ? 'app screen-mode' : 'app'}>
+        {!screen && actor.role === 'gm' && (
+          <aside className="sidebar">
+            <a className="brand" href="#" onClick={(e) => e.preventDefault()}>
+              <Mark />
+              <div>
+                SERATA
                 <br />
-                <strong>Solo per menti aperte.</strong>
-              </span>
-            </div>
-            <button className="logout" onClick={() => void logout()}>
-              <LogOut size={16} /> Esci dalla regia
-            </button>
-            <span className="edition">EDIZIONE ALPHA / 2026</span>
-          </div>
-        </aside>
-      )}
-      <div className="workspace">
-        <header className="topbar">
-          <span className="breadcrumb">
-            {screen ? 'Sala proiezione' : actor.role === 'gm' ? 'Quartier generale' : 'Congresso clandestino'}{' '}
-            <ChevronRight size={13} />{' '}
-            <strong>
-              {screen
-                ? 'Schermo'
-                : actor.role === 'gm'
-                  ? tab === 'fascicoli'
-                    ? 'I fascicoli'
-                    : tab === 'premi'
-                      ? 'Il verdetto'
-                      : 'Regia della serata'
-                  : s.participants.find((p) => p.id === actor.participantId)?.name}
-            </strong>
-          </span>
-          <div className="top-actions">
-            <span className={'connection ' + (!connected ? 'disconnected' : '')}>
-              <i className="dot" />
-              {!api.live ? 'Demo locale' : connected ? 'Collegato' : 'Riconnessione…'}
-            </span>
-            {screen ? (
-              <button className="icon-button" aria-label="Esci dalla vista proiettore" onClick={() => setScreen(false)}>
-                <X size={18} />
+                COMPLOTTI<span>CONGRESSO N. 001</span>
+              </div>
+            </a>
+            <div className="sidebar-label">IL QUARTIER GENERALE</div>
+            <nav>
+              {[
+                ['regia', Radio, 'Regia della serata'],
+                ['fascicoli', Users, 'I fascicoli'],
+                ['premi', Trophy, 'Il verdetto'],
+              ].map(([id, Icon, label]) => (
+                <button key={String(id)} className={tab === id ? 'nav-active' : ''} onClick={() => setTab(String(id))}>
+                  {React.createElement(Icon as typeof Radio, { size: iconSize })}
+                  {String(label)}
+                  {id === 'regia' && <i className="dot" />}
+                </button>
+              ))}
+              <button onClick={() => setScreen(true)}>
+                <Monitor size={iconSize} />
+                Vista proiettore
+                <ArrowUpRight size={15} />
               </button>
-            ) : actor.role === 'guest' ? (
-              <button className="icon-button" aria-label="Esci" onClick={() => void logout()}>
-                <LogOut size={18} />
-              </button>
-            ) : (
-              <>
-                <span className="avatar" title={me ? 'Regia · ' + me.name : 'Solo regia'}>
-                  {me ? me.name.slice(0, 2).toUpperCase() : 'GM'}
+            </nav>
+            <div className="sidebar-bottom">
+              <div className="mini-dossier">
+                <LockKeyhole size={20} />
+                <span>
+                  Accesso riservato
+                  <br />
+                  <strong>Solo per menti aperte.</strong>
                 </span>
-                <button className="icon-button" aria-label="Esci dalla regia" onClick={() => void logout()}>
+              </div>
+              <button className="logout" onClick={() => void logout()}>
+                <LogOut size={16} /> Esci dalla regia
+              </button>
+              <span className="edition">EDIZIONE ALPHA / 2026</span>
+            </div>
+          </aside>
+        )}
+        <div className="workspace">
+          <header className="topbar">
+            <span className="breadcrumb">
+              {screen ? 'Sala proiezione' : actor.role === 'gm' ? 'Quartier generale' : 'Congresso clandestino'}{' '}
+              <ChevronRight size={13} />{' '}
+              <strong>
+                {screen
+                  ? 'Schermo'
+                  : actor.role === 'gm'
+                    ? tab === 'fascicoli'
+                      ? 'I fascicoli'
+                      : tab === 'premi'
+                        ? 'Il verdetto'
+                        : 'Regia della serata'
+                    : s.participants.find((p) => p.id === actor.participantId)?.name}
+              </strong>
+            </span>
+            <div className="top-actions">
+              <span className={'connection ' + (!connected ? 'disconnected' : '')}>
+                <i className="dot" />
+                {!api.live ? 'Demo locale' : connected ? 'Collegato' : 'Riconnessione…'}
+              </span>
+              {screen ? (
+                <button
+                  className="icon-button"
+                  aria-label="Esci dalla vista proiettore"
+                  onClick={() => setScreen(false)}
+                >
+                  <X size={18} />
+                </button>
+              ) : actor.role === 'guest' ? (
+                <button className="icon-button" aria-label="Esci" onClick={() => void logout()}>
                   <LogOut size={18} />
                 </button>
-              </>
-            )}
-          </div>
-        </header>
-        {!api.live && (
-          <div className="demo-bar">
-            <span>
-              <strong>LABORATORIO DEMO</strong> Dati salvati in questo browser · nessuna connessione Supabase
-            </span>
-            <div>
-              <button
-                onClick={() => {
-                  const a: Actor = { role: 'gm', participantId: 'gianluca' };
-                  enter(a);
-                  setScreen(false);
-                }}
-              >
-                Regia
-              </button>
-              <select
-                aria-label="Prova un partecipante"
-                value={actor.participantId ?? ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    enter({ role: 'guest', participantId: e.target.value });
-                    setScreen(false);
-                  }
-                }}
-              >
-                <option value="">Prova un partecipante</option>
-                {s.participants.map((p) => (
-                  <option value={p.id} key={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-        {error && (
-          <div role="alert" className="alert">
-            {error}
-            <button aria-label="Chiudi avviso" onClick={() => setError('')}>
-              <X size={16} />
-            </button>
-          </div>
-        )}
-        {notice && (
-          <div role="status" className="notice">
-            {notice}
-            <button aria-label="Chiudi messaggio" onClick={() => setNotice('')}>
-              <X size={16} />
-            </button>
-          </div>
-        )}
-        <main className={actor.role === 'guest' ? 'content guest-content' : 'content'}>
-          {screen ? (
-            <Projector s={s} />
-          ) : actor.role === 'guest' ? (
-            <Guest s={s} actor={actor} busy={busy} perform={perform} />
-          ) : (
-            <>
-              <div className="page-heading">
-                <div>
-                  <p className="eyebrow">
-                    <span /> ACCESSO LIVELLO: REGIA
-                  </p>
-                  <h1>
-                    {tab === 'fascicoli'
-                      ? 'Ogni teoria ha un volto.'
-                      : tab === 'premi'
-                        ? 'La verità viene a galla.'
-                        : 'Tieni insieme il complotto.'}
-                  </h1>
-                  <p>
-                    {tab === 'fascicoli'
-                      ? 'Prepara i ricercatori, le prove e i loro fascicoli.'
-                      : tab === 'premi'
-                        ? 'Quattro categorie. Nessun premio alla normalità.'
-                        : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
-                  </p>
-                </div>
-                <Stamp sub="Strettamente confidenziale">Top secret</Stamp>
-              </div>
-              <div className="mobile-nav">
-                <button onClick={() => setTab('regia')}>Regia</button>
-                <button onClick={() => setTab('fascicoli')}>Fascicoli</button>
-                <button onClick={() => setTab('premi')}>Verdetto</button>
-                <button onClick={() => setScreen(true)}>Schermo</button>
-              </div>
-              {tab === 'regia' && (
+              ) : (
                 <>
-                  <section className="stat-strip">
-                    <div>
-                      <Users />
-                      <span>
-                        Al congresso
-                        <strong>
-                          {(s.participants.length + s.participants.filter((p) => p.plusOne).length)
-                            .toString()
-                            .padStart(2, '0')}{' '}
-                          <small>persone ({s.participants.filter((p) => p.plusOne).length} accompagnatori)</small>
-                        </strong>
-                      </span>
-                    </div>
-                    <div>
-                      <FileText />
-                      <span>
-                        Fascicoli discussi
-                        <strong>
-                          {completed.toString().padStart(2, '0')}{' '}
-                          <small>su {s.participants.filter((p) => !p.spectator).length}</small>
-                        </strong>
-                      </span>
-                    </div>
-                    <div>
-                      <LockKeyhole />
-                      <span>
-                        Il verdetto
-                        <strong className="word-stat">{s.phase === 'results' ? 'Svelato' : 'Top secret'}</strong>
-                      </span>
-                    </div>
-                  </section>
-                  <section className="live-panel">
-                    <div className="section-top">
-                      <span className="eyebrow">
-                        <i className="dot" /> IL PUNTO DELLA SITUAZIONE
-                      </span>
-                      <span className="phase-badge">{phaseNames[s.phase]}</span>
-                    </div>
-                    <div className="live-body">
-                      <div className="live-copy">
-                        <span className="mono">
-                          {round
-                            ? 'FASCICOLO ATTIVO / ' + String(s.rounds.length).padStart(3, '0')
-                            : 'NESSUN FASCICOLO APERTO'}
+                  <span className="avatar" title={me ? 'Regia · ' + me.name : 'Solo regia'}>
+                    {me ? me.name.slice(0, 2).toUpperCase() : 'GM'}
+                  </span>
+                  <button className="icon-button" aria-label="Esci dalla regia" onClick={() => void logout()}>
+                    <LogOut size={18} />
+                  </button>
+                </>
+              )}
+            </div>
+          </header>
+          {!api.live && (
+            <div className="demo-bar">
+              <span>
+                <strong>LABORATORIO DEMO</strong> Dati salvati in questo browser · nessuna connessione Supabase
+              </span>
+              <div>
+                <button
+                  onClick={() => {
+                    const a: Actor = { role: 'gm', participantId: 'gianluca' };
+                    enter(a);
+                    setScreen(false);
+                  }}
+                >
+                  Regia
+                </button>
+                <select
+                  aria-label="Prova un partecipante"
+                  value={actor.participantId ?? ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      enter({ role: 'guest', participantId: e.target.value });
+                      setScreen(false);
+                    }
+                  }}
+                >
+                  <option value="">Prova un partecipante</option>
+                  {s.participants.map((p) => (
+                    <option value={p.id} key={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div role="alert" className="alert">
+              {error}
+              <button aria-label="Chiudi avviso" onClick={() => setError('')}>
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          {notice && (
+            <div role="status" className="notice">
+              {notice}
+              <button aria-label="Chiudi messaggio" onClick={() => setNotice('')}>
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          <main className={actor.role === 'guest' ? 'content guest-content' : 'content'}>
+            {screen ? (
+              <Projector s={s} />
+            ) : actor.role === 'guest' ? (
+              <Guest s={s} actor={actor} busy={busy} perform={perform} />
+            ) : (
+              <>
+                <div className="page-heading">
+                  <div>
+                    <p className="eyebrow">
+                      <span /> ACCESSO LIVELLO: REGIA
+                    </p>
+                    <h1>
+                      {tab === 'fascicoli'
+                        ? 'Ogni teoria ha un volto.'
+                        : tab === 'premi'
+                          ? 'La verità viene a galla.'
+                          : 'Tieni insieme il complotto.'}
+                    </h1>
+                    <p>
+                      {tab === 'fascicoli'
+                        ? 'Prepara i ricercatori, le prove e i loro fascicoli.'
+                        : tab === 'premi'
+                          ? 'Quattro categorie. Nessun premio alla normalità.'
+                          : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
+                    </p>
+                  </div>
+                  <Stamp sub="Strettamente confidenziale">Top secret</Stamp>
+                </div>
+                <div className="mobile-nav">
+                  <button onClick={() => setTab('regia')}>Regia</button>
+                  <button onClick={() => setTab('fascicoli')}>Fascicoli</button>
+                  <button onClick={() => setTab('premi')}>Verdetto</button>
+                  <button onClick={() => setScreen(true)}>Schermo</button>
+                </div>
+                {tab === 'regia' && (
+                  <>
+                    <section className="stat-strip">
+                      <div>
+                        <Users />
+                        <span>
+                          Al congresso
+                          <strong>
+                            {(s.participants.length + s.participants.filter((p) => p.plusOne).length)
+                              .toString()
+                              .padStart(2, '0')}{' '}
+                            <small>persone ({s.participants.filter((p) => p.plusOne).length} accompagnatori)</small>
+                          </strong>
                         </span>
-                        <h2>
-                          {person
-                            ? person.role || displayName(person)
-                            : s.phase === 'results'
-                              ? 'Ci sono delle conclusioni.'
-                              : allDone
-                                ? 'Tutti hanno parlato.'
-                                : 'La parola al prossimo sospettato.'}
-                        </h2>
-                        <p>
-                          {person ? (
-                            <>
-                              <strong>{displayName(person)}</strong>
-                              {person.role ? ` · ${person.role}` : ''}
-                            </>
-                          ) : s.phase === 'results' ? (
-                            'Il congresso ha parlato. Svela una categoria alla volta dal Verdetto.'
-                          ) : allDone ? (
-                            'Le presentazioni sono finite. Passa al verdetto e svela i premi una categoria alla volta.'
-                          ) : completed > 0 ? (
-                            `Scegli il prossimo ricercatore (ne mancano ${left.length}), oppure chiudi i turni e passa al verdetto.`
-                          ) : (
-                            'Scegli chi vuole presentare. L’ordine lo decide la serata.'
-                          )}
-                        </p>
-                        <div className="primary-actions">
-                          {s.phase === 'presenting' && (
-                            <Button
-                              disabled={busy || !connected}
-                              onClick={() => void perform({ type: 'phase', phase: 'questions', roundId: round!.id })}
-                            >
-                              Passa al question time <MessageCircle size={18} />
-                            </Button>
-                          )}
-                          {s.phase === 'questions' && (
-                            <Button
-                              disabled={busy || !connected}
-                              onClick={() => setConfirm({ type: 'phase', phase: 'voting', roundId: round!.id })}
-                            >
-                              Apri il voto per {person ? displayName(person) : ''}
-                              <ArrowRight size={18} />
-                            </Button>
-                          )}
-                          {s.phase === 'voting' && (
-                            <>
+                      </div>
+                      <div>
+                        <FileText />
+                        <span>
+                          Fascicoli discussi
+                          <strong>
+                            {completed.toString().padStart(2, '0')}{' '}
+                            <small>su {s.participants.filter((p) => !p.spectator).length}</small>
+                          </strong>
+                        </span>
+                      </div>
+                      <div>
+                        <LockKeyhole />
+                        <span>
+                          Il verdetto
+                          <strong className="word-stat">{s.phase === 'results' ? 'Svelato' : 'Top secret'}</strong>
+                        </span>
+                      </div>
+                    </section>
+                    <section className="live-panel">
+                      <div className="section-top">
+                        <span className="eyebrow">
+                          <i className="dot" /> IL PUNTO DELLA SITUAZIONE
+                        </span>
+                        <span className="phase-badge">{phaseNames[s.phase]}</span>
+                      </div>
+                      <div className="live-body">
+                        <div className="live-copy">
+                          <span className="mono">
+                            {round
+                              ? 'FASCICOLO ATTIVO / ' + String(s.rounds.length).padStart(3, '0')
+                              : 'NESSUN FASCICOLO APERTO'}
+                          </span>
+                          <h2>
+                            {person
+                              ? person.role || displayName(person)
+                              : s.phase === 'results'
+                                ? 'Ci sono delle conclusioni.'
+                                : allDone
+                                  ? 'Tutti hanno parlato.'
+                                  : 'La parola al prossimo sospettato.'}
+                          </h2>
+                          <p>
+                            {person ? (
+                              <>
+                                <strong>{displayName(person)}</strong>
+                                {person.role ? ` · ${person.role}` : ''}
+                              </>
+                            ) : s.phase === 'results' ? (
+                              'Il congresso ha parlato. Svela una categoria alla volta dal Verdetto.'
+                            ) : allDone ? (
+                              'Le presentazioni sono finite. Passa al verdetto e svela i premi una categoria alla volta.'
+                            ) : completed > 0 ? (
+                              `Scegli il prossimo ricercatore (ne mancano ${left.length}), oppure chiudi i turni e passa al verdetto.`
+                            ) : (
+                              'Scegli chi vuole presentare. L’ordine lo decide la serata.'
+                            )}
+                          </p>
+                          <div className="primary-actions">
+                            {s.phase === 'presenting' && (
                               <Button
                                 disabled={busy || !connected}
-                                onClick={() => setConfirm({ type: 'phase', phase: 'waiting', roundId: round!.id })}
+                                onClick={() => void perform({ type: 'phase', phase: 'questions', roundId: round!.id })}
                               >
-                                Chiudi la votazione <LockKeyhole size={18} />
+                                Passa al question time <MessageCircle size={18} />
                               </Button>
-                              <span className="vote-tally">{countVotes(s)} voti ricevuti</span>
-                            </>
-                          )}
-                          {s.phase === 'waiting' && !allDone && (
-                            <a className="button" href="#relatori">
-                              Scegli un ricercatore
-                              <ArrowRight size={18} />
-                            </a>
-                          )}
-                          {s.phase === 'waiting' && completed > 0 && (
-                            <Button secondary={!allDone} onClick={() => setTab('premi')}>
-                              Vai al verdetto
-                              <Trophy size={18} />
-                            </Button>
-                          )}
-                          {s.phase === 'results' && (
-                            <Button onClick={() => setTab('premi')}>
-                              Vai al verdetto
-                              <Trophy size={18} />
-                            </Button>
-                          )}
+                            )}
+                            {s.phase === 'questions' && (
+                              <Button
+                                disabled={busy || !connected}
+                                onClick={() => setConfirm({ type: 'phase', phase: 'voting', roundId: round!.id })}
+                              >
+                                Apri il voto per {person ? displayName(person) : ''}
+                                <ArrowRight size={18} />
+                              </Button>
+                            )}
+                            {s.phase === 'voting' && (
+                              <>
+                                <Button
+                                  disabled={busy || !connected}
+                                  onClick={() => setConfirm({ type: 'phase', phase: 'waiting', roundId: round!.id })}
+                                >
+                                  Chiudi la votazione <LockKeyhole size={18} />
+                                </Button>
+                                <span className="vote-tally">{countVotes(s)} voti ricevuti</span>
+                                {api.sandbox && (
+                                  <Button secondary disabled={busy} onClick={() => void perform({ type: 'botVotes' })}>
+                                    Fai votare i tester
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            {s.phase === 'waiting' && !allDone && (
+                              <a className="button" href="#relatori">
+                                Scegli un ricercatore
+                                <ArrowRight size={18} />
+                              </a>
+                            )}
+                            {s.phase === 'waiting' && completed > 0 && (
+                              <Button secondary={!allDone} onClick={() => setTab('premi')}>
+                                Vai al verdetto
+                                <Trophy size={18} />
+                              </Button>
+                            )}
+                            {s.phase === 'results' && (
+                              <Button onClick={() => setTab('premi')}>
+                                Vai al verdetto
+                                <Trophy size={18} />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="secondary-actions">
+                            {backLabel && (
+                              <button
+                                className="text-button"
+                                disabled={busy || !connected}
+                                onClick={() => void perform({ type: 'back' })}
+                              >
+                                <ArrowLeft size={15} /> {backLabel}
+                              </button>
+                            )}
+                            {round && (
+                              <button
+                                className="text-button"
+                                disabled={busy}
+                                onClick={() => setConfirm({ type: 'cancel', roundId: round.id })}
+                              >
+                                Annulla questo turno
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="secondary-actions">
-                          {backLabel && (
-                            <button
-                              className="text-button"
-                              disabled={busy || !connected}
-                              onClick={() => void perform({ type: 'back' })}
-                            >
-                              <ArrowLeft size={15} /> {backLabel}
-                            </button>
-                          )}
-                          {round && (
-                            <button
-                              className="text-button"
-                              disabled={busy}
-                              onClick={() => setConfirm({ type: 'cancel', roundId: round.id })}
-                            >
-                              Annulla questo turno
-                            </button>
-                          )}
+                        <div className="dossier-art" aria-hidden="true">
+                          <div className="art-paper">
+                            <span>ARCHIVIO RISERVATO</span>
+                            <Eye strokeWidth={1} />
+                            <strong>
+                              Non è una
+                              <br />
+                              coincidenza.
+                            </strong>
+                            <div className="art-lines" />
+                            <em>PROVA 001</em>
+                          </div>
+                          <div className="art-tape" />
+                          <span className="art-cross">chi c’era davvero?</span>
+                          <svg className="art-strings" viewBox="0 0 248 208" preserveAspectRatio="none">
+                            <line x1="74" y1="34" x2="196" y2="48" />
+                            <line x1="74" y1="34" x2="150" y2="158" />
+                            <line x1="196" y1="48" x2="150" y2="158" />
+                            <circle cx="74" cy="34" r="5" />
+                            <circle cx="196" cy="48" r="5" />
+                            <circle cx="150" cy="158" r="5" />
+                          </svg>
                         </div>
                       </div>
-                      <div className="dossier-art" aria-hidden="true">
-                        <div className="art-paper">
-                          <span>ARCHIVIO RISERVATO</span>
-                          <Eye strokeWidth={1} />
-                          <strong>
-                            Non è una
-                            <br />
-                            coincidenza.
-                          </strong>
-                          <div className="art-lines" />
-                          <em>PROVA 001</em>
-                        </div>
-                        <div className="art-tape" />
-                        <span className="art-cross">chi c’era davvero?</span>
-                        <svg className="art-strings" viewBox="0 0 248 208" preserveAspectRatio="none">
-                          <line x1="74" y1="34" x2="196" y2="48" />
-                          <line x1="74" y1="34" x2="150" y2="158" />
-                          <line x1="196" y1="48" x2="150" y2="158" />
-                          <circle cx="74" cy="34" r="5" />
-                          <circle cx="196" cy="48" r="5" />
-                          <circle cx="150" cy="158" r="5" />
-                        </svg>
+                      <div className="phase-track">
+                        {(['presenting', 'questions', 'voting', 'waiting'] as const).map((phase, i) => (
+                          <div key={phase} className={s.phase === phase ? 'current' : ''}>
+                            <span>{String(i + 1).padStart(2, '0')}</span>
+                            {['Presentazione', 'Question time', 'Votazione', 'Prossimo turno'][i]}
+                            {i < 3 && <ChevronRight size={14} />}
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <div className="phase-track">
-                      {(['presenting', 'questions', 'voting', 'waiting'] as const).map((phase, i) => (
-                        <div key={phase} className={s.phase === phase ? 'current' : ''}>
-                          <span>{String(i + 1).padStart(2, '0')}</span>
-                          {['Presentazione', 'Question time', 'Votazione', 'Prossimo turno'][i]}
-                          {i < 3 && <ChevronRight size={14} />}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                  {me && <GmOwnTurn s={s} actor={actor} busy={busy} perform={perform} />}
-                  <div className="lower-grid">
-                    <section className="panel" id="relatori">
-                      <div className="panel-heading">
-                        <div>
-                          <p className="eyebrow">CHI HA QUALCOSA DA DIRE?</p>
-                          <h2>I ricercatori</h2>
-                        </div>
-                        <button className="text-button" onClick={() => setTab('fascicoli')}>
-                          Tutti i fascicoli <ArrowUpRight size={16} />
-                        </button>
-                      </div>
-                      <People s={s} onSelect={setSelected} onEdit={setEditing} />
                     </section>
-                    <aside className="side-notes">
-                      <div className="note-card">
-                        <span className="note-number">PROMEMORIA N. 01</span>
-                        <CircleHelp size={26} />
-                        <h3>
-                          Prima le domande.
-                          <br />
-                          Poi i giudizi.
-                        </h3>
-                        <p>Il question time è dal vivo. Quando è finito, apri tu la votazione.</p>
-                      </div>
-                      <div className="quiet-card">
-                        <Monitor size={22} />
-                        <div>
-                          <h3>La sala è pronta?</h3>
-                          <p>Apri lo schermo del congresso sul proiettore.</p>
-                          <button className="text-button" onClick={() => setScreen(true)}>
-                            Apri vista proiettore <ArrowUpRight size={15} />
+                    {me && <GmOwnTurn s={s} actor={actor} busy={busy} perform={perform} />}
+                    <div className="lower-grid">
+                      <section className="panel" id="relatori">
+                        <div className="panel-heading">
+                          <div>
+                            <p className="eyebrow">CHI HA QUALCOSA DA DIRE?</p>
+                            <h2>I ricercatori</h2>
+                          </div>
+                          <button className="text-button" onClick={() => setTab('fascicoli')}>
+                            Tutti i fascicoli <ArrowUpRight size={16} />
                           </button>
                         </div>
-                      </div>
-                      <div className="integration-note">
-                        <span className="dot amber" /> Collegamento Slides da aggiungere.
-                        <br />
-                        Puoi provare tutta la serata senza.
-                      </div>
-                    </aside>
-                  </div>
-                </>
-              )}
-              {tab === 'fascicoli' && <Overview s={s} />}
-              {tab === 'fascicoli' && (
-                <RequestsBoard
-                  s={s}
-                  busy={busy}
-                  onAdmit={(p, admission) => void perform({ type: 'participant', participant: { ...p, admission } })}
-                  onEdit={setEditing}
-                  onRemove={(p) => setConfirm({ type: 'remove', participantId: p.id })}
-                  onRelease={(p) => setConfirm({ type: 'release', participantId: p.id })}
-                  onAdd={() => setEditing({ ...blank, id: crypto.randomUUID() })}
-                  isPresenting={(p) => presenter(s)?.id === p.id}
-                />
-              )}
-              {tab === 'premi' && (
-                <>
-                  {s.phase !== 'results' && <AwardSettings s={s} busy={busy} perform={perform} />}
-                  <Results s={s} />
-                  <div className="result-actions">
-                    {s.phase === 'waiting' && (
-                      <Button disabled={busy || !completed} onClick={() => setConfirm({ type: 'reveal' })}>
-                        Inizia il reveal
-                        <Trophy size={18} />
-                      </Button>
-                    )}
-                    {s.phase === 'results' && s.revealed < 4 && (
-                      <Button disabled={busy} onClick={() => void perform({ type: 'nextAward' })}>
-                        Svela la prossima categoria
-                        <ArrowRight size={18} />
-                      </Button>
-                    )}
-                    {s.phase === 'results' && s.revealed >= 4 && (
-                      <p className="verdict-done">Tutte le categorie sono state svelate. La serata è conclusa.</p>
-                    )}
-                    {s.phase === 'results' && (
-                      <Button secondary disabled={busy} onClick={() => void perform({ type: 'back' })}>
-                        <ArrowLeft size={17} />
-                        Esci dal reveal
-                      </Button>
-                    )}
-                    {s.phase === 'results' && (
-                      <Button secondary onClick={download}>
-                        <Download size={17} />
-                        Esporta risultati
-                      </Button>
-                    )}
-                  </div>
-                  <p className="footnote">
-                    A pari merito vince chi non ha ancora un premio; se nessuno o tutti ne hanno già uno, il premio è
-                    condiviso. Le medie si confrontano senza arrotondare.
-                  </p>
-                </>
-              )}
-              {tab !== 'fascicoli' && (
-                <section className="panel reset-panel">
-                  <div className="panel-heading">
-                    <div>
-                      <p className="eyebrow">Prove generali</p>
-                      <h2>Ricomincia la serata</h2>
+                        <People s={s} onSelect={setSelected} onEdit={setEditing} />
+                      </section>
+                      <aside className="side-notes">
+                        <div className="note-card">
+                          <span className="note-number">PROMEMORIA N. 01</span>
+                          <CircleHelp size={26} />
+                          <h3>
+                            Prima le domande.
+                            <br />
+                            Poi i giudizi.
+                          </h3>
+                          <p>Il question time è dal vivo. Quando è finito, apri tu la votazione.</p>
+                        </div>
+                        <div className="quiet-card">
+                          <Monitor size={22} />
+                          <div>
+                            <h3>La sala è pronta?</h3>
+                            <p>Apri lo schermo del congresso sul proiettore.</p>
+                            <button className="text-button" onClick={() => setScreen(true)}>
+                              Apri vista proiettore <ArrowUpRight size={15} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="integration-note">
+                          <span className="dot amber" /> Collegamento Slides da aggiungere.
+                          <br />
+                          Puoi provare tutta la serata senza.
+                        </div>
+                      </aside>
                     </div>
-                  </div>
-                  <p className="footnote">
-                    Hai fatto un giro di prova? Azzera turni, voti e verdetto: le richieste e le ammissioni restano. Per
-                    partire da zero puoi svuotare anche il registro.
-                  </p>
-                  <div className="result-actions">
-                    <Button secondary disabled={busy} onClick={() => setConfirm({ type: 'reset', everyone: false })}>
-                      Azzera turni e voti
-                    </Button>
-                    <Button secondary disabled={busy} onClick={() => setConfirm({ type: 'reset', everyone: true })}>
-                      Svuota anche il registro
-                    </Button>
-                  </div>
-                </section>
-              )}
-              <footer>
-                <span>LA VERITÀ È QUI DENTRO. FORSE.</span>
-                <span>SERATA COMPLOTTI / N. 001</span>
-                {!api.live && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Cancellare tutti i turni e i voti della demo?')) {
-                        api.resetDemo();
-                        setTab('regia');
-                      }
-                    }}
-                  >
-                    Ricomincia la demo
-                  </button>
+                  </>
                 )}
-              </footer>
-            </>
-          )}
-        </main>
+                {tab === 'fascicoli' && <Overview s={s} />}
+                {tab === 'fascicoli' && (
+                  <RequestsBoard
+                    s={s}
+                    busy={busy}
+                    onAdmit={(p, admission) => void perform({ type: 'participant', participant: { ...p, admission } })}
+                    onEdit={setEditing}
+                    onRemove={(p) => setConfirm({ type: 'remove', participantId: p.id })}
+                    onRelease={(p) => setConfirm({ type: 'release', participantId: p.id })}
+                    onAdd={() => setEditing({ ...blank, id: crypto.randomUUID() })}
+                    isPresenting={(p) => presenter(s)?.id === p.id}
+                  />
+                )}
+                {tab === 'premi' && (
+                  <>
+                    {s.phase !== 'results' && <AwardSettings s={s} busy={busy} perform={perform} />}
+                    <Results s={s} />
+                    <div className="result-actions">
+                      {s.phase === 'waiting' && (
+                        <Button disabled={busy || !completed} onClick={() => setConfirm({ type: 'reveal' })}>
+                          Inizia il reveal
+                          <Trophy size={18} />
+                        </Button>
+                      )}
+                      {s.phase === 'results' && s.revealed < 4 && (
+                        <Button disabled={busy} onClick={() => void perform({ type: 'nextAward' })}>
+                          Svela la prossima categoria
+                          <ArrowRight size={18} />
+                        </Button>
+                      )}
+                      {s.phase === 'results' && s.revealed >= 4 && (
+                        <p className="verdict-done">Tutte le categorie sono state svelate. La serata è conclusa.</p>
+                      )}
+                      {s.phase === 'results' && (
+                        <Button secondary disabled={busy} onClick={() => void perform({ type: 'back' })}>
+                          <ArrowLeft size={17} />
+                          Esci dal reveal
+                        </Button>
+                      )}
+                      {s.phase === 'results' && (
+                        <Button secondary onClick={download}>
+                          <Download size={17} />
+                          Esporta risultati
+                        </Button>
+                      )}
+                    </div>
+                    <p className="footnote">
+                      A pari merito vince chi non ha ancora un premio; se nessuno o tutti ne hanno già uno, il premio è
+                      condiviso. Le medie si confrontano senza arrotondare.
+                    </p>
+                  </>
+                )}
+                {tab === 'regia' && <TestLab s={s} busy={busy} perform={perform} />}
+                {tab !== 'fascicoli' && (
+                  <section className="panel reset-panel">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">Prove generali</p>
+                        <h2>Ricomincia la serata</h2>
+                      </div>
+                    </div>
+                    <p className="footnote">
+                      Hai fatto un giro di prova? Azzera turni, voti e verdetto: le richieste e le ammissioni restano.
+                      Per partire da zero puoi svuotare anche il registro.
+                    </p>
+                    <div className="result-actions">
+                      <Button secondary disabled={busy} onClick={() => setConfirm({ type: 'reset', everyone: false })}>
+                        Azzera turni e voti
+                      </Button>
+                      <Button secondary disabled={busy} onClick={() => setConfirm({ type: 'reset', everyone: true })}>
+                        Svuota anche il registro
+                      </Button>
+                    </div>
+                  </section>
+                )}
+                <footer>
+                  <span>LA VERITÀ È QUI DENTRO. FORSE.</span>
+                  <span>SERATA COMPLOTTI / N. 001</span>
+                  {!api.live && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Cancellare tutti i turni e i voti della demo?')) {
+                          api.resetDemo();
+                          setTab('regia');
+                        }
+                      }}
+                    >
+                      Ricomincia la demo
+                    </button>
+                  )}
+                </footer>
+              </>
+            )}
+          </main>
+        </div>
+        {selected && (
+          <Modal title="Apriamo questo fascicolo?" onClose={() => setSelected(null)}>
+            <p className="eyebrow">IL PROSSIMO RELATORE</p>
+            <h3 className="modal-talk">{displayName(selected)}</h3>
+            <p>{selected.role || 'Titolo da ricercatore non pervenuto'}</p>
+            <p className="footnote">
+              {selected.mode === 'paper'
+                ? 'Presentazione dal vivo: niente slide, sul proiettore restano nome e titolo.'
+                : selected.mode === 'slides' && selected.deckUrl
+                  ? 'Presentazione con slide. Per ora il deck si apre a mano sul computer del proiettore.'
+                  : selected.mode === 'slides'
+                    ? 'Ha scelto le slide ma non ha lasciato il link: fatti dare il deck prima di iniziare.'
+                    : 'Non ha ancora detto come presenta. Chiediglielo prima di iniziare.'}
+            </p>
+            {dossierGaps(selected).length > 0 && (
+              <p className="award-reason">Fascicolo incompleto: manca {dossierGaps(selected).join(', ')}.</p>
+            )}
+            <Button disabled={busy} onClick={() => void perform({ type: 'start', participantId: selected.id })}>
+              Inizia con {displayName(selected)}
+              <Play size={17} />
+            </Button>
+          </Modal>
+        )}
+        {editing && (
+          <Editor
+            participant={editing}
+            busy={busy}
+            onClose={() => setEditing(null)}
+            onSave={(p) => void perform({ type: 'participant', participant: p })}
+          />
+        )}
+        {confirm && (
+          <Modal
+            title={
+              confirm.type === 'cancel'
+                ? 'Annullare il turno?'
+                : confirm.type === 'release'
+                  ? 'Liberare questo nome?'
+                  : confirm.type === 'remove'
+                    ? 'Eliminare questa persona?'
+                    : confirm.type === 'reset'
+                      ? confirm.everyone
+                        ? 'Svuotare tutto?'
+                        : 'Azzerare la serata?'
+                      : confirm.type === 'reveal'
+                        ? 'È il momento della verità?'
+                        : confirm.type === 'phase' && confirm.phase === 'voting'
+                          ? 'Aprire la votazione?'
+                          : 'Chiudere la votazione?'
+            }
+            onClose={() => setConfirm(null)}
+          >
+            <p>
+              {confirm.type === 'cancel'
+                ? 'Il turno e gli eventuali voti verranno esclusi. Il ricercatore tornerà disponibile.'
+                : confirm.type === 'reset'
+                  ? confirm.everyone
+                    ? `Spariscono turni, voti, verdetto e tutte le ${s.participants.length} richieste; i telefoni degli ospiti vengono scollegati. Non si può annullare.`
+                    : `Spariscono turni, voti e verdetto. Le ${s.participants.length} richieste e le ammissioni restano. Non si può annullare.`
+                  : confirm.type === 'remove'
+                    ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
+                    : confirm.type === 'release'
+                      ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
+                      : confirm.type === 'reveal'
+                        ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
+                        : confirm.type === 'phase' && confirm.phase === 'voting'
+                          ? `Si voterà per ${person ? displayName(person) : ''}.`
+                          : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
+            </p>
+            <Button disabled={busy} onClick={() => void perform(confirm)}>
+              Conferma
+              <Check size={18} />
+            </Button>
+          </Modal>
+        )}
       </div>
-      {selected && (
-        <Modal title="Apriamo questo fascicolo?" onClose={() => setSelected(null)}>
-          <p className="eyebrow">IL PROSSIMO RELATORE</p>
-          <h3 className="modal-talk">{displayName(selected)}</h3>
-          <p>{selected.role || 'Titolo da ricercatore non pervenuto'}</p>
-          <p className="footnote">
-            {selected.mode === 'paper'
-              ? 'Presentazione dal vivo: niente slide, sul proiettore restano nome e titolo.'
-              : selected.mode === 'slides' && selected.deckUrl
-                ? 'Presentazione con slide. Per ora il deck si apre a mano sul computer del proiettore.'
-                : selected.mode === 'slides'
-                  ? 'Ha scelto le slide ma non ha lasciato il link: fatti dare il deck prima di iniziare.'
-                  : 'Non ha ancora detto come presenta. Chiediglielo prima di iniziare.'}
-          </p>
-          {dossierGaps(selected).length > 0 && (
-            <p className="award-reason">Fascicolo incompleto: manca {dossierGaps(selected).join(', ')}.</p>
-          )}
-          <Button disabled={busy} onClick={() => void perform({ type: 'start', participantId: selected.id })}>
-            Inizia con {displayName(selected)}
-            <Play size={17} />
-          </Button>
-        </Modal>
-      )}
-      {editing && (
-        <Editor
-          participant={editing}
-          busy={busy}
-          onClose={() => setEditing(null)}
-          onSave={(p) => void perform({ type: 'participant', participant: p })}
-        />
-      )}
-      {confirm && (
-        <Modal
-          title={
-            confirm.type === 'cancel'
-              ? 'Annullare il turno?'
-              : confirm.type === 'release'
-                ? 'Liberare questo nome?'
-                : confirm.type === 'remove'
-                  ? 'Eliminare questa persona?'
-                  : confirm.type === 'reset'
-                    ? confirm.everyone
-                      ? 'Svuotare tutto?'
-                      : 'Azzerare la serata?'
-                    : confirm.type === 'reveal'
-                      ? 'È il momento della verità?'
-                      : confirm.type === 'phase' && confirm.phase === 'voting'
-                        ? 'Aprire la votazione?'
-                        : 'Chiudere la votazione?'
-          }
-          onClose={() => setConfirm(null)}
-        >
-          <p>
-            {confirm.type === 'cancel'
-              ? 'Il turno e gli eventuali voti verranno esclusi. Il ricercatore tornerà disponibile.'
-              : confirm.type === 'reset'
-                ? confirm.everyone
-                  ? `Spariscono turni, voti, verdetto e tutte le ${s.participants.length} richieste; i telefoni degli ospiti vengono scollegati. Non si può annullare.`
-                  : `Spariscono turni, voti e verdetto. Le ${s.participants.length} richieste e le ammissioni restano. Non si può annullare.`
-                : confirm.type === 'remove'
-                  ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
-                  : confirm.type === 'release'
-                    ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
-                    : confirm.type === 'reveal'
-                      ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
-                      : confirm.type === 'phase' && confirm.phase === 'voting'
-                        ? `Si voterà per ${person ? displayName(person) : ''}.`
-                        : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
-          </p>
-          <Button disabled={busy} onClick={() => void perform(confirm)}>
-            Conferma
-            <Check size={18} />
-          </Button>
-        </Modal>
-      )}
-    </div>
+    </>
   );
 }
 function People({

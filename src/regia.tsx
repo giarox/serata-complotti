@@ -132,6 +132,7 @@ export function RequestsBoard({
                 </div>
                 <p className="req-role">{p.role ? `«${p.role}»` : 'Qualifica non indicata'}</p>
                 <ul className="req-facts">
+                  {p.bot && <li>Tester finto</li>}
                   <li>{mode ?? 'Modalità non scelta'}</li>
                   {p.mode === 'slides' && (
                     <li className={p.deckUrl ? '' : 'warn'}>{p.deckUrl ? 'Link slide ok' : 'Link slide mancante'}</li>
@@ -181,6 +182,70 @@ export function RequestsBoard({
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** Test evening: from the real regia, a way in; inside the test, fake testers on demand. */
+export function TestLab({
+  s,
+  busy,
+  perform,
+}: {
+  s: State;
+  busy: boolean;
+  perform: (a: import('./domain').Action) => Promise<boolean>;
+}) {
+  const [copied, setCopied] = useState(false);
+  const link = api.testLink();
+  if (!api.sandbox)
+    return (
+      <section className="panel testlab">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Serata di prova</p>
+            <h2>Prova tutto senza toccare niente</h2>
+          </div>
+        </div>
+        <p className="footnote">
+          Una serata parallela, con iscritti, turni e voti suoi. Gli iscritti veri non la vedono e questa serata non
+          cambia. Entri in regia con lo stesso PIN; manda il link a chi vuoi far provare come relatore.
+        </p>
+        <div className="result-actions">
+          <a className="button" href={link} target="_blank" rel="noreferrer">
+            Apri la serata di prova
+          </a>
+          <Button secondary onClick={() => void navigator.clipboard?.writeText(link).then(() => setCopied(true))}>
+            {copied ? 'Link copiato' : 'Copia il link per i tester'}
+          </Button>
+        </div>
+      </section>
+    );
+  const bots = s.participants.filter((p) => p.bot).length;
+  return (
+    <section className="panel testlab">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Serata di prova</p>
+          <h2>Tester finti</h2>
+        </div>
+      </div>
+      <p className="footnote">
+        {bots ? `${bots} tester finti in sala, già ammessi.` : 'Nessun tester finto, per ora.'} Votano a caso quando
+        glielo dici tu, durante la votazione. Li puoi anche far presentare: scegli il loro nome come un relatore
+        qualsiasi.
+      </p>
+      <div className="result-actions">
+        <Button secondary disabled={busy} onClick={() => void perform({ type: 'addBots', n: 4 })}>
+          Aggiungi 4 tester finti
+        </Button>
+        <Button secondary disabled={busy || s.phase !== 'voting'} onClick={() => void perform({ type: 'botVotes' })}>
+          Fai votare i tester
+        </Button>
+        <a className="button secondary" href={location.origin + location.pathname}>
+          Torna alla serata vera
+        </a>
+      </div>
     </section>
   );
 }

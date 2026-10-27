@@ -25,6 +25,8 @@ export type Participant = {
   partnerName?: string;
   /** Seats are limited: the GM decides. Missing = pending. */
   admission?: Admission;
+  /** A fake tester in the test evening: votes when the GM says so. */
+  bot?: boolean;
   /** Only in a guest's view of someone else: details hidden, just whether the dossier is complete. */
   masked?: boolean;
   ready?: boolean;
@@ -68,6 +70,9 @@ export type Action =
   | { type: 'reveal' }
   /** GM: one step back (questions→presentation, voting→questions, reopen the last vote, leave the reveal). */
   | { type: 'back' }
+  /** Test evening only: fake testers who vote on command. */
+  | { type: 'addBots'; n: number }
+  | { type: 'botVotes' }
   /** GM: start the evening over. everyone=false keeps the requests; true empties the register too. */
   | { type: 'reset'; everyone: boolean }
   | { type: 'nextAward' }
@@ -350,6 +355,51 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     const i = s.votes.findIndex((v) => v.roundId === vote.roundId && v.voterId === vote.voterId);
     if (i >= 0) s.votes[i] = vote;
     else s.votes.push(vote);
+  } else if (action.type === 'addBots') {
+    const names = [
+      'Rettiliano',
+      'Terrapiattista',
+      'Lunare',
+      'Fluorato',
+      'Illuminato',
+      'Del 5G',
+      'Scie chimiche',
+      'Cugino NASA',
+    ];
+    const n = Math.min(Math.max(Math.round(action.n) || 4, 1), 8);
+    for (let g = 1; g <= n; g++)
+      s.participants.push({
+        id: 'tester-' + Math.random().toString(36).slice(2, 10),
+        name: names[(g + s.participants.length) % names.length] + ' (tester)',
+        role: 'Tester certificato da nessuno',
+        title: '',
+        deckUrl: '',
+        mode: g % 2 === 0 ? 'paper' : 'slides',
+        spectator: false,
+        plusOne: false,
+        partner: null,
+        partnerName: '',
+        admission: 'admitted',
+        bot: true,
+      });
+  } else if (action.type === 'botVotes') {
+    const round = activeRound(s);
+    if (s.phase !== 'voting' || !round) throw new Error('Apri prima una votazione.');
+    const bots = s.participants.filter((p) => p.bot && p.id !== round.presenterId);
+    const ids = new Set(bots.map((b) => b.id));
+    const n = () => Math.floor(Math.random() * 11);
+    s.votes = s.votes
+      .filter((v) => !(v.roundId === round.id && ids.has(v.voterId)))
+      .concat(
+        bots.map((b) => ({
+          roundId: round.id,
+          voterId: b.id,
+          credibility: n(),
+          delivery: n(),
+          research: n(),
+          supercazzola: Math.random() < 0.5,
+        })),
+      );
   } else if (action.type === 'reset') {
     s.rounds = [];
     s.votes = [];
@@ -451,6 +501,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       plusOne: cleanPartner(p.partner) ? true : (p.plusOne ?? null),
       partner: cleanPartner(p.partner),
       partnerName: cleanPartner(p.partner) ? cleanName(p.partnerName ?? '').slice(0, 40) : '',
+      bot: existing?.bot,
       // Only the GM decides who is in; guests keep whatever was decided.
       admission:
         actor.role === 'gm' && admissions.includes(p.admission as Admission)

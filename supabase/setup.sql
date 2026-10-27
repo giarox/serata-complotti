@@ -28,6 +28,11 @@ grant select on public.party_signal to authenticated;
 drop policy if exists "Members receive version notifications" on public.party_signal;
 create policy "Members receive version notifications" on public.party_signal for select to authenticated using (true);
 insert into public.party_signal(id) values(true) on conflict do nothing;
+-- The test evening ("serata di prova") lives in row id=false of the same tables: real guests never see it.
+alter table public.party_store drop constraint if exists party_store_id_check;
+alter table public.party_signal drop constraint if exists party_signal_id_check;
+insert into public.party_signal(id) values(false) on conflict do nothing;
+alter table public.party_members add column if not exists sandbox boolean not null default false;
 
 -- Dossier complete? Same rule as dossierGaps() in the app.
 create or replace function public.party_ready(p jsonb) returns boolean language sql immutable as $$
@@ -44,25 +49,42 @@ create or replace function public.party_mask(p jsonb) returns jsonb language sql
  select jsonb_build_object('id',p->>'id','name',p->>'name','role','','title','','deckUrl','',
   'mode',p->'mode','spectator',coalesce((p->>'spectator')::boolean,false),'plusOne',coalesce(p->'plusOne','null'::jsonb),'partner',coalesce(p->'partner','null'::jsonb),'partnerName',coalesce(p->'partnerName','""'::jsonb),'admission',coalesce(p->'admission','"pending"'::jsonb),'masked',true,'ready',public.party_ready(p));
 $$;
+-- Which evening the caller belongs to: true = the real one, false = the test one.
+create or replace function public.party_event() returns boolean language sql stable security definer set search_path=public,pg_temp as $$
+ select coalesce((select not m.sandbox from public.party_members m where m.user_id=auth.uid()), true);
+$$;
+-- Creates (or refreshes the GM PIN of) the test evening, starting empty.
+create or replace function public.party_ensure_sandbox() returns void language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ insert into public.party_store(id,state,guest_hash,gm_hash)
+  select false, state||'{"participants":[],"rounds":[],"votes":[],"phase":"waiting","activeRoundId":null,"revealed":0}'::jsonb, guest_hash, gm_hash
+  from public.party_store where id=true
+ on conflict (id) do update set gm_hash=excluded.gm_hash;
+ insert into public.party_signal(id) values(false) on conflict do nothing;
+end; $$;
 create or replace function public.party_actor() returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
  select jsonb_strip_nulls(jsonb_build_object('role',role,'participantId',person_id)) from public.party_members where user_id=auth.uid();
 $$;
-create or replace function public.party_names(passcode text) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+drop function if exists public.party_names(text);
+create or replace function public.party_names(passcode text, sandbox boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
 declare st public.party_store;
 begin
  if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
- select * into st from public.party_store where id=true;
+ if sandbox then perform public.party_ensure_sandbox(); end if;
+ select * into st from public.party_store where id=not sandbox;
  -- Open registration: guests send no word. A non-empty passcode is the GM PIN and must match.
  if not found or length(coalesce(passcode,''))>200 or (coalesce(trim(passcode),'')<>'' and extensions.crypt(trim(passcode),st.gm_hash) is distinct from st.gm_hash) then
   perform pg_sleep(1.5); raise exception 'Password non corretta.';
  end if;
  return (select coalesce(jsonb_agg(jsonb_build_object('id',p->>'id','name',p->>'name')), '[]'::jsonb) from jsonb_array_elements(st.state->'participants') p);
 end; $$;
-create or replace function public.party_join(passcode text, person_id text default null, as_gm boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+drop function if exists public.party_join(text,text,boolean);
+create or replace function public.party_join(passcode text, person_id text default null, as_gm boolean default false, sandbox boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
 declare st public.party_store; existing public.party_members; expected text;
 begin
  if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
- select * into st from public.party_store where id=true for update;
+ if sandbox then perform public.party_ensure_sandbox(); end if;
+ select * into st from public.party_store where id=not sandbox for update;
  if not found then raise exception 'Congresso non configurato.'; end if;
  expected:=case when as_gm then st.gm_hash else st.guest_hash end;
  if as_gm and (passcode is null or length(passcode)>200 or extensions.crypt(trim(passcode),expected) is distinct from expected) then
@@ -75,7 +97,7 @@ begin
   if not exists(select 1 from jsonb_array_elements(st.state->'participants') p where p->>'id'=person_id) then raise exception 'Nome non disponibile.'; end if;
   if exists(select 1 from public.party_members m where m.person_id=party_join.person_id) then raise exception 'Nome già in uso. Chiedi alla regia di liberarlo.'; end if;
  end if;
- insert into public.party_members(user_id,role,person_id) values(auth.uid(),case when as_gm then 'gm' else 'guest' end,nullif(person_id,''));
+ insert into public.party_members(user_id,role,person_id,sandbox) values(auth.uid(),case when as_gm then 'gm' else 'guest' end,nullif(person_id,''),party_join.sandbox);
  return public.party_actor();
 end; $$;
 create or replace function public.party_snapshot() returns jsonb language plpgsql stable security definer set search_path=public,pg_temp as $$
@@ -83,7 +105,7 @@ declare s jsonb; actor jsonb; visible_votes jsonb; n integer;
 begin
  actor:=public.party_actor();
  if actor is null then raise exception 'Entra nel congresso.'; end if;
- select state into s from public.party_store where id=true;
+ select state into s from public.party_store where id=public.party_event();
  select count(*) into n from jsonb_array_elements(s->'votes') v where v->>'roundId'=s->>'activeRoundId';
  select coalesce(jsonb_agg(v),'[]'::jsonb) into visible_votes from jsonb_array_elements(s->'votes') v
  where s->>'phase'='results' or v->>'voterId'=actor->>'participantId';
@@ -98,9 +120,9 @@ begin
  end if;
  -- Only the GM learns which names are taken, so a mistaken pick can be released.
  if actor->>'role'='gm' then
-  s:=s || jsonb_build_object('claimed',(select coalesce(jsonb_agg(person_id),'[]'::jsonb) from public.party_members where role='guest'));
+  s:=s || jsonb_build_object('claimed',(select coalesce(jsonb_agg(person_id),'[]'::jsonb) from public.party_members where role='guest' and sandbox = not public.party_event()));
  end if;
- return s;
+ return s || jsonb_build_object('sandbox', not public.party_event());
 end; $$;
 drop function if exists public.party_check_identity(jsonb,text,text,text);
 -- Free-form name; duplicates allowed (two Giulia are fine).
@@ -109,13 +131,14 @@ begin
  if length(nm)<2 or length(nm)>40 then raise exception 'Scrivi il tuo nome (da 2 a 40 caratteri).'; end if;
 end; $$;
 create or replace function public.party_action(command jsonb) returns void language plpgsql security definer set search_path=public,pg_temp as $$
-declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb; pid text; nm text; md text; prev jsonb;
+declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb; pid text; nm text; md text; prev jsonb; ev boolean;
 begin
  actor:=public.party_actor(); if actor is null then raise exception 'Entra nel congresso.'; end if;
- select state into s from public.party_store where id=true for update;
+ ev:=public.party_event();
+ select state into s from public.party_store where id=ev for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
- if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset','addBots','botVotes') then raise exception 'Operazione non riconosciuta.'; end if;
  if kind not in ('vote','participant') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
  if kind='start' then
   if phase<>'waiting' then raise exception 'Concludi il turno prima di iniziarne un altro.'; end if;
@@ -159,9 +182,26 @@ begin
   s:=s||jsonb_build_object('rounds','[]'::jsonb,'votes','[]'::jsonb,'activeRoundId',null,'phase','waiting','revealed',0);
   if coalesce((command->>'everyone')::boolean,false) then
    s:=jsonb_set(s,'{participants}','[]'::jsonb);
-   delete from public.party_members where role='guest';
-   update public.party_members set person_id=null where role='gm';
+   delete from public.party_members where role='guest' and sandbox = not ev;
+   update public.party_members set person_id=null where role='gm' and sandbox = not ev;
   end if;
+ elsif kind in ('addBots','botVotes') and ev then
+  raise exception 'I tester finti esistono solo nella serata di prova.';
+ elsif kind='addBots' then
+  select coalesce(jsonb_agg(jsonb_build_object('id','tester-'||substr(md5(gen_random_uuid()::text),1,8),
+    'name',(array['Rettiliano','Terrapiattista','Lunare','Fluorato','Illuminato','Del 5G','Scie chimiche','Cugino NASA'])[1+((g+jsonb_array_length(s->'participants'))%8)]||' (tester)',
+    'role','Tester certificato da nessuno','title','','deckUrl','','mode',case when g%2=0 then 'paper' else 'slides' end,'spectator',false,
+    'plusOne',false,'partner',null,'partnerName','','admission','admitted','bot',true)),'[]'::jsonb)
+   into rounds from generate_series(1,least(greatest(coalesce((command->>'n')::int,4),1),8)) g;
+  s:=jsonb_set(s,'{participants}',(s->'participants')||rounds);
+ elsif kind='botVotes' then
+  if phase<>'voting' or r is null then raise exception 'Apri prima una votazione.'; end if;
+  select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v
+   where not (v->>'roundId'=rid and exists(select 1 from jsonb_array_elements(s->'participants') b where b->>'id'=v->>'voterId' and coalesce((b->>'bot')::boolean,false)));
+  select votes||coalesce(jsonb_agg(jsonb_build_object('credibility',floor(random()*11)::int,'delivery',floor(random()*11)::int,'research',floor(random()*11)::int,
+    'supercazzola',random()<0.5,'roundId',rid,'voterId',b->>'id')),'[]'::jsonb)
+   into votes from jsonb_array_elements(s->'participants') b where coalesce((b->>'bot')::boolean,false) and b->>'id'<>r->>'presenterId';
+  s:=jsonb_set(s,'{votes}',votes);
  elsif kind='back' then
   if phase='questions' then s:=jsonb_set(s,'{phase}','"presenting"'::jsonb);
   elsif phase='voting' then s:=jsonb_set(s,'{phase}','"questions"'::jsonb);
@@ -236,23 +276,26 @@ begin
     'partner',case when p->>'partner' in ('witness','copresenter') then p->'partner' else 'null'::jsonb end,
     'partnerName',case when p->>'partner' in ('witness','copresenter') then to_jsonb(left(regexp_replace(trim(coalesce(p->>'partnerName','')),'\s+',' ','g'),40)) else '""'::jsonb end,
     -- Only the GM decides who is in; guests keep whatever was decided.
-    'admission',case when actor->>'role'='gm' and p->>'admission' in ('pending','admitted','reserve') then p->'admission' else coalesce(prev->'admission','"pending"'::jsonb) end);
+    'admission',case when actor->>'role'='gm' and p->>'admission' in ('pending','admitted','reserve') then p->'admission' else coalesce(prev->'admission','"pending"'::jsonb) end,
+    'bot',coalesce(prev->'bot','false'::jsonb));
   if prev is not null then
    select jsonb_agg(case when v->>'id'=pid then p else v end order by ord) into rounds from jsonb_array_elements(s->'participants') with ordinality t(v,ord);
   else rounds:=(s->'participants')||jsonb_build_array(p); end if;
   s:=jsonb_set(s,'{participants}',rounds);
  end if;
  s:=jsonb_set(s,'{revision}',to_jsonb((s->>'revision')::int+1));
- update public.party_store set state=s where id=true;
- update public.party_signal set revision=(s->>'revision')::bigint where id=true;
+ update public.party_store set state=s where id=ev;
+ update public.party_signal set revision=(s->>'revision')::bigint where id=ev;
 end; $$;
 -- Self-registration from the invite: event password + name. Nothing else is needed to book a slot.
 drop function if exists public.party_register(text,text,text);
-create or replace function public.party_register(passcode text, full_name text) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+drop function if exists public.party_register(text,text);
+create or replace function public.party_register(passcode text, full_name text, sandbox boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
 declare st public.party_store; existing public.party_members; nm text; pid text; s jsonb;
 begin
  if auth.uid() is null then raise exception 'Accedi prima di entrare.'; end if;
- select * into st from public.party_store where id=true for update;
+ if sandbox then perform public.party_ensure_sandbox(); end if;
+ select * into st from public.party_store where id=not sandbox for update;
  if not found then raise exception 'Congresso non configurato.'; end if;
  -- Open registration: whoever has the link can sign up (passcode is ignored).
  select * into existing from public.party_members where user_id=auth.uid();
@@ -265,13 +308,14 @@ begin
  pid:=coalesce(nullif(pid,''),'agente')||'-'||substr(md5(gen_random_uuid()::text),1,4);
  s:=jsonb_set(s,'{participants}',(s->'participants')||jsonb_build_array(jsonb_build_object('id',pid,'name',nm,'role','','title','','deckUrl','','mode',null,'spectator',false,'plusOne',null,'partner',null,'partnerName','','admission','pending')));
  s:=jsonb_set(s,'{revision}',to_jsonb((s->>'revision')::int+1));
- update public.party_store set state=s where id=true;
- update public.party_signal set revision=(s->>'revision')::bigint where id=true;
- insert into public.party_members(user_id,role,person_id) values(auth.uid(),'guest',pid);
+ update public.party_store set state=s where id=not sandbox;
+ update public.party_signal set revision=(s->>'revision')::bigint where id=not sandbox;
+ insert into public.party_members(user_id,role,person_id,sandbox) values(auth.uid(),'guest',pid,party_register.sandbox);
  return public.party_actor();
 end; $$;
-revoke all on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text),public.party_ready(jsonb),public.party_mask(jsonb),public.party_check_name(text),public.party_norm(text) from public,anon;
-grant execute on function public.party_actor(),public.party_names(text),public.party_join(text,text,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text) to authenticated;
+revoke all on function public.party_actor(),public.party_event(),public.party_ensure_sandbox(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean),public.party_ready(jsonb),public.party_mask(jsonb),public.party_check_name(text),public.party_norm(text) from public,anon;
+revoke all on function public.party_event(),public.party_ensure_sandbox() from authenticated;
+grant execute on function public.party_actor(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean) to authenticated;
 -- Only a harmless revision number is broadcast; no scores, names or passwords.
 do $$ begin
  if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='party_signal') then

@@ -222,3 +222,19 @@ describe('reset (GM)', () => {
     );
   });
 });
+
+describe('fake testers', () => {
+  it('are admitted and vote on command', () => {
+    let s = register(initialState(), 'Camilla', 'cami');
+    s = applyAction(s, gm, { type: 'participant', participant: { ...me(s, 'cami'), role: 'R', mode: 'paper' } });
+    s = applyAction(s, gm, { type: 'addBots', n: 3 });
+    expect(s.participants.filter((p) => p.bot && p.admission === 'admitted')).toHaveLength(3);
+    s = applyAction(s, gm, { type: 'start', participantId: 'cami' });
+    const rid = s.activeRoundId!;
+    expect(() => applyAction(s, gm, { type: 'botVotes' })).toThrow('votazione');
+    s = applyAction(s, gm, { type: 'phase', phase: 'questions', roundId: rid });
+    s = applyAction(s, gm, { type: 'phase', phase: 'voting', roundId: rid });
+    s = applyAction(applyAction(s, gm, { type: 'botVotes' }), gm, { type: 'botVotes' });
+    expect(s.votes.filter((v) => v.roundId === rid)).toHaveLength(3);
+  });
+});

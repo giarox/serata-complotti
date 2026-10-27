@@ -7,8 +7,19 @@ const demoOk = (code: string, gm: boolean) =>
 export const DEMO_PIN = '0000';
 const env = (import.meta as unknown as { env: Record<string, string> }).env;
 export const live = Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_PUBLISHABLE_KEY);
-const client = live ? createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY) : null;
-const key = 'complotti-demo-v1';
+/** The test evening opens with ?prova: separate data, separate session, never visible to real guests. */
+export const sandbox = typeof location !== 'undefined' && new URLSearchParams(location.search).has('prova');
+const client = live
+  ? createClient(
+      env.VITE_SUPABASE_URL,
+      env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      sandbox ? { auth: { storageKey: 'sb-complotti-prova' } } : undefined,
+    )
+  : null;
+const key = sandbox ? 'complotti-demo-prova' : 'complotti-demo-v1';
+const actorKey = sandbox ? 'party-actor-prova' : 'party-actor';
+/** Link to the test evening, from the current address. */
+export const testLink = () => location.origin + location.pathname + '?prova';
 export const readDemo = (): State => {
   try {
     const s = JSON.parse(localStorage.getItem(key) || 'null');
@@ -52,6 +63,7 @@ export async function login(code: string, participantId: string, gm: boolean): P
     passcode: code,
     person_id: participantId || null,
     as_gm: gm,
+    sandbox,
   });
   if (error) throw new Error(error.message);
   return data;
@@ -68,7 +80,7 @@ export async function register(code: string, fullName: string): Promise<Actor> {
     return { role: 'guest', participantId: id };
   }
   await entryList();
-  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName });
+  const { data, error } = await client.rpc('party_register', { passcode: code, full_name: fullName, sandbox });
   if (error) throw new Error(error.message);
   return data;
 }
@@ -88,14 +100,14 @@ export async function unlockNames(code: string, gm = false): Promise<State['part
     return readDemo().participants;
   }
   await entryList();
-  const { data, error } = await client.rpc('party_names', { passcode: code });
+  const { data, error } = await client.rpc('party_names', { passcode: code, sandbox });
   if (error) throw new Error(error.message);
   return data;
 }
 export async function restoreActor(): Promise<Actor | null> {
   if (!client) {
     try {
-      return JSON.parse(sessionStorage.getItem('party-actor') || 'null');
+      return JSON.parse(sessionStorage.getItem(actorKey) || 'null');
     } catch {
       return null;
     }
@@ -136,11 +148,11 @@ export function watch(update: () => void) {
   };
 }
 export async function leave() {
-  sessionStorage.removeItem('party-actor');
+  sessionStorage.removeItem(actorKey);
   if (client) await client.auth.signOut();
 }
 export function saveActor(actor: Actor) {
-  sessionStorage.setItem('party-actor', JSON.stringify(actor));
+  sessionStorage.setItem(actorKey, JSON.stringify(actor));
 }
 export function resetDemo() {
   if (!live) writeDemo(initialState());
