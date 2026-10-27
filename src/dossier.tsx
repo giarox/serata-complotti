@@ -196,7 +196,7 @@ export function DossierFields({
             />
             <p className="howto-inline">
               <strong>Non sai dove trovarlo?</strong> Condividi → Chiunque abbia il link → Copia link.
-              {withAudience && ` Non è pronto? Puoi aggiungerlo fino alla ${DEADLINE_LABEL}.`}
+              {withAudience && ' Puoi aggiungerlo anche dopo.'}
             </p>
           </div>
         )}

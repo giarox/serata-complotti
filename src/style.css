@@ -5347,3 +5347,100 @@ label,
     margin-top: 34px !important;
   }
 }
+
+/* ===================================================================
+   27 Oct, 23:10 — leaner letter: same look, less scroll
+   =================================================================== */
+/* Section header: title with the dashed rule running beside it */
+.form-section,
+.form-section.first {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 26px !important;
+}
+.form-section.first {
+  margin-top: 20px !important;
+}
+.form-section legend {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  float: left;
+  width: 100%;
+  font: 600 13px/1.3 var(--mono) !important;
+  letter-spacing: 0.18em;
+  color: var(--ink) !important;
+}
+.form-section legend::after {
+  content: '';
+  flex: 1;
+  border-top: 1.5px dashed #a99772;
+}
+/* Section note: a touch smaller and tighter, with air above */
+.form-section > .section-note {
+  margin: 10px 0 0 !important;
+  font: 13px/1.4 var(--sans) !important;
+}
+/* Field labels quieter than section titles */
+.form-line > label,
+.form-line > .label {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.12em !important;
+  color: var(--ink-soft) !important;
+  margin-bottom: 4px !important;
+}
+.form-line,
+.booking .form-line {
+  margin-top: 18px;
+}
+.form-section > .section-note + .form-line,
+.form-section > .section-note + .ticks,
+.form-line.choices {
+  margin-top: 12px !important;
+}
+/* Tighter choices */
+.ticks {
+  gap: 8px !important;
+}
+.tick {
+  padding: 9px 12px;
+  gap: 10px;
+  min-height: 0;
+}
+.tick strong {
+  font-size: 16px !important;
+  line-height: 1.3 !important;
+}
+.tick small {
+  margin-top: 1px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+.tick > i {
+  margin-top: 0;
+}
+.examples-row {
+  margin-top: 8px;
+}
+.howto-inline {
+  margin-top: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+.booking-cta {
+  margin-top: 24px !important;
+}
+.booking-next {
+  margin-top: 10px !important;
+}
+.booking-alt-wrap {
+  margin-top: 18px;
+  padding-top: 16px;
+}
+.booking > h2:first-of-type + .booking-lede {
+  margin-bottom: 0 !important;
+}
+.form-section legend {
+  margin-bottom: 8px !important;
+}

@@ -155,8 +155,8 @@ function Booking({
           </div>
         </dl>
         <p className="event-sub">
-          I posti sono limitatissimi. I poteri forti valuteranno ogni richiesta con cura scrupolosa, annotandone l’ora
-          esatta di arrivo. Così, per puro scrupolo.
+          Posti limitati e selezionatissimi. Contano l’ora di arrivo e l’interesse del fascicolo, secondo criteri che
+          non ci è dato conoscere.
         </p>
       </section>
       <form
