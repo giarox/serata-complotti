@@ -1,3 +1,5 @@
+/** The GM's test deck, given to fake testers who present with slides. */
+export const TEST_DECK = 'https://docs.google.com/presentation/d/1wvHnevCRC5ULS4f80JO2EwpmQth2vts3zyAKK9SNJso/edit?usp=sharing';
 /** The +1: comes along (witness) or presents together (co-speaker). */
 export type Partner = 'witness' | 'copresenter';
 export const cleanPartner = (v: unknown): Partner | null => (v === 'witness' || v === 'copresenter' ? v : null);
@@ -373,7 +375,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
         name: names[(g + s.participants.length) % names.length] + ' (tester)',
         role: 'Tester certificato da nessuno',
         title: '',
-        deckUrl: '',
+        deckUrl: g % 2 === 0 ? '' : TEST_DECK,
         mode: g % 2 === 0 ? 'paper' : 'slides',
         spectator: false,
         plusOne: false,

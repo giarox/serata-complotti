@@ -190,7 +190,7 @@ begin
  elsif kind='addBots' then
   select coalesce(jsonb_agg(jsonb_build_object('id','tester-'||substr(md5(gen_random_uuid()::text),1,8),
     'name',(array['Rettiliano','Terrapiattista','Lunare','Fluorato','Illuminato','Del 5G','Scie chimiche','Cugino NASA'])[1+((g+jsonb_array_length(s->'participants'))%8)]||' (tester)',
-    'role','Tester certificato da nessuno','title','','deckUrl','','mode',case when g%2=0 then 'paper' else 'slides' end,'spectator',false,
+    'role','Tester certificato da nessuno','title','','deckUrl',case when g%2=0 then '' else 'https://docs.google.com/presentation/d/1wvHnevCRC5ULS4f80JO2EwpmQth2vts3zyAKK9SNJso/edit?usp=sharing' end,'mode',case when g%2=0 then 'paper' else 'slides' end,'spectator',false,
     'plusOne',false,'partner',null,'partnerName','','admission','admitted','bot',true)),'[]'::jsonb)
    into rounds from generate_series(1,least(greatest(coalesce((command->>'n')::int,4),1),8)) g;
   s:=jsonb_set(s,'{participants}',(s->'participants')||rounds);
