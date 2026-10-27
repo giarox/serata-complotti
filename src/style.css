@@ -2776,7 +2776,7 @@ details.howto summary {
   margin-bottom: 18px;
 }
 .field-hint.examples {
-  margin: -6px 0 18px;
+  margin: 4px 0 18px;
 }
 .howto-inline {
   font-family: var(--serif);
@@ -2798,6 +2798,14 @@ details.howto summary {
 .howto-inline b {
   color: var(--ink);
   font-weight: 600;
+}
+
+.mode-chips.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.booking-note {
+  text-align: center;
+  margin-top: 10px;
 }
 
 /* Responsive */
@@ -3260,7 +3268,8 @@ details.howto summary {
     padding-right: 0;
     margin-top: 44px;
   }
-  .mode-chips {
+  .mode-chips,
+  .mode-chips.three {
     grid-template-columns: 1fr;
   }
   .booked > h1 {

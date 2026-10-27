@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Eye, LockKeyhole } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LockKeyhole } from 'lucide-react';
 import type { Actor, Participant } from './domain';
 import * as api from './api';
 import { Button, Mark, Stamp } from './ui';
-import { emptyDossier } from './dossier';
+import { DossierFields, dossierProblem, emptyDossier } from './dossier';
 import { DEADLINE_LABEL, EVENT_DAY } from './event';
 
 type Step = 'book' | 'returning' | 'gm';
@@ -98,7 +98,7 @@ function KeyField({ code, setCode }: { code: string; setCode: (c: string) => voi
   );
 }
 
-/** Screen 1: just a name to book the slot. The dossier details are previewed, not asked. */
+/** The only registration screen: name, silly title and how they take part, all at once. */
 function Booking({
   code,
   setCode,
@@ -112,21 +112,36 @@ function Booking({
   onEnter: (a: Actor) => void;
   onReturning: () => void;
 }) {
-  const [name, setName] = useState(''),
+  const [draft, setDraft] = useState<Participant>(emptyDossier),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
-  async function book(spectator: boolean) {
-    if (name.trim().length < 2) return setError('Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.');
-    if (!code.trim()) return setError('Manca la parola d’ordine: è nel messaggio d’invito.');
+  function problem(): string | null {
+    if (draft.name.trim().length < 2) return 'Scrivi il tuo nome. Tanto lo sanno già, ma serve anche a noi.';
+    if (!draft.mode) return 'Scegli come partecipi: con le slide, alla vecchia maniera o solo pubblico.';
+    if (draft.mode !== 'none' && !draft.role.trim())
+      return 'Manca il tuo seriosissimo titolo da ricercatore. Nessuna idea? Tira il dado.';
+    if (!fromLink && !code.trim()) return 'Manca la parola d’ordine: è nel messaggio d’invito.';
+    return dossierProblem(draft);
+  }
+  async function book() {
+    const p = problem();
+    if (p) return setError(p);
     setBusy(true);
     setError('');
     try {
-      const actor = await api.register(code.trim(), name.trim());
+      const name = draft.name.trim();
+      const actor = await api.register(code.trim(), name);
       rememberKey(code.trim());
-      if (spectator && actor.participantId)
+      if (actor.participantId)
         await api.action(actor, {
           type: 'participant',
-          participant: { ...emptyDossier(), id: actor.participantId, name: name.trim(), mode: 'none' },
+          participant: {
+            ...draft,
+            id: actor.participantId,
+            name,
+            role: draft.mode === 'none' ? '' : draft.role,
+            deckUrl: draft.mode === 'slides' ? draft.deckUrl : '',
+          },
         });
       onEnter(actor);
     } catch (e) {
@@ -141,15 +156,15 @@ function Booking({
         <p className="eyebrow">Documento riservato · Leggi prima che lo cancellino</p>
         <p className="invite-lede">
           <strong>Siccome non cielo dicono, ce lo diciamo noi.</strong> Il {EVENT_DAY} si riunisce il congresso
-          clandestino dei ricercatori indipendenti. Blocca il tuo posto: basta il nome. Il resto è top secret (anche per
-          noi).
+          clandestino dei ricercatori indipendenti. Iscriviti qui sotto: ci vuole un minuto. Il resto è top secret
+          (anche per noi).
         </p>
       </section>
       <form
         className="booking letter on-paper"
         onSubmit={(e) => {
           e.preventDefault();
-          void book(false);
+          void book();
         }}
       >
         <Stamp sub="Non divulgare">Top secret</Stamp>
@@ -157,9 +172,15 @@ function Booking({
         <h2>Blocca il tuo posto da ricercatore indipendente</h2>
         {!fromLink && <KeyField code={code} setCode={setCode} />}
         <label className="field-name">
-          Il tuo nome <span className="req">quello vero, tanto lo sanno già</span>
-          <input autoComplete="given-name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+          Il tuo nome vero <span className="req">tanto lo sanno già</span>
+          <input
+            autoComplete="given-name"
+            maxLength={40}
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          />
         </label>
+        <DossierFields value={draft} onChange={setDraft} withAudience />
         {error && (
           <p role="alert" className="field-error">
             {error}
@@ -169,23 +190,8 @@ function Booking({
           {busy ? 'Ti stiamo schedando…' : 'Blocca il mio posto'}
           <ArrowRight size={18} />
         </Button>
-        <div className="preview">
-          <p className="later-label">Entro la {DEADLINE_LABEL} ti chiederemo due cose. Intanto fatti delle domande:</p>
-          <ul>
-            <li>
-              <strong>Il tuo seriosissimo titolo da ricercatore indipendente.</strong> Es.{' '}
-              <em>Laureato all’Università della Vita in Piccionologia</em>.
-            </li>
-            <li>
-              <strong>Come esporrai la verità.</strong> Con le slide di Google o alla vecchia maniera: fogli,
-              cartelloni, oggetti sospetti, solo voce e sguardo intenso.
-            </li>
-          </ul>
-        </div>
+        <p className="field-hint booking-note">Potrai cambiare tutto fino alla {DEADLINE_LABEL}.</p>
         <div className="booking-secondary">
-          <button type="button" className="text-button" disabled={busy} onClick={() => void book(true)}>
-            <Eye size={14} /> Non presento, vengo solo a giudicare (e fare domande scomode)
-          </button>
           <button type="button" className="text-button" disabled={busy} onClick={onReturning}>
             Ho già prenotato
           </button>

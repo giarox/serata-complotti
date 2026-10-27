@@ -14,21 +14,21 @@ import { DEADLINE_LABEL, DOSSIER_DEADLINE, EVENT_DAY } from './event';
 import { Button, Stamp } from './ui';
 
 export const roleIdeas = [
-  'Laureato all’Università della Vita in Piccionologia',
-  'Dottoressa in Scie Chimiche e sughi pronti',
+  'Ricercatore della seconda pagina di Google',
+  'Autodidatta in Tutto, con master in Fonti Introvabili',
+  'Studiosa indipendente di screenshot sgranati',
+  'Ricercatore autodidatta (fonte: un blog del 2009)',
+  'Esperto di tutto dopo un video da 3 ore su YouTube',
+  'Investigatrice da gruppo Telegram',
+  'Archivista di PDF scaricati da siti senza lucchetto',
+  'Ha letto tutto, soprattutto i commenti',
+  'Analista di catene di Sant’Antonio su WhatsApp',
+  'Consulente scientifica (iscritta a 4 canali YouTube)',
+  'Dottore di ricerca su forum chiusi nel 2011',
   'Cugino di uno che lavora alla NASA',
-  'Ricercatore indipendente (soprattutto dalla realtà)',
-  'Cartografo ufficiale della Terra piatta, edizione pieghevole',
-  'Perito in allunaggi girati a Cinecittà',
-  'Interprete giurata dei rettiliani',
-  'Ex agente segreto, licenziato per troppi segreti',
-  'Sommelier di acqua fluorata',
   'Esperto di 5G per sentito dire',
   'Fact-checker di sé stessa',
-  'Decifratore di scontrini del discount',
   'Influencer della verità (12 follower, tutti bot)',
-  'Analista dei calzini spariti in lavatrice',
-  'Professore emerito di video da 3 ore su YouTube',
 ];
 /** Missing pieces, said like a person would. */
 const gapWords: Record<string, string> = {
@@ -108,38 +108,57 @@ export function Countdown() {
 }
 
 /** The details needed before the evening: silly title, how, and the Slides link. No talk title: no spoilers, not even for the GM. */
-export function DossierFields({ value, onChange }: { value: Participant; onChange: (p: Participant) => void }) {
+export function DossierFields({
+  value,
+  onChange,
+  withAudience = false,
+}: {
+  value: Participant;
+  onChange: (p: Participant) => void;
+  /** At booking: also offer “Solo pubblico”, and skip the title for the audience. */
+  withAudience?: boolean;
+}) {
   const set = (patch: Partial<Participant>) => onChange({ ...value, ...patch });
+  const askTitle = !(withAudience && value.mode === 'none');
   return (
     <>
-      <div className="field-row">
-        <label>
-          Il tuo seriosissimo titolo da ricercatore indipendente
-          <input
-            maxLength={80}
-            placeholder="Es. Dottore in Piccionologia"
-            value={value.role}
-            onChange={(e) => set({ role: e.target.value })}
-          />
-        </label>
-        <button
-          type="button"
-          className="icon-button dice"
-          aria-label="Suggerisci un titolo"
-          onClick={() => set({ role: pick(roleIdeas, value.role) })}
-        >
-          <Dices size={20} />
-        </button>
-      </div>
-      <p className="field-hint examples">
-        Per esempio: <em>Dottoressa in Scie Chimiche e sughi pronti</em>, <em>Cugino di uno che lavora alla NASA</em>,{' '}
-        <em>Perito in allunaggi girati a Cinecittà</em>. Nessuna idea? Tira il dado.
-      </p>
-      <div className="field-mode" role="radiogroup" aria-label="Come esporrai la verità">
-        <span className="label">Come esporrai la verità</span>
-        <div className="mode-chips">
+      {askTitle && (
+        <>
+          <div className="field-row">
+            <label>
+              Il tuo seriosissimo titolo da ricercatore indipendente
+              <input
+                maxLength={80}
+                placeholder="Es. Ricercatore della seconda pagina di Google"
+                value={value.role}
+                onChange={(e) => set({ role: e.target.value })}
+              />
+            </label>
+            <button
+              type="button"
+              className="icon-button dice"
+              aria-label="Suggerisci un titolo"
+              onClick={() => set({ role: pick(roleIdeas, value.role) })}
+            >
+              <Dices size={20} />
+            </button>
+          </div>
+          <p className="field-hint examples">
+            Per esempio: <em>Studiosa indipendente di screenshot sgranati</em>,{' '}
+            <em>Ricercatore autodidatta (fonte: un blog del 2009)</em>, <em>Ha letto tutto, soprattutto i commenti</em>.
+            Nessuna idea? Tira il dado.
+          </p>
+        </>
+      )}
+      <div
+        className="field-mode"
+        role="radiogroup"
+        aria-label={withAudience ? 'Come partecipi' : 'Come esporrai la verità'}
+      >
+        <span className="label">{withAudience ? 'Come partecipi' : 'Come esporrai la verità'}</span>
+        <div className={'mode-chips' + (withAudience ? ' three' : '')}>
           {modes
-            .filter((m) => m.key !== 'none')
+            .filter((m) => withAudience || m.key !== 'none')
             .map((m) => (
               <button
                 type="button"
@@ -175,6 +194,11 @@ export function DossierFields({ value, onChange }: { value: Participant; onChang
             <b>Chiunque abbia il link</b>, poi <b>Copia link</b> e incollalo qui. Nessuno lo aprirà prima della serata.
             Promesso. Forse.
           </p>
+          {withAudience && (
+            <p className="field-hint">
+              Slide non ancora pronte? Lascia vuoto e aggiungi il link dopo, da questa pagina.
+            </p>
+          )}
         </div>
       )}
     </>

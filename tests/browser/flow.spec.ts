@@ -105,22 +105,36 @@ test('GM with a name votes from the regia and sees the provisional award rules',
   await expect(page.getByText('IL PREMIO VA A').first()).toBeVisible();
   await expect(page.locator('.award-settings')).toHaveCount(0);
 });
-test('a friend books a slot with a name, then completes the dossier before the deadline', async ({ page, context }) => {
+test('a friend registers on one screen, then adds the Slides link before the deadline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/#invito=NONCIELODICONO');
   await expect(page.getByRole('heading', { name: 'Blocca il tuo posto da ricercatore indipendente' })).toBeVisible();
   expect(page.url()).not.toContain('NONCIELODICONO');
-  // Screen 1: only the name. The rest is previewed, not asked.
+  // One screen: name, silly title and how they take part.
   await expect(page.getByLabel('Titolo della rivelazione')).toHaveCount(0);
-  await expect(page.locator('.preview')).toContainText('seriosissimo titolo da ricercatore');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(page.getByRole('alert')).toContainText('nome');
   await page.getByLabel('Il tuo nome').fill('Giulia');
   await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
-  // Screen 2: countdown, then dossier, then the registry.
+  await expect(page.getByRole('alert')).toContainText('Scegli come partecipi');
+  await page.getByRole('radio', { name: /Con le slide/ }).click();
+  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await expect(page.getByRole('alert')).toContainText('titolo');
+  await page.getByLabel('Il tuo seriosissimo titolo da ricercatore indipendente').fill('Esperta di scie sospette');
+  await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
+  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  await expect(page.getByRole('alert')).toContainText('Google Slides');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // Slides not ready yet: book anyway, add the link later.
+  await page.getByLabel('Link Google Slides').fill('');
+  await page.getByRole('button', { name: 'Blocca il mio posto' }).click();
+  // After booking: countdown (link still missing), then the dossier, then the registry.
   await expect(page.getByRole('heading', { name: 'Benvenuto, Giulia.' })).toBeVisible();
   await expect(page.getByRole('timer')).toContainText('giorni');
   await expect(page.locator('.booking .stamp')).toContainText('Prenotato');
+  await expect(page.getByLabel('Il tuo seriosissimo titolo da ricercatore indipendente')).toHaveValue(
+    'Esperta di scie sospette',
+  );
   const order = await page.evaluate(() =>
     ['.countdown', '#fascicolo', '.registry'].map((sel) => document.querySelector(sel)!.getBoundingClientRect().top),
   );
@@ -130,12 +144,6 @@ test('a friend books a slot with a name, then completes the dossier before the d
   await expect(registry.locator('.registry-row.me')).toContainText('Completa il tuo');
   await expect(registry).toContainText('Paolo');
   await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByLabel('Il tuo seriosissimo titolo da ricercatore indipendente').fill('Esperta di scie sospette');
-  await page.getByRole('radio', { name: /Con le slide/ }).click();
-  await page.getByLabel('Link Google Slides').fill('https://example.com/nope');
-  await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
-  await expect(page.getByRole('alert')).toContainText('Google Slides');
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
   await page.getByRole('button', { name: 'Salva il fascicolo' }).click();
   await expect(page.locator('.booking .stamp')).toContainText('Ammesso');
@@ -165,11 +173,13 @@ test('a friend books a slot with a name, then completes the dossier before the d
   const other = await context.newPage();
   await other.goto('/');
   await other.getByLabel('Il tuo nome').fill('Ugo');
+  await other.getByRole('radio', { name: /Solo pubblico/ }).click();
+  await expect(other.getByLabel(/seriosissimo titolo/)).toHaveCount(0);
   await other.getByLabel(/Parola d’ordine/).fill('sbagliata');
   await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(other.getByRole('alert')).toContainText('Parola d’ordine sbagliata');
   await other.getByLabel(/Parola d’ordine/).fill('non cielo dicono');
-  await other.getByRole('button', { name: /vengo solo a giudicare/ }).click();
+  await other.getByRole('button', { name: 'Blocca il mio posto' }).click();
   await expect(other.locator('.booking .stamp')).toContainText('Ammesso');
   await expect(other.getByRole('heading', { name: 'Sei tra il pubblico.' })).toBeVisible();
 });
