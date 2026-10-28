@@ -5825,3 +5825,19 @@ label,
 .live-panel .slide-remote small {
   color: var(--ink-soft);
 }
+
+/* 28 Oct — regia: read-only mirror of a guest's page, at phone width */
+.mirror-pick {
+  display: grid;
+  gap: 6px;
+  max-width: 360px;
+  margin: 12px 0 16px;
+}
+.mirror-frame {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 12px;
+  border: 1px dashed currentColor;
+  border-radius: 14px;
+  opacity: 0.98;
+}

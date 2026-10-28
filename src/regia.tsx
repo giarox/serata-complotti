@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LockKeyholeOpen, Pencil, Plus, Trash2 } from 'lucide-react';
-import { modes, type Admission, type Participant, type State } from './domain';
+import { modes, snapshot, type Admission, type Participant, type State } from './domain';
+import { DossierHome } from './dossier';
 import * as api from './api';
 import { Button } from './ui';
 
@@ -288,5 +289,55 @@ export function SlideRemote({ actor }: { actor: import('./domain').Actor }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** Read-only mirror of a guest's confirmation page, built with the same masking the database applies. */
+export function GuestMirror({ s }: { s: State }) {
+  const [open, setOpen] = useState(false),
+    [id, setId] = useState('');
+  const who = s.participants.find((p) => p.id === id) ?? s.participants[0];
+  const seen = who ? snapshot(s, { role: 'guest', participantId: who.id }) : null;
+  return (
+    <section className="panel mirror">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Vista ospite</p>
+          <h2>Cosa vede chi ha fatto richiesta</h2>
+        </div>
+        <Button secondary onClick={() => setOpen(!open)} disabled={!who}>
+          {open ? 'Nascondi' : 'Mostra'}
+        </Button>
+      </div>
+      <p className="footnote">
+        {who
+          ? "Degli altri vedono: nome, esito, modalità e nome dell'accompagnatore. Restano nascoste qualifica e link delle slide, finché la persona non presenta."
+          : 'Nessuna richiesta ancora: la vista comparirà con il primo iscritto.'}
+      </p>
+      {open && who && seen && (
+        <>
+          <label className="mirror-pick">
+            Guarda come
+            <select value={who.id} onChange={(e) => setId(e.target.value)}>
+              {s.participants.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="mirror-frame" inert>
+            <DossierHome
+              key={who.id}
+              s={seen}
+              actor={{ role: 'guest', participantId: who.id }}
+              busy
+              perform={async () => false}
+            />
+          </div>
+          <p className="footnote">Solo da guardare: qui non si modifica niente.</p>
+        </>
+      )}
+    </section>
   );
 }

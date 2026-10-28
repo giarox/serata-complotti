@@ -64,7 +64,7 @@ import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { DossierHome } from './dossier';
-import { Overview, RequestsBoard, SlideRemote, TestLab } from './regia';
+import { Overview, RequestsBoard, SlideRemote, TestLab, GuestMirror } from './regia';
 const blank: Participant = {
   id: '',
   name: '',
@@ -605,9 +605,7 @@ function App() {
                           </div>
                         </div>
                         <div className="integration-note">
-                          <span className="dot amber" /> Collegamento Slides da aggiungere.
-                          <br />
-                          Puoi provare tutta la serata senza.
+                          <span className="dot amber" /> Slides: avvia l'helper sul Mac del proiettore.
                         </div>
                       </aside>
                     </div>
@@ -626,6 +624,7 @@ function App() {
                     isPresenting={(p) => presenter(s)?.id === p.id}
                   />
                 )}
+                {tab === 'fascicoli' && <GuestMirror s={s} />}
                 {tab === 'premi' && (
                   <>
                     {s.phase !== 'results' && <AwardSettings s={s} busy={busy} perform={perform} />}
