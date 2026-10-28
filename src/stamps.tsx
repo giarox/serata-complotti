@@ -2,6 +2,7 @@ import React, { useEffect, useState, type ReactNode } from 'react';
 import { Check, Stamp as StampIcon } from 'lucide-react';
 import {
   activeRound,
+  countVotes,
   displayName,
   emptyBallot,
   MAX_STAMPS,
@@ -528,7 +529,7 @@ export function VotingSlide({ s, top }: { s: State; top: ReactNode }) {
     co = p?.partner === 'copresenter' && p.partnerName ? p.partnerName : '';
   // Time pressure: how many ballots are in, out of everyone who can stamp this file.
   const can = r ? voters(s).filter((v) => ownerOf(v.id) !== r.presenterId).length : 0,
-    got = r ? s.votes.filter((v) => v.roundId === r.id).length : 0;
+    got = r ? countVotes(s) : 0; // live guests and screens get a count, not the ballots
   return (
     <div className="projector pj-stage pj-vote">
       {top}
