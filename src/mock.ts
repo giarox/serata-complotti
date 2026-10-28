@@ -19,6 +19,13 @@ export const defaultMock: Mock = {
   award: 1,
 };
 
+/** The worst we can expect: long names, a co-speaker with a double surname, a qualification that never ends. */
+export const edgeMock: Partial<Mock> = {
+  name: 'Maria Antonietta Bartolomeo-Scaramucci',
+  partnerName: 'Pierfrancesco Della Rovere Montefeltro',
+  role: 'Dottoressa honoris causa in Scienze Occulte Applicate presso l’Università Telematica del Sottoscala, già consulente non retribuita del Gruppo Bilderberg di Recanati',
+};
+
 export type PreviewKind = 'projector' | 'phone';
 export type PreviewScreen = { id: string; kind: PreviewKind; label: string; note: string };
 /** Every screen that only exists at precise moments of the evening. */

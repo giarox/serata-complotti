@@ -6716,3 +6716,60 @@ label,
 .pj-award.done .pj-podium-steps {
   margin-top: 10vh;
 }
+
+/* Edge cases: fitted text keeps its box, codelines never push the layout */
+.fit {
+  max-width: 100%;
+}
+.projector .pj-role.fit {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.projector .pj-name.fit {
+  max-width: min(1500px, 88vw);
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.pj-wreath-in .pj-name.fit,
+.pj-feature .pj-name.fit {
+  max-width: 100%;
+}
+.pj-feature {
+  max-width: min(1400px, 84vw);
+}
+.projector .pj-co.fit {
+  max-width: min(1300px, 86vw);
+  white-space: nowrap;
+}
+.projector .codeline span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 44%;
+}
+.pj-step-name.fit {
+  overflow-wrap: anywhere;
+}
+.pj-podium em.fit {
+  overflow-wrap: anywhere;
+}
+.mock-actions {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+/* presenter slides with an ironic line on top: a little less air, so the longest names still fit */
+.pj-questions .codeline,
+.pj-voting .codeline {
+  margin: 2.2vh auto;
+}
+.pj-questions .pj-punch,
+.pj-voting .pj-punch {
+  margin-bottom: 2.4vh;
+}
+.pj-questions .pj-foot {
+  margin-top: 2.6vh;
+}
+.pj-voting .phase-badge {
+  margin-top: 2.6vh;
+}

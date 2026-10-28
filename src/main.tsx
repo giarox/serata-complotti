@@ -68,9 +68,19 @@ import '@fontsource/geist-mono/600.css';
 import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
+import { Fit } from './fit';
 import { DossierHome } from './dossier';
 import { Overview, RequestsBoard, SlideRemote, TestLab, GuestMirror } from './regia';
-import { defaultMock, mockHash, mockState, previewScreens, readMock, type Mock, type PreviewScreen } from './mock';
+import {
+  defaultMock,
+  edgeMock,
+  mockHash,
+  mockState,
+  previewScreens,
+  readMock,
+  type Mock,
+  type PreviewScreen,
+} from './mock';
 const blank: Participant = {
   id: '',
   name: '',
@@ -1285,7 +1295,9 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
             <li key={a.key}>
               <span className="mono">CATEGORIA 0{i + 1}</span>
               <strong>{category(a.key).title}</strong>
-              <em>{a.winners.length ? list(a.winners.map(displayName)) : 'Nessun premio'}</em>
+              <Fit as="em" lines={2}>
+                {a.winners.length ? list(a.winners.map(displayName)) : 'Nessun premio'}
+              </Fit>
               {a.winners.length > 0 && (
                 <small>
                   {fmt(a.value!)}
@@ -1345,7 +1357,9 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     const open = n === 3 ? shown >= 1 : shown >= 2;
     return (
       <div className={'pj-step pj-step-' + n + (open ? ' open' : ' sealed') + (litPlace === n ? ' lit' : '')}>
-        <span className="pj-step-name">{!open ? '?' : pl ? list(pl.people.map(displayName)) : '—'}</span>
+        <Fit as="span" className="pj-step-name" lines={3} min={0.6}>
+          {!open ? '?' : pl ? list(pl.people.map(displayName)) : '—'}
+        </Fit>
         {open && pl && (
           <small>
             {fmt(pl.value)}
@@ -1370,8 +1384,10 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
           <Laurel />
           <div className="pj-wreath-in">
             <p className="pj-lead">{a.winners.length && a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}</p>
-            <h1 className="pj-name">{a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}</h1>
-            {winner?.role && <p className="pj-role">{winner.role}</p>}
+            <Fit as="h1" className="pj-name" lines={2}>
+              {a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}
+            </Fit>
+            {winner?.role && <Fit className="pj-role">{winner.role}</Fit>}
             {a.winners.length > 0 ? (
               <p className="pj-score">
                 {fmt(a.value!)}
@@ -1391,8 +1407,10 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         // 3rd and 2nd place get their own moment: name, qualification and score, under a spotlight.
         <div className="pj-feature" key={litPlace}>
           <p className="pj-place">{litPlace}° posto</p>
-          <h1 className="pj-name">{featured ? list(featured.people.map(displayName)) : 'Posto vacante.'}</h1>
-          {featuredOne?.role && <p className="pj-role">{featuredOne.role}</p>}
+          <Fit as="h1" className="pj-name" lines={2}>
+            {featured ? list(featured.people.map(displayName)) : 'Posto vacante.'}
+          </Fit>
+          {featuredOne?.role && <Fit className="pj-role">{featuredOne.role}</Fit>}
           {featured ? (
             <p className="pj-score">
               {fmt(featured.value)}
@@ -1618,12 +1636,14 @@ function Projector({ s }: { s: State }) {
         </div>
         {slide.punch && <p className="pj-punch">{slide.punch}</p>}
         <p className="pj-lead">{slide.lead}</p>
-        {p.role && <p className="pj-role">{p.role}</p>}
-        <h1 className="pj-name">{p.name}</h1>
+        {p.role && <Fit className="pj-role">{p.role}</Fit>}
+        <Fit as="h1" className="pj-name" lines={2}>
+          {p.name}
+        </Fit>
         {p.partner === 'copresenter' && p.partnerName && (
-          <p className="pj-co">
+          <Fit className="pj-co" lines={1} min={0.5}>
             <span>co-relatore</span> {p.partnerName}
-          </p>
+          </Fit>
         )}
         {slide.foot && <p className="pj-foot">{slide.foot}</p>}
         {s.phase === 'voting' && <span className="phase-badge">Vota dal tuo telefono</span>}
@@ -1857,9 +1877,14 @@ function Previews() {
             <p className="eyebrow">Dati finti</p>
             <h2>Chi presenta, chi guarda</h2>
           </div>
-          <button className="text-button" onClick={() => setMock(defaultMock)}>
-            Ripristina
-          </button>
+          <span className="mock-actions">
+            <button className="text-button" onClick={() => setMock({ ...mock, ...edgeMock })}>
+              Prova i casi limite
+            </button>
+            <button className="text-button" onClick={() => setMock(defaultMock)}>
+              Ripristina
+            </button>
+          </span>
         </div>
         <div className="mock-grid">
           <label>
