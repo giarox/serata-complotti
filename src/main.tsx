@@ -44,6 +44,7 @@ import {
   phaseNames,
   revealMoment,
   REVEAL_STEPS,
+  runnersUp,
   presenter,
   voteBlocker,
   type Action,
@@ -1308,48 +1309,84 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     return (
       <div className="projector pj-stage pj-tease">
         {top}
-        <Mark large />
+        <Shreds />
         <div className="codeline">
           <span>{count}</span>
           <i />
           <span>BUSTA SIGILLATA</span>
         </div>
-        <p className="pj-lead">Il prossimo premio</p>
-        <h1>{c.title}</h1>
+        <p className="pj-lead">E la nomination per il premio</p>
+        <div className="pj-envelope">
+          <span className="mono">CATEGORIA 0{m.index + 1} · RISERVATO AI SOLI MEMBRI</span>
+          <strong>{c.title}</strong>
+          <i className="pj-seal" aria-hidden="true">
+            <Eye strokeWidth={1.4} />
+          </i>
+        </div>
         <p className="pj-sub">{c.description}</p>
-        <p className="pj-foot">Rullo di tamburi a cura del pubblico.</p>
+        <p className="pj-foot">Rullo di tamburi a cura del pubblico. La busta non è stata aperta (dicono).</p>
       </div>
     );
-  const winner = a.winners.length === 1 ? a.winners[0] : null;
+  const places = runnersUp(a),
+    second = places.find((p) => p.place === 2),
+    third = places.find((p) => p.place === 3),
+    winner = a.winners.length === 1 ? a.winners[0] : null;
+  const step = (pl: { people: Participant[]; value: number } | undefined, n: 2 | 3) => (
+    <div className={'pj-step pj-step-' + n}>
+      <span className="pj-step-name">{pl ? list(pl.people.map(displayName)) : '—'}</span>
+      {pl && (
+        <small>
+          {fmt(pl.value)}
+          {unitOf(a.key)}
+        </small>
+      )}
+      <b>{n}°</b>
+    </div>
+  );
   return (
     <div className="projector pj-stage pj-award">
       {top}
-      <Mark />
+      {a.winners.length > 0 && <Shreds />}
       <div className="codeline">
         <span>{count}</span>
         <i />
         <span>{c.title}</span>
       </div>
-      {a.winners.length ? (
-        <>
-          <p className="pj-lead">{a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}</p>
+      <div className="pj-wreath">
+        <Laurel />
+        <div className="pj-wreath-in">
+          <p className="pj-lead">
+            {a.winners.length ? (a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a') : 'Il premio va a'}
+          </p>
+          <h1 className="pj-name">{a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}</h1>
           {winner?.role && <p className="pj-role">{winner.role}</p>}
-          <h1 className="pj-name">{list(a.winners.map(displayName))}</h1>
-          <p className="pj-score">
-            {fmt(a.value!)}
-            <small>{unitOf(a.key)}</small>
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="pj-lead">Il premio va a</p>
-          <h1 className="pj-name">Nessuno.</h1>
-          <p className="pj-sub">
-            {a.rows.length ? 'Nessun premio assegnato in questa categoria. Insabbiato.' : 'Nessun intervento concluso.'}
-          </p>
-        </>
+          {a.winners.length > 0 ? (
+            <>
+              <p className="pj-score">
+                {fmt(a.value!)}
+                <small>{unitOf(a.key)}</small>
+              </p>
+              <Stamp sub="Verdetto insindacabile">Confermato</Stamp>
+            </>
+          ) : (
+            <p className="pj-sub">
+              {a.rows.length
+                ? 'Nessun premio assegnato in questa categoria. Insabbiato.'
+                : 'Nessun intervento concluso.'}
+            </p>
+          )}
+        </div>
+        <Laurel right />
+      </div>
+      {a.winners.length > 0 && (
+        <div className="pj-podium-steps">
+          {step(second, 2)}
+          <div className="pj-step pj-step-1">
+            <b>1°</b>
+          </div>
+          {step(third, 3)}
+        </div>
       )}
-      <Stamp sub="Verdetto insindacabile">{a.winners.length ? 'Confermato' : 'Archiviato'}</Stamp>
       {a.outcome === 'tieBreak' && (
         <p className="pj-foot">
           Pari merito con {list(a.passedOver.map(displayName))}, che ha già un premio: vince chi non ne ha ancora.
@@ -1358,6 +1395,69 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
       {a.capped.length > 0 && (
         <p className="pj-foot">{list(a.capped.map(displayName))}: già raggiunto il massimo di premi per persona.</p>
       )}
+    </div>
+  );
+}
+/** One brass laurel branch, drawn leaf by leaf; the right one is mirrored. */
+function Laurel({ right = false }: { right?: boolean }) {
+  // Stem: a quadratic curve from the bottom (inner side) up and outward.
+  const P0 = [78, 236],
+    P1 = [-6, 150],
+    P2 = [44, 8];
+  const at = (t: number) => [
+    (1 - t) ** 2 * P0[0] + 2 * (1 - t) * t * P1[0] + t * t * P2[0],
+    (1 - t) ** 2 * P0[1] + 2 * (1 - t) * t * P1[1] + t * t * P2[1],
+  ];
+  const leaves = Array.from({ length: 9 }, (_, i) => {
+    const t = 0.08 + i * 0.105,
+      [x, y] = at(t),
+      [x2, y2] = at(t + 0.01),
+      dir = (Math.atan2(y2 - y, x2 - x) * 180) / Math.PI;
+    return [
+      { x, y, rot: dir - 38, k: 1 - i * 0.045 },
+      { x, y, rot: dir + 38, k: 1 - i * 0.045 },
+    ];
+  }).flat();
+  return (
+    <svg
+      className={'pj-laurel' + (right ? ' right' : '')}
+      viewBox="0 0 100 240"
+      aria-hidden="true"
+      style={right ? { transform: 'scaleX(-1)' } : undefined}
+    >
+      <path d={`M ${P0} Q ${P1} ${P2}`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      {leaves.map((l, i) => (
+        <path
+          key={i}
+          d="M 0 0 C 8 -7 22 -7 30 0 C 22 7 8 7 0 0 Z"
+          transform={`translate(${l.x} ${l.y}) rotate(${l.rot}) scale(${l.k * 0.72})`}
+          fill="currentColor"
+        />
+      ))}
+      <ellipse cx="44" cy="8" rx="6" ry="9" fill="currentColor" transform="rotate(20 44 8)" />
+    </svg>
+  );
+}
+/** Confetti, but it's shredded documents. */
+function Shreds() {
+  return (
+    <div className="pj-shreds" aria-hidden="true">
+      {Array.from({ length: 18 }, (_, i) => (
+        <i
+          key={i}
+          style={
+            {
+              left: ((i * 37) % 100) + '%',
+              animationDelay: -((i * 1.7) % 11) + 's',
+              animationDuration: 9 + (i % 5) + 's',
+              '--r': ((i * 47) % 90) - 45 + 'deg',
+              '--y': ((i * 29) % 92) + '%',
+              opacity: 0.35 + (i % 4) * 0.12,
+            } as React.CSSProperties
+          }
+          className={i % 3 ? 'paper' : 'brass'}
+        />
+      ))}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   defaultSettings,
   initialState,
   normalize,
+  runnersUp,
   snapshot,
   type Actor,
   type Ballot,
@@ -54,6 +55,20 @@ describe('awards and tie-breaks', () => {
     expect(names(s, 'research')).toEqual(['giulia']);
     expect(names(s, 'supercazzola')).toEqual(['giulia']);
     expect(awards(s)[0].outcome).toBe('clear');
+  });
+
+  it('puts second and third place on the podium, ties sharing a step', () => {
+    let s = initialState();
+    s = round(s, 'paolo', { giulia: ballot(9, 1, 1, false), marco: ballot(9, 1, 1, false) });
+    s = round(s, 'giulia', { paolo: ballot(7, 1, 1, false), marco: ballot(7, 1, 1, false) });
+    s = round(s, 'marco', { paolo: ballot(7, 1, 1, false), giulia: ballot(7, 1, 1, false) });
+    s = round(s, 'sara', { paolo: ballot(5, 1, 1, false), giulia: ballot(5, 1, 1, false) });
+    const a = awards(s).find((x) => x.key === 'credibility')!;
+    expect(a.winners.map((p) => p.id)).toEqual(['paolo']);
+    expect(runnersUp(a).map((p) => [p.place, p.people.map((x) => x.id), p.value])).toEqual([
+      [2, ['giulia', 'marco'], 7],
+      [3, ['sara'], 5],
+    ]);
   });
 
   it('breaks a tie in favour of the person without an earlier award', () => {

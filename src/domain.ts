@@ -641,3 +641,17 @@ export function awards(s: State): Award[] {
     };
   });
 }
+export type Place = { place: 2 | 3; people: Participant[]; value: number };
+/** Second and third place of an award (ties share the step), after the winners. */
+export function runnersUp(a: Award): Place[] {
+  const taken = new Set(a.winners.map((p) => p.id));
+  const places: Place[] = [];
+  for (const r of a.rows) {
+    if (r.value === null || (a.key === 'supercazzola' && r.value === 0) || taken.has(r.participant.id)) continue;
+    const same = places.find((p) => p.value === r.value);
+    if (same) same.people.push(r.participant);
+    else if (places.length < 2)
+      places.push({ place: (places.length + 2) as 2 | 3, people: [r.participant], value: r.value });
+  }
+  return places;
+}
