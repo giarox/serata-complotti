@@ -61,6 +61,7 @@ import '@fontsource/geist/600.css';
 import '@fontsource/geist-mono/400.css';
 import '@fontsource/geist-mono/500.css';
 import '@fontsource/geist-mono/600.css';
+import '@fontsource/herr-von-muellerhoff/latin-400.css';
 import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';

@@ -499,8 +499,8 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
               <Mark />
             </span>
             <div>
-              <i />
-              <small>La Presidenza Occulta</small>
+              <i className="cert-autograph">N. Omissis</i>
+              <small>Il Comitato Invisibile</small>
             </div>
           </div>
           <p className="cert-protocol">Prot. n. 001/2026 · Copia conforme · Non divulgare (o sì)</p>
