@@ -5,12 +5,12 @@ dal telefono di chi presenta.
 
 ## Una volta sola
 1. Sul Mac del proiettore serve Node.js 18 o più recente (`node -v`) e Google Chrome.
-2. Nella cartella `app/`: `npm install`.
+2. Nella cartella del progetto (`serata-complotti`): `npm install`.
 
 ## Prima della serata
 1. Apri Chrome sulla **Vista proiettore** dell'app (dalla regia: "Vista proiettore") e mettila a schermo intero
    (Visualizza → Entra a schermo intero). Lasciala in primo piano.
-2. Apri il Terminale nella cartella `app/` e lancia:
+2. Apri il Terminale nella cartella del progetto e lancia:
    - serata vera: `npm run helper`
    - serata di prova: `npm run helper -- --prova`
 3. Scrivi il PIN della regia. Deve comparire "Collegato come regia… In ascolto dei comandi".
