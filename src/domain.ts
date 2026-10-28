@@ -109,7 +109,7 @@ export const stamps = [
     line: 'L’idea: originale, assurda o geniale, comunque sia stata presentata.',
     joke: 'Netflix la sta già trasformando in docuserie.',
     prize: 'Premio Illuminato',
-    reason: 'per aver avuto l’illuminazione',
+    reason: 'Per aver avuto l’illuminazione',
     ink: '#c0392b',
   },
   {
@@ -118,7 +118,7 @@ export const stamps = [
     line: 'La preparazione: prove, fonti e struttura da vero ricercatore.',
     joke: 'A scuola si impegnava poco, ma stasera wow.',
     prize: 'Il Faldone d’Oro',
-    reason: 'per il fascicolo più pesante del Congresso',
+    reason: 'Per il fascicolo più pesante del Congresso',
     ink: '#2c5f9e',
   },
   {
@@ -127,7 +127,7 @@ export const stamps = [
     line: 'Il racconto: voce, ritmo e presenza, al di là del contenuto.',
     joke: 'Potrebbe vendere vaccini ai novax.',
     prize: 'Il Pifferaio Magico',
-    reason: 'ci avrebbe portati ovunque',
+    reason: 'Ci avrebbe portati ovunque',
     ink: '#2e7d4f',
   },
   {
@@ -136,7 +136,7 @@ export const stamps = [
     line: 'Le risposte alle domande: interrogatorio superato con stile.',
     joke: 'Arrampicatore di specchi professionista.',
     prize: 'La Ventosa d’Oro',
-    reason: 'aderenza totale anche su superfici lisce',
+    reason: 'Aderenza totale anche su superfici lisce',
     ink: '#7b3fa0',
   },
 ] as const satisfies readonly {

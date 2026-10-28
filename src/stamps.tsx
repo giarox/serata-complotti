@@ -188,8 +188,8 @@ export function StampBallot({
       <div className="ballot-question">
         <h2>Il Congresso vuole sapere: cosa ti ha colpito?</h2>
         <p>
-          Timbra il fascicolo dove ti ha colpito: <strong>al massimo due timbri</strong>. Non ti ha colpito niente?
-          Consegnalo senza.
+          Ogni timbro premia un punto forte della presentazione: <strong>scegline al massimo due</strong>. Nessuno ti ha
+          convinto? Consegna il fascicolo senza timbri.
         </p>
         <strong className={'stamp-count' + (full ? ' full' : '')}>Timbri: {n}/2</strong>
       </div>
@@ -464,29 +464,20 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
               )}
               {stampKeysWith(c.talk).length ? (
                 <ul className="cert-rows">
-                  <li className="cert-rows-head">Timbri ricevuti dal pubblico e piazzamento nei premi</li>
+                  <li className="cert-rows-head">Piazzamento nei premi e timbri ricevuti</li>
                   {stamps.map((x) => {
                     const n = c.talk.counts[x.key],
                       place = placeOf(x.key);
                     return (
-                      <li key={x.key} className={(n ? '' : 'none') + (place === 1 ? ' won' : '')}>
-                        <StampMark k={x.key} small on={n > 0} />
-                        <span className="cert-times">
-                          {n ? (
-                            <>
-                              Timbrato <strong>{n}</strong> {n === 1 ? 'volta' : 'volte'}
-                            </>
-                          ) : (
-                            'Nessun timbro'
-                          )}
+                      <li key={x.key} className={'p' + place + (place === 1 ? ' won' : '')}>
+                        <span className="cert-place">
+                          {place ? `${place}° posto per il premio` : 'Fuori dal podio per il premio'}
                         </span>
-                        <em className={'cert-place p' + place}>
-                          {place === 1
-                            ? `Vince ${prizes[x.key].name}`
-                            : place
-                              ? `${place}° posto · ${prizes[x.key].name}`
-                              : prizes[x.key].name}
-                        </em>
+                        <strong className="cert-prize-name">{prizes[x.key].name}</strong>
+                        <span className="cert-times">
+                          <StampMark k={x.key} small on={n > 0} />
+                          {n ? `${n} ${n === 1 ? 'timbro ricevuto' : 'timbri ricevuti'}` : 'nessun timbro'}
+                        </span>
                       </li>
                     );
                   })}
@@ -641,7 +632,7 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         <p className="pj-link">
           {m.prize === 'cappello'
             ? 'Consegnato al relatore salito più in alto sui quattro podi della serata.'
-            : 'Consegnato al relatore che ha collezionato più timbri come questo.'}
+            : `Consegnato al relatore che ha collezionato più timbri ${stamp(info.stamp!).title}.`}
         </p>
         <p className="pj-sub">{info.opener}</p>
         <Rule />
