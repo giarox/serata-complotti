@@ -150,7 +150,7 @@ test('a friend registers on one screen, then adds the Slides link before the dea
   const registry = page.locator('.roster');
   await expect(registry.locator('.registry-row.me')).toContainText('+ testimone');
   await expect(registry).toContainText('Paolo');
-  await expect(registry).not.toContainText('Studioso dei finti uccelli'); // details stay secret
+  await expect(registry).toContainText('Studioso dei finti uccelli'); // everyone reads the others' qualifications
   await page.getByLabel('Link Google Slides').fill('https://docs.google.com/presentation/d/abc/edit');
   await page.getByRole('button', { name: 'Salva modifiche al fascicolo' }).last().click();
   await expect(page.getByRole('button', { name: 'Nascondi il fascicolo' })).toBeVisible();

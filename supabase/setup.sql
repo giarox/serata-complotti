@@ -64,15 +64,11 @@ create or replace function public.party_norm(t text) returns text language sql i
  select upper(regexp_replace(coalesce(t,''),'\s','','g'));
 $$;
 -- What other guests see of someone who has not presented yet: name and readiness only.
--- "Tactical omissis": about half of the vowels become a marker (never the first letter of a word); same arithmetic as censor() in src/domain.ts.
-create or replace function public.party_censor(seed text, t text) returns text language sql immutable as $$
- with k as (select coalesce(sum(ascii(substr(seed,j,1))::bigint*j),0) s from generate_series(1,char_length(coalesce(seed,''))) j)
- select coalesce(string_agg(case when substr(t,i,1) ~* '[aeiouàèéìíòóùú]' and i>1 and substr(t,i-1,1) ~ '[[:alpha:]]' and ((k.s*31+i*i*7+i*131)%97)<55 then chr(9608) else substr(t,i,1) end, '' order by i),'')
- from k, generate_series(1,char_length(coalesce(t,''))) i;
-$$;
+-- Guests read each other's names and qualifications; only the slides link stays hidden until that person presents.
+drop function if exists public.party_censor(text,text);
 create or replace function public.party_mask(p jsonb) returns jsonb language sql immutable as $$
- select jsonb_build_object('id',p->>'id','name',p->>'name','role',public.party_censor(p->>'id',coalesce(p->>'role','')),'title','','deckUrl','',
-  'mode',p->'mode','spectator',coalesce((p->>'spectator')::boolean,false),'plusOne',coalesce(p->'plusOne','null'::jsonb),'partner',coalesce(p->'partner','null'::jsonb),'partnerName',public.party_censor((p->>'id')||'p',coalesce(p->>'partnerName','')),'admission',coalesce(p->'admission','"pending"'::jsonb),'masked',true,'ready',public.party_ready(p));
+ select jsonb_build_object('id',p->>'id','name',p->>'name','role',coalesce(p->>'role',''),'title','','deckUrl','',
+  'mode',p->'mode','spectator',coalesce((p->>'spectator')::boolean,false),'plusOne',coalesce(p->'plusOne','null'::jsonb),'partner',coalesce(p->'partner','null'::jsonb),'partnerName',coalesce(p->>'partnerName',''),'admission',coalesce(p->'admission','"pending"'::jsonb),'masked',true,'ready',public.party_ready(p));
 $$;
 -- Which evening the caller belongs to: true = the real one, false = the test one.
 create or replace function public.party_event() returns boolean language sql stable security definer set search_path=public,pg_temp as $$
@@ -360,7 +356,7 @@ begin
  insert into public.party_members(user_id,role,person_id,sandbox) values(auth.uid(),'guest',pid,party_register.sandbox);
  return public.party_actor();
 end; $$;
-revoke all on function public.party_actor(),public.party_event(),public.party_ensure_sandbox(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean),public.party_ready(jsonb),public.party_mask(jsonb),public.party_censor(text,text),public.party_check_name(text),public.party_norm(text) from public,anon;
+revoke all on function public.party_actor(),public.party_event(),public.party_ensure_sandbox(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean),public.party_ready(jsonb),public.party_mask(jsonb),public.party_check_name(text),public.party_norm(text) from public,anon;
 revoke all on function public.party_event(),public.party_ensure_sandbox(),public.party_slide_push(boolean,text,text) from public,anon,authenticated;
 grant execute on function public.party_actor(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean) to authenticated;
 -- Only a harmless revision number is broadcast; no scores, names or passwords.

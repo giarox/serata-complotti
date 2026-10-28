@@ -311,7 +311,7 @@ export function GuestMirror({ s }: { s: State }) {
       </div>
       <p className="footnote">
         {who
-          ? "Degli altri vedono: nome, esito, modalità e nome dell'accompagnatore. Restano nascoste qualifica e link delle slide, finché la persona non presenta."
+          ? 'Degli altri vedono nome, qualifica, esito, modalità e accompagnatore. Resta nascosto solo il link delle slide.'
           : 'Nessuna richiesta ancora: la vista comparirà con il primo iscritto.'}
       </p>
       {open && who && seen && (

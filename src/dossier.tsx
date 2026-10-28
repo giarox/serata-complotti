@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Copy, Dices, MessageCircle } from 'lucide-react';
 import {
-  censor,
-  OMISSIS,
   displayName,
   dossierGaps,
   editBlocker,
@@ -451,25 +449,6 @@ const groups: [Admission, string][] = [
 ];
 
 /** Everyone who signed up, as mugshots. Others' titles stay secret until they present. */
-/** Text with tactical omissis: each censored letter is a black square with a question mark. */
-function Redacted({ text }: { text: string }) {
-  const parts = text.split(OMISSIS);
-  return (
-    <>
-      {parts.map((part, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && (
-            <span className="omissis" aria-hidden="true">
-              ?
-            </span>
-          )}
-          {part}
-        </React.Fragment>
-      ))}
-    </>
-  );
-}
-
 export function Registry({ s, meId }: { s: State; meId?: string }) {
   const people = [...s.participants];
   const admOf = (p: Participant) => p.admission ?? 'pending';
@@ -514,24 +493,16 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
                 const mine = p.id === meId;
                 return (
                   <li key={p.id} className={'roster-row registry-row' + (mine ? ' me' : '')}>
-                    <span className="roster-badge" aria-hidden="true">
-                      {initials(p.name)}
+                    <span className={'roster-badge person-avatar color-' + (people.indexOf(p) % 4)} aria-hidden="true">
+                      {p.name.slice(0, 1)}
                     </span>
                     <div className="roster-info">
                       <strong>
-                        <Redacted text={p.masked ? censor(p.id + 'n', p.name) : p.name} />
+                        {p.name}
                         {mine && <small> (tu)</small>}
                       </strong>
                       <span>
-                        {mine ? (
-                          `«${p.role || 'qualifica da indicare'}»`
-                        ) : p.role ? (
-                          <>
-                            «<Redacted text={p.role} />»
-                          </>
-                        ) : (
-                          '«Qualifica top secret»'
-                        )}
+                        {p.role ? `«${p.role}»` : mine ? '«qualifica da indicare»' : '«Qualifica top secret»'}
                       </span>
                       <span className="roster-tags">
                         {p.mode && p.mode !== 'none' && (
@@ -541,11 +512,7 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
                         {p.partner === 'copresenter' && (
                           <em className="mode-tag">
                             + co-relatore
-                            {p.partnerName ? (
-                              <>
-                                : <Redacted text={p.partnerName} />
-                              </>
-                            ) : null}
+                            {p.partnerName ? `: ${p.partnerName}` : null}
                           </em>
                         )}
                       </span>
