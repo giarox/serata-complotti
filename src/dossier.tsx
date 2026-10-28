@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Copy, Dices, MessageCircle } from 'lucide-react';
 import {
+  censor,
+  OMISSIS,
   displayName,
   dossierGaps,
   editBlocker,
@@ -449,6 +451,25 @@ const groups: [Admission, string][] = [
 ];
 
 /** Everyone who signed up, as mugshots. Others' titles stay secret until they present. */
+/** Text with tactical omissis: each censored letter is a black square with a question mark. */
+function Redacted({ text }: { text: string }) {
+  const parts = text.split(OMISSIS);
+  return (
+    <>
+      {parts.map((part, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && (
+            <span className="omissis" aria-hidden="true">
+              ?
+            </span>
+          )}
+          {part}
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
 export function Registry({ s, meId }: { s: State; meId?: string }) {
   const people = [...s.participants];
   const admOf = (p: Participant) => p.admission ?? 'pending';
@@ -498,17 +519,34 @@ export function Registry({ s, meId }: { s: State; meId?: string }) {
                     </span>
                     <div className="roster-info">
                       <strong>
-                        {p.name}
+                        <Redacted text={p.masked ? censor(p.id + 'n', p.name) : p.name} />
                         {mine && <small> (tu)</small>}
                       </strong>
-                      <span>{mine ? `«${p.role || 'qualifica da indicare'}»` : '«Qualifica top secret»'}</span>
+                      <span>
+                        {mine ? (
+                          `«${p.role || 'qualifica da indicare'}»`
+                        ) : p.role ? (
+                          <>
+                            «<Redacted text={p.role} />»
+                          </>
+                        ) : (
+                          '«Qualifica top secret»'
+                        )}
+                      </span>
                       <span className="roster-tags">
                         {p.mode && p.mode !== 'none' && (
                           <em className="mode-tag">{modes.find((m) => m.key === p.mode)?.label}</em>
                         )}
                         {p.partner === 'witness' && <em className="mode-tag">+ testimone</em>}
                         {p.partner === 'copresenter' && (
-                          <em className="mode-tag">+ co-relatore{p.partnerName ? `: ${p.partnerName}` : ''}</em>
+                          <em className="mode-tag">
+                            + co-relatore
+                            {p.partnerName ? (
+                              <>
+                                : <Redacted text={p.partnerName} />
+                              </>
+                            ) : null}
+                          </em>
                         )}
                       </span>
                     </div>

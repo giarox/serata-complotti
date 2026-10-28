@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAction,
+  censor,
+  OMISSIS,
   dossierGaps,
   initialState,
   makeId,
@@ -45,12 +47,23 @@ describe('secret details', () => {
       { role: 'guest', participantId: 'ugo' },
       {
         type: 'participant',
-        participant: { ...me(s, 'ugo'), role: 'R', title: 'SEGRETO', mode: 'paper' },
+        participant: { ...me(s, 'ugo'), role: 'Rettiliano onorario', title: 'SEGRETO', mode: 'paper' },
       },
     );
     const viewer: Actor = { role: 'guest', participantId: 'giulia' };
     const seen = snapshot(s, viewer).participants.find((p) => p.id === 'ugo')!;
-    expect(seen).toMatchObject({ name: 'Ugo', title: '', role: '', masked: true, ready: true });
+    expect(seen).toMatchObject({
+      name: 'Ugo',
+      title: '',
+      role: censor('ugo', 'Rettiliano onorario'),
+      masked: true,
+      ready: true,
+    });
+    // Tactical omissis: same length, first letters kept, some letters hidden.
+    expect(seen.role).toHaveLength('Rettiliano onorario'.length);
+    expect(seen.role).toContain(OMISSIS);
+    expect(seen.role.startsWith('R')).toBe(true);
+    expect(seen.role.split(' ')[1][0]).toBe('o');
     expect(dossierGaps(seen)).toEqual([]);
     expect(snapshot(s, gm).participants.find((p) => p.id === 'ugo')).toMatchObject({ title: 'SEGRETO' });
     expect(snapshot(s, { role: 'guest', participantId: 'ugo' }).participants.find((p) => p.id === 'ugo')!.title).toBe(

@@ -5841,3 +5841,22 @@ label,
   border-radius: 14px;
   opacity: 0.98;
 }
+
+/* 28 Oct — tactical omissis in the guests' registry */
+.omissis {
+  display: inline-block;
+  width: 0.78em;
+  height: 0.98em;
+  margin: 0 0.04em;
+  background: #050505;
+  color: #f4ead6;
+  box-shadow: 0 0 0 1px rgba(244, 234, 214, 0.5);
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.82em;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 0.98em;
+  text-align: center;
+  vertical-align: -0.08em;
+  border-radius: 1px;
+}
