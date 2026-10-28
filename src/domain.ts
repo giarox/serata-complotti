@@ -113,6 +113,22 @@ export const categories = [
     description: 'La risposta al question time era una supercazzola come se fosse antani?',
   },
 ] as const;
+/**
+ * The reveal goes one step at a time on the projector: announce award 1, show award 1, announce award 2, …,
+ * show award 4, then a summary. `revealed` counts those steps (1…9).
+ */
+export const REVEAL_STEPS = 9;
+/** How many awards are already shown (phones and regia only show these). */
+export const openAwards = (s: Pick<State, 'phase' | 'revealed'>) =>
+  s.phase === 'results' ? Math.min(4, Math.floor(s.revealed / 2)) : 0;
+/** What the projector shows now: the announcement or the result of award n (0-based), or the summary. */
+export function revealMoment(
+  s: Pick<State, 'phase' | 'revealed'>,
+): { kind: 'tease' | 'award'; index: number } | { kind: 'summary' } | null {
+  if (s.phase !== 'results' || s.revealed < 1) return null;
+  if (s.revealed >= REVEAL_STEPS) return { kind: 'summary' };
+  return s.revealed % 2 ? { kind: 'tease', index: (s.revealed - 1) / 2 } : { kind: 'award', index: s.revealed / 2 - 1 };
+}
 export const categoryKeys: CategoryKey[] = categories.map((c) => c.key);
 export const category = (key: CategoryKey) => categories.find((c) => c.key === key)!;
 export const defaultSettings = (): Settings => ({
@@ -438,7 +454,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     s.phase = 'results';
     s.revealed = 1;
   } else if (action.type === 'nextAward') {
-    if (s.phase !== 'results' || s.revealed >= 4) throw new Error('Non ci sono altre categorie da svelare.');
+    if (s.phase !== 'results' || s.revealed >= REVEAL_STEPS) throw new Error('Non ci sono altre categorie da svelare.');
     s.revealed++;
   } else if (action.type === 'release') {
     // Membership lives in Supabase; in the browser demo there is nothing to release.

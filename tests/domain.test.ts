@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, initialState, rankings, snapshot, type State, type Actor, type Ballot } from '../src/domain';
+import {
+  applyAction,
+  initialState,
+  openAwards,
+  revealMoment,
+  rankings,
+  snapshot,
+  type State,
+  type Actor,
+  type Ballot,
+} from '../src/domain';
 const gm: Actor = { role: 'gm' },
   guest: Actor = { role: 'guest', participantId: 'giulia' };
 const ballot: Ballot = { credibility: 8, delivery: 6, research: 10, supercazzola: true };
@@ -89,14 +99,21 @@ describe('rounds and ballots', () => {
     const closed = applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: s.activeRoundId! });
     expect(rankings(closed, 'credibility')[0].value).toBeNull();
   });
-  it('requires closing the round before reveal; reveals four categories progressively', () => {
+  it('requires closing the round before reveal; announces and reveals each award, then a summary', () => {
     let s = vote(voting());
     expect(() => applyAction(s, gm, { type: 'reveal' })).toThrow();
     s = applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: s.activeRoundId! });
     s = applyAction(s, gm, { type: 'reveal' });
     expect(s.revealed).toBe(1);
-    for (let i = 0; i < 3; i++) s = applyAction(s, gm, { type: 'nextAward' });
-    expect(s.revealed).toBe(4);
+    expect(revealMoment(s)).toEqual({ kind: 'tease', index: 0 });
+    expect(openAwards(s)).toBe(0);
+    s = applyAction(s, gm, { type: 'nextAward' });
+    expect(revealMoment(s)).toEqual({ kind: 'award', index: 0 });
+    expect(openAwards(s)).toBe(1);
+    for (let i = 0; i < 7; i++) s = applyAction(s, gm, { type: 'nextAward' });
+    expect(s.revealed).toBe(9);
+    expect(revealMoment(s)).toEqual({ kind: 'summary' });
+    expect(openAwards(s)).toBe(4);
     expect(() => applyAction(s, gm, { type: 'nextAward' })).toThrow();
     expect(snapshot(s, gm).votes).toHaveLength(1);
   });

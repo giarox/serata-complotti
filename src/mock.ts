@@ -7,7 +7,8 @@ export type Mock = {
   mode: 'slides' | 'paper';
   partnerName: string;
   viewer: string;
-  revealed: number;
+  /** Which award (1–4) the reveal previews show. */
+  award: number;
 };
 export const defaultMock: Mock = {
   name: 'Giovanni Moroni',
@@ -15,7 +16,7 @@ export const defaultMock: Mock = {
   mode: 'slides',
   partnerName: 'Camilla Morbidoni',
   viewer: 'Antonio',
-  revealed: 2,
+  award: 1,
 };
 
 export type PreviewKind = 'projector' | 'phone';
@@ -43,7 +44,19 @@ export const previewScreens: PreviewScreen[] = [
     label: 'Tra un turno e l’altro',
     note: 'Dopo il voto, prima del prossimo relatore.',
   },
-  { id: 'p-verdetto', kind: 'projector', label: 'Il verdetto', note: 'Premi svelati: quanti ne scegli a sinistra.' },
+  {
+    id: 'p-annuncio',
+    kind: 'projector',
+    label: 'Verdetto: annuncio del premio',
+    note: 'Prima busta sigillata, poi il vincitore.',
+  },
+  { id: 'p-premio', kind: 'projector', label: 'Verdetto: il vincitore', note: 'Una slide per ogni premio.' },
+  {
+    id: 'p-riepilogo',
+    kind: 'projector',
+    label: 'Verdetto: riepilogo finale',
+    note: 'Dopo il quarto premio. Chiude la serata.',
+  },
   { id: 'g-ascolta', kind: 'phone', label: 'Ascolta', note: 'Telefono di chi è in sala mentre un altro presenta.' },
   { id: 'g-tocca', kind: 'phone', label: 'Tocca a te', note: 'Telefono di chi presenta: il telecomando.' },
   { id: 'g-domande', kind: 'phone', label: 'Question time', note: 'Telefono di chi è in sala.' },
@@ -111,7 +124,7 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
       s.votes = [{ roundId: now.id, voterId: viewer.id, credibility: 7, delivery: 9, research: 4, supercazzola: true }];
   } else if (id === 'p-pausa' || id === 'g-pausa') {
     s.rounds = [earlier];
-  } else if (id === 'p-verdetto' || id === 'g-verdetto') {
+  } else if (['p-annuncio', 'p-premio', 'p-riepilogo', 'g-verdetto'].includes(id)) {
     // Everyone presented once, everyone else voted, with scores that give a varied podium.
     const speakers = [presenter, ...others];
     s.rounds = speakers.map((p, i) => ({ id: 'mock-r' + i, presenterId: p.id, closed: true }));
@@ -128,7 +141,8 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
         })),
     );
     s.phase = 'results';
-    s.revealed = Math.max(0, Math.min(4, m.revealed));
+    const n = Math.max(1, Math.min(4, m.award));
+    s.revealed = id === 'p-riepilogo' ? 9 : id === 'p-annuncio' ? 2 * n - 1 : 2 * n;
   }
   const actor: Actor = id === 'g-tocca' || id === 'g-proprio' ? { role: 'guest', participantId: presenter.id } : guest;
   return { s, actor };

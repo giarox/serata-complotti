@@ -40,7 +40,10 @@ import {
   displayName,
   dossierGaps,
   modes,
+  openAwards,
   phaseNames,
+  revealMoment,
+  REVEAL_STEPS,
   presenter,
   voteBlocker,
   type Action,
@@ -646,15 +649,13 @@ function App() {
                           <Trophy size={18} />
                         </Button>
                       )}
-                      {s.phase === 'results' && s.revealed < 4 && (
+                      {s.phase === 'results' && s.revealed < REVEAL_STEPS && (
                         <Button disabled={busy} onClick={() => void perform({ type: 'nextAward' })}>
-                          Svela la prossima categoria
+                          {nextRevealLabel(s)}
                           <ArrowRight size={18} />
                         </Button>
                       )}
-                      {s.phase === 'results' && s.revealed >= 4 && (
-                        <p className="verdict-done">Tutte le categorie sono state svelate. La serata è conclusa.</p>
-                      )}
+                      {s.phase === 'results' && <p className="verdict-done">{revealNow(s)}</p>}
                       {s.phase === 'results' && (
                         <Button secondary disabled={busy} onClick={() => void perform({ type: 'back' })}>
                           <ArrowLeft size={17} />
@@ -1076,7 +1077,7 @@ function Results({ s }: { s: State }) {
     <div className="awards-grid">
       {all.map((award, i) => {
         const c = category(award.key),
-          open = s.phase === 'results' && i < s.revealed,
+          open = i < openAwards(s),
           unit = award.key === 'supercazzola' ? ' sì' : ' / 10';
         return (
           <section className={'award-card ' + (open ? 'award-open' : '')} key={award.key}>
@@ -1248,6 +1249,118 @@ function GmOwnTurn({
     );
   return null;
 }
+/** Regia: what the projector shows now during the reveal. */
+function revealNow(s: State) {
+  const m = revealMoment(s);
+  if (!m) return '';
+  if (m.kind === 'summary') return 'Sul proiettore: il riepilogo finale. La serata è conclusa.';
+  const c = category(s.settings.awardOrder[m.index]);
+  return `Sul proiettore: ${m.kind === 'tease' ? 'annuncio' : 'vincitore'} del premio ${m.index + 1} di 4, «${c.title}».`;
+}
+function nextRevealLabel(s: State) {
+  const m = revealMoment(s);
+  if (m?.kind === 'tease') return 'Svela il vincitore';
+  if (m?.kind === 'award' && m.index === 3) return 'Chiudi con il riepilogo';
+  return 'Annuncia il prossimo premio';
+}
+const unitOf = (key: string) => (key === 'supercazzola' ? ' sì' : ' / 10');
+/** The reveal on the projector: one slide to announce each award, one to show it, then a summary. */
+function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
+  const m = revealMoment(s),
+    all = awards(s);
+  if (!m) return <div className="projector">{top}</div>;
+  if (m.kind === 'summary')
+    return (
+      <div className="projector pj-summary">
+        {top}
+        <p className="eyebrow">IL CONGRESSO HA PARLATO</p>
+        <h1>Verdetto finale.</h1>
+        <ol className="pj-podium">
+          {all.map((a, i) => (
+            <li key={a.key}>
+              <span className="mono">CATEGORIA 0{i + 1}</span>
+              <strong>{category(a.key).title}</strong>
+              <em>{a.winners.length ? list(a.winners.map(displayName)) : 'Nessun premio'}</em>
+              {a.winners.length > 0 && (
+                <small>
+                  {fmt(a.value!)}
+                  {unitOf(a.key)}
+                </small>
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="pj-thanks">
+          Grazie a tutti i ricercatori, ai co-relatori e ai testimoni. Avete visto troppo: ora siete dei nostri.
+        </p>
+        <div className="codeline">
+          <span>FASCICOLO CHIUSO</span>
+          <i />
+          <span>CONTINUA… CONGRESSO N. 002</span>
+        </div>
+        <p className="pj-next">Data e luogo verranno comunicati quando sarà sicuro farlo.</p>
+      </div>
+    );
+  const a = all[m.index],
+    c = category(a.key),
+    count = `CATEGORIA 0${m.index + 1} DI 04`;
+  if (m.kind === 'tease')
+    return (
+      <div className="projector pj-stage pj-tease">
+        {top}
+        <Mark large />
+        <div className="codeline">
+          <span>{count}</span>
+          <i />
+          <span>BUSTA SIGILLATA</span>
+        </div>
+        <p className="pj-lead">Il prossimo premio</p>
+        <h1>{c.title}</h1>
+        <p className="pj-sub">{c.description}</p>
+        <p className="pj-foot">Rullo di tamburi a cura del pubblico.</p>
+      </div>
+    );
+  const winner = a.winners.length === 1 ? a.winners[0] : null;
+  return (
+    <div className="projector pj-stage pj-award">
+      {top}
+      <Mark />
+      <div className="codeline">
+        <span>{count}</span>
+        <i />
+        <span>{c.title}</span>
+      </div>
+      {a.winners.length ? (
+        <>
+          <p className="pj-lead">{a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}</p>
+          {winner?.role && <p className="pj-role">{winner.role}</p>}
+          <h1 className="pj-name">{list(a.winners.map(displayName))}</h1>
+          <p className="pj-score">
+            {fmt(a.value!)}
+            <small>{unitOf(a.key)}</small>
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="pj-lead">Il premio va a</p>
+          <h1 className="pj-name">Nessuno.</h1>
+          <p className="pj-sub">
+            {a.rows.length ? 'Nessun premio assegnato in questa categoria. Insabbiato.' : 'Nessun intervento concluso.'}
+          </p>
+        </>
+      )}
+      <Stamp sub="Verdetto insindacabile">{a.winners.length ? 'Confermato' : 'Archiviato'}</Stamp>
+      {a.outcome === 'tieBreak' && (
+        <p className="pj-foot">
+          Pari merito con {list(a.passedOver.map(displayName))}, che ha già un premio: vince chi non ne ha ancora.
+        </p>
+      )}
+      {a.capped.length > 0 && (
+        <p className="pj-foot">{list(a.capped.map(displayName))}: già raggiunto il massimo di premi per persona.</p>
+      )}
+    </div>
+  );
+}
 /** The projector: one slide per moment of the evening, read from afar, never scrolling. */
 function Projector({ s }: { s: State }) {
   const p = presenter(s),
@@ -1267,15 +1380,7 @@ function Projector({ s }: { s: State }) {
       </button>
     </div>
   );
-  if (s.phase === 'results')
-    return (
-      <div className="projector">
-        {top}
-        <p className="eyebrow">IL MOMENTO DELLA VERITÀ</p>
-        <h1>Il verdetto.</h1>
-        <Results s={s} />
-      </div>
-    );
+  if (s.phase === 'results') return <RevealSlide s={s} top={top} />;
   // A presenter on stage: the lines follow how the host announces them.
   if (p && s.phase !== 'waiting') {
     const slide = {
@@ -1582,11 +1687,11 @@ function Previews() {
             <input value={mock.viewer} onChange={(e) => set({ viewer: e.target.value })} />
           </label>
           <label>
-            Premi svelati nel verdetto
-            <select value={mock.revealed} onChange={(e) => set({ revealed: Number(e.target.value) })}>
-              {[0, 1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>
-                  {n} su 4
+            Premio da vedere nel verdetto
+            <select value={mock.award} onChange={(e) => set({ award: Number(e.target.value) })}>
+              {categories.map((c, i) => (
+                <option key={c.key} value={i + 1}>
+                  {i + 1}. {c.title}
                 </option>
               ))}
             </select>
