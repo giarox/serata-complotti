@@ -300,8 +300,8 @@ begin
   if phase not in ('waiting','review') or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
   s:=s||'{"phase":"results","revealed":1}'::jsonb;
  elsif kind='nextAward' then
-  -- 4 prizes × (open, 3rd, 2nd, 1st), interlude, Cappello × 4, Registro: 22 steps.
-  if phase<>'results' or (s->>'revealed')::int>=22 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
+  -- 4 prizes × (open, 3rd, 2nd, 1st), interlude, Cappello (open, winner), closing: 20 steps.
+  if phase<>'results' or (s->>'revealed')::int>=20 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
   s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::int+1));
  elsif kind='prevAward' then
   if phase<>'results' or (s->>'revealed')::int<=1 then raise exception 'Sei già all''inizio del reveal.'; end if;

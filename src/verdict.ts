@@ -91,8 +91,8 @@ const coveted: StampKey[] = ['idea', 'ricerca', 'performance', 'qa'];
  * shares (merit: a prize never drifts to fewer stamps just to name one more person); most different people
  * awarded; fewest doubles; fewest shared prizes; highest sum of the winners' total shares; a reproducible draw.
  * Podiums: 1st = winners; 2nd and 3rd = the next share levels among the other candidates, prize winners
- * elsewhere included. Cappello: medal table on those podiums (3/2/1 points), ties by total share, shared by
- * two at most, then the draw. It can add up to a stamp prize.
+ * elsewhere included. Cappello: one winner, no podium — medal table on those podiums (3/2/1 points), ties by
+ * total share, shared by two only if both are equal, then the draw. It can add up to a stamp prize.
  */
 export function verdict(s: State): Record<PrizeKey, Prize> {
   const all = talks(s).filter((t) => t.ballots > 0);
@@ -237,16 +237,11 @@ export function verdict(s: State): Record<PrizeKey, Prize> {
   const tiedTop = ranked.filter(
     (t) => ranked[0] && points.get(id(t)) === points.get(id(ranked[0])) && same(t.total, ranked[0].total),
   );
+  // One winner, no podium (Gianluca, 28 Oct): medals, then total share; only a tie on both is shared (two at most).
   const capWinners = tiedTop.slice(0, 2).sort((a, b) => a.order - b.order);
-  const capIds = new Set(capWinners.map(id));
-  const capRest = levels(
-    ranked.filter((t) => !capIds.has(id(t))),
-    (t) => points.get(id(t)) ?? 0,
-    2,
-  );
   result.cappello = {
     key: 'cappello',
-    podium: { 1: capWinners, 2: capRest[0] ?? [], 3: capRest[1] ?? [] },
+    podium: { 1: capWinners, 2: [], 3: [] },
     shared: capWinners.length === 2,
     placements: Object.fromEntries(
       capWinners.map((t) => [
@@ -277,8 +272,8 @@ export type RevealMoment =
   | { kind: 'interlude' }
   | { kind: 'registro' };
 /**
- * What the projector shows at reveal step n (1…22): for each stamp prize open, 3rd, 2nd, 1st;
- * then an interlude; the Cappello the same way; finally the Registro dei Timbri.
+ * What the projector shows at reveal step n (1…20): for each stamp prize open, 3rd, 2nd, 1st;
+ * then an interlude; the Cappello (opening, then its one winner: no podium); finally the closing slide.
  */
 export function revealMoment(s: Pick<State, 'phase' | 'revealed'>): RevealMoment | null {
   if (s.phase !== 'results' || s.revealed < 1) return null;
@@ -290,17 +285,15 @@ export function revealMoment(s: Pick<State, 'phase' | 'revealed'>): RevealMoment
     return sub === 0 ? { kind: 'open', prize } : { kind: 'place', prize, place: placeOf(sub) };
   }
   if (n === 17) return { kind: 'interlude' };
-  if (n <= 21) {
-    const sub = (n - 18) % 4;
-    return sub === 0 ? { kind: 'open', prize: 'cappello' } : { kind: 'place', prize: 'cappello', place: placeOf(sub) };
-  }
+  if (n === 18) return { kind: 'open', prize: 'cappello' };
+  if (n === 19) return { kind: 'place', prize: 'cappello', place: 1 };
   return { kind: 'registro' };
 }
 /** Prizes whose winner is already on the projector (phones and regia show only these). */
 export function revealedPrizes(s: Pick<State, 'phase' | 'revealed'>): PrizeKey[] {
   if (s.phase !== 'results') return [];
   const done: PrizeKey[] = prizeOrder.filter((_, i) => s.revealed >= 4 * (i + 1));
-  if (s.revealed >= 21) done.push('cappello');
+  if (s.revealed >= 19) done.push('cappello');
   return done;
 }
 /** The end of the evening: the Registro is on the projector and everyone gets their certificate. */

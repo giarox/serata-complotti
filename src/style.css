@@ -8854,3 +8854,25 @@ label,
 .pj-open-prize .pj-big-stamp {
   margin-bottom: 1.6vh;
 }
+/* the Cappello has no podium: its own spotlight falls on the winner, laurels a bit larger */
+.pj-award.cappello.done .pj-wreath {
+  position: relative;
+  margin-top: 2vh;
+}
+.pj-award.cappello.done .pj-wreath::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -30vh;
+  width: min(1400px, 90vw);
+  height: calc(100% + 40vh);
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #fff3d000 0%, #fff3d012 45%, #fff3d033 100%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: -1;
+  animation: pj-beam 0.9s ease-out both;
+}
+.pj-award.cappello.done .pj-laurel {
+  height: min(40vh, 460px);
+}

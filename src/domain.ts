@@ -158,7 +158,7 @@ export const emptyBallot = (): Ballot => ({ idea: false, ricerca: false, perform
 export const stampCount = (b: Partial<Ballot>) => stampKeys.filter((k) => b[k] === true).length;
 export const MAX_STAMPS = 2;
 /** Reveal steps: 4 prizes × (open, 3rd, 2nd, 1st), an interlude, the Cappello × 4, the Registro. */
-export const REVEAL_STEPS = 22;
+export const REVEAL_STEPS = 20;
 export const defaultSettings = (): Settings => ({
   maxAwards: null,
   awardOrder: [...categoryKeys],

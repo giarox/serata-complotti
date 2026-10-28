@@ -6,6 +6,7 @@ import {
   displayName,
   emptyBallot,
   MAX_STAMPS,
+  REVEAL_STEPS,
   ownerOf,
   presenter,
   stamp,
@@ -714,13 +715,15 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
           {!featured.length && <p className="pj-sub">Nessuno sul gradino. Sospetto.</p>}
         </div>
       )}
-      <div className="pj-podium-steps">
-        {step(2)}
-        <div className={'pj-step pj-step-1' + (done ? ' open lit' : ' sealed')}>
-          <b>1°</b>
+      {m.prize !== 'cappello' && (
+        <div className="pj-podium-steps">
+          {step(2)}
+          <div className={'pj-step pj-step-1' + (done ? ' open lit' : ' sealed')}>
+            <b>1°</b>
+          </div>
+          {step(3)}
         </div>
-        {step(3)}
-      </div>
+      )}
     </div>
   );
 }
@@ -768,10 +771,11 @@ export function ClosingSlide({ s, top }: { s: State; top: ReactNode }) {
 /** What the next tap shows on the projector — never the names, so the GM enjoys the surprise too. */
 export function nextStepLabel(s: State) {
   const next = revealMoment({ phase: 'results', revealed: s.revealed + 1 });
-  if (!next || s.revealed >= 22) return 'Fine: la chiusura con i premi è sul proiettore.';
+  if (!next || s.revealed >= REVEAL_STEPS) return 'Fine: la chiusura con i premi è sul proiettore.';
   if (next.kind === 'interlude') return 'Prossimo: il gran finale';
   if (next.kind === 'registro') return 'Prossimo: la chiusura con il riepilogo dei premi';
   const name = prizes[next.prize].name;
+  if (next.kind === 'place' && next.prize === 'cappello') return `Prossimo: il vincitore · ${name}`;
   return next.kind === 'open' ? `Prossimo: apertura · ${name}` : `Prossimo: ${next.place}° posto · ${name}`;
 }
 export function nowLabel(s: State) {
@@ -781,6 +785,7 @@ export function nowLabel(s: State) {
   if (m.kind === 'registro')
     return 'Sul proiettore: la chiusura. Ognuno ha l’attestato sul telefono (non l’abbiamo detto: è una sorpresa).';
   const name = prizes[m.prize].name;
+  if (m.kind === 'place' && m.prize === 'cappello') return `Sul proiettore: il vincitore · ${name}.`;
   return m.kind === 'open' ? `Sul proiettore: apertura · ${name}.` : `Sul proiettore: ${m.place}° posto · ${name}.`;
 }
 

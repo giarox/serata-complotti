@@ -1,4 +1,12 @@
-import { initialState, type Actor, type Participant, type StampKey, type State, type Vote } from './domain';
+import {
+  initialState,
+  REVEAL_STEPS,
+  type Actor,
+  type Participant,
+  type StampKey,
+  type State,
+  type Vote,
+} from './domain';
 
 /** What the GM can type in the previews page. Only invented data: nothing here touches the database. */
 export type Mock = {
@@ -210,17 +218,19 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
         sub = id === 'p-annuncio' ? 0 : id === 'p-terzo' ? 1 : id === 'p-secondo' ? 2 : 3;
       s.revealed =
         id === 'p-registro' || id === 'g-attestato'
-          ? 22
+          ? REVEAL_STEPS
           : id === 'p-interludio'
             ? 17
             : id === 'p-cappello-apertura'
               ? 18
               : id === 'p-cappello'
-                ? 21
+                ? 19
                 : id === 'g-verdetto'
                   ? 6
                   : n === 5
-                    ? 18 + sub
+                    ? sub === 0
+                      ? 18
+                      : 19
                     : 4 * (n - 1) + 1 + sub;
     }
   }

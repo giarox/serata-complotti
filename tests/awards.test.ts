@@ -82,7 +82,7 @@ describe('stamp prizes: the ladder', () => {
     const s = example();
     expect(medalPoints(s)).toEqual({ giovanni: 7, marta: 5, antonio: 5, sara: 4, paolo: 3, luca: 1 });
     expect(ids(s, 'cappello', 1)).toEqual(['Giovanni']);
-    expect(ids(s, 'cappello', 2)).toEqual(['Antonio', 'Marta']);
+    expect(ids(s, 'cappello', 2)).toEqual([]); // no podium for the Cappello
     const placements = verdict(s).cappello.placements!.r0;
     expect(placements).toEqual([
       { prize: 'ricerca', place: 1 },

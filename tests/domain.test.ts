@@ -3,6 +3,7 @@ import {
   applyAction,
   emptyBallot,
   initialState,
+  REVEAL_STEPS,
   snapshot,
   type State,
   type Actor,
@@ -140,7 +141,9 @@ describe('reveal steps', () => {
     expect(revealMoment(s)).toEqual({ kind: 'interlude' });
     next();
     expect(revealMoment(s)).toEqual({ kind: 'open', prize: 'cappello' });
-    while (s.revealed < 22) next();
+    next(); // the Cappello has no podium: straight to its winner
+    expect(revealMoment(s)).toEqual({ kind: 'place', prize: 'cappello', place: 1 });
+    while (s.revealed < REVEAL_STEPS) next();
     expect(revealMoment(s)).toEqual({ kind: 'registro' });
     expect(revealOver(s)).toBe(true);
     expect(revealedPrizes(s)).toHaveLength(5);

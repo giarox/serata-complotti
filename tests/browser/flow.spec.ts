@@ -71,7 +71,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await expect(page.locator('.revealed-list')).toContainText('L’Avvocato del Diavolo');
   await page.getByRole('button', { name: 'Indietro' }).click();
   await expect(page.locator('.revealed-list')).toHaveCount(0);
-  for (let i = 0; i < 19; i++) await page.getByRole('button', { name: 'Avanti' }).click();
+  for (let i = 0; i < 17; i++) await page.getByRole('button', { name: 'Avanti' }).click();
   await expect(page.locator('.verdict-now')).toContainText('la chiusura');
   await expect(page.getByRole('button', { name: 'Avanti' })).toHaveCount(0);
   // At the end everyone gets a private certificate.
