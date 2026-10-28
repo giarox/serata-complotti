@@ -105,32 +105,36 @@ export type Action =
 export const stamps = [
   {
     key: 'idea',
-    title: 'CHE TEORIA!',
-    line: 'La teoria in sé, scelta o inventata, a prescindere da come è stata presentata.',
+    title: 'COMPLOTTO D’AUTORE',
+    line: 'L’idea: originale, assurda o geniale, comunque sia stata presentata.',
+    joke: 'Netflix la sta già trasformando in docuserie.',
     prize: 'Premio Illuminato',
     reason: 'per aver avuto l’illuminazione',
     ink: '#c0392b',
   },
   {
     key: 'ricerca',
-    title: 'HA FATTO I COMPITI',
-    line: 'Struttura, prove, ricerche: ci si è impegnato davvero.',
+    title: 'FASCICOLO SCOTTANTE',
+    line: 'La preparazione: prove, fonti e struttura da vero ricercatore.',
+    joke: 'A scuola si impegnava poco, ma stasera wow.',
     prize: 'Il Faldone d’Oro',
     reason: 'per il fascicolo più pesante del Congresso',
     ink: '#2c5f9e',
   },
   {
     key: 'performance',
-    title: 'VENDEREBBE GHIACCIO AI PINGUINI',
-    line: 'Come l’ha raccontata, a prescindere dal tema.',
+    title: 'PERSUASORE OCCULTO',
+    line: 'Il racconto: voce, ritmo e presenza, al di là del contenuto.',
+    joke: 'Potrebbe vendere vaccini ai novax.',
     prize: 'Il Pifferaio Magico',
     reason: 'ci avrebbe portati ovunque',
     ink: '#2e7d4f',
   },
   {
     key: 'qa',
-    title: 'SI È ARRAMPICATO SUGLI SPECCHI',
-    line: 'Come se l’è cavata alle domande.',
+    title: 'DIFESA IMPENETRABILE',
+    line: 'Le risposte alle domande: interrogatorio superato con stile.',
+    joke: 'Arrampicatore di specchi professionista.',
     prize: 'La Ventosa d’Oro',
     reason: 'aderenza totale anche su superfici lisce',
     ink: '#7b3fa0',
@@ -139,6 +143,7 @@ export const stamps = [
   key: StampKey;
   title: string;
   line: string;
+  joke: string;
   prize: string;
   reason: string;
   ink: string;

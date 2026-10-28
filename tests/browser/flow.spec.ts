@@ -35,16 +35,16 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     if (name === 'Paolo')
       await expect(speaker.getByRole('heading', { name: 'Il popolo sta timbrando il tuo fascicolo.' })).toBeVisible();
     const stampBtn = (title: string) => voter.getByRole('button', { name: new RegExp('^' + title) });
-    await stampBtn('CHE TEORIA!').click();
-    await stampBtn('HA FATTO I COMPITI').click();
-    await stampBtn('VENDEREBBE GHIACCIO').click(); // a third stamp is refused
+    await stampBtn('COMPLOTTO D’AUTORE').click();
+    await stampBtn('FASCICOLO SCOTTANTE').click();
+    await stampBtn('PERSUASORE OCCULTO').click(); // a third stamp is refused
     await expect(voter.getByRole('alert')).toContainText('Due timbri al massimo');
     await voter.getByRole('button', { name: 'Consegna il fascicolo' }).click();
     await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
     await voter.reload();
     await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
-    await stampBtn('HA FATTO I COMPITI').click();
-    await stampBtn('SI È ARRAMPICATO').click();
+    await stampBtn('FASCICOLO SCOTTANTE').click();
+    await stampBtn('DIFESA IMPENETRABILE').click();
     await voter.getByRole('button', { name: 'Consegna le modifiche' }).click();
     await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
     await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
@@ -58,7 +58,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await expect(voter.getByRole('heading', { name: 'Rivedi le tue timbrature.' })).toBeVisible();
   await voter
     .getByRole('group', { name: 'Timbri per Marco' })
-    .getByRole('button', { name: /^VENDEREBBE/ })
+    .getByRole('button', { name: /^PERSUASORE OCCULTO/ })
     .click();
   await voter.getByRole('button', { name: 'Confermo le mie timbrature' }).click();
   await expect(voter.getByRole('status')).toContainText('Confermato');
@@ -108,7 +108,7 @@ test('GM with a name stamps from the regia and can skip the review', async ({ pa
   await page.getByRole('button', { name: 'Passa al question time' }).click();
   await page.getByRole('button', { name: 'Apri il voto per Sara' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  await page.getByRole('button', { name: /^CHE TEORIA!/ }).click();
+  await page.getByRole('button', { name: /^COMPLOTTO D’AUTORE/ }).click();
   await page.getByRole('button', { name: 'Consegna il fascicolo' }).click();
   await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
   await page.getByRole('button', { name: 'Chiudi la votazione' }).click();

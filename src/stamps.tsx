@@ -136,10 +136,17 @@ export function StampBallot({ s, actor, busy, perform }: { s: State; actor: Acto
         </span>
         {p.role && <h2>{p.role}</h2>}
       </div>
-      <p className="ballot-hint">
-        Massimo due timbri: dove ha spiccato?{' '}
-        <strong className={'stamp-count' + (full ? ' full' : '')}>Timbri: {n}/2</strong>
+      <p className="ballot-intro">
+        <strong>Il fascicolo è nelle tue mani ora.</strong> Abbiamo bisogno dei tuoi timbri di approvazione per
+        catalogarlo accuratamente. Ci fidiamo di te, più o meno.
       </p>
+      <div className="ballot-hint">
+        <div>
+          <strong>Il Congresso vuole sapere: cosa ti ha colpito?</strong>
+          <span>Nessun timbro, uno o al massimo due. L’inchiostro costa.</span>
+        </div>
+        <strong className={'stamp-count' + (full ? ' full' : '')}>Timbri: {n}/2</strong>
+      </div>
       <div className={'stamp-grid' + (full ? ' shake' : '')} role="group" aria-label="I timbri">
         {stamps.map((c) => (
           <button
@@ -151,6 +158,7 @@ export function StampBallot({ s, actor, busy, perform }: { s: State; actor: Acto
           >
             <StampMark k={c.key} on={draft[c.key]} />
             <span className="stamp-line">{c.line}</span>
+            <span className="stamp-joke">{c.joke}</span>
           </button>
         ))}
       </div>
@@ -368,12 +376,14 @@ export function VotingSlide({ s, top }: { s: State; top: ReactNode }) {
           {displayName(p)}
         </Fit>
       )}
-      <p className="pj-punch">Massimo due timbri. Dove ha spiccato?</p>
+      <p className="pj-punch">Il Congresso vuole sapere: cosa vi ha colpito?</p>
+      <p className="pj-sub pj-vote-limit">Nessun timbro, uno o al massimo due. L’inchiostro costa.</p>
       <div className="pj-stamps">
         {stamps.map((c) => (
           <div key={c.key} className="pj-stamp-card">
             <StampMark k={c.key} />
             <span>{c.line}</span>
+            <em>{c.joke}</em>
           </div>
         ))}
       </div>
