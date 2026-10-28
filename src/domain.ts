@@ -533,18 +533,19 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
 /** Marker for a censored letter; the UI draws it as a black square with a question mark. */
 export const OMISSIS = '\u2588';
 /**
- * "Tactical omissis": hides ~40% of the letters (never the first of a word), always the same ones for the
+ * "Tactical omissis": hides about half of the vowels (never the first letter of a word; consonants stay), always the same ones for the
  * same seed. Same arithmetic as public.party_censor in setup.sql, so the regia mirror matches the guests.
  */
 export function censor(seed: string, text: string): string {
   let s = 0;
   for (let j = 0; j < seed.length; j++) s += seed.charCodeAt(j) * (j + 1);
   const chars = [...(text ?? '')],
-    letter = (c?: string) => !!c && /\p{L}/u.test(c);
+    letter = (c?: string) => !!c && /\p{L}/u.test(c),
+    vowel = /[aeiouàèéìíòóùú]/i;
   return chars
     .map((c, k) => {
       const i = k + 1;
-      return letter(c) && letter(chars[k - 1]) && (s * 31 + i * i * 7 + i * 131) % 97 < 42 ? OMISSIS : c;
+      return vowel.test(c) && letter(chars[k - 1]) && (s * 31 + i * i * 7 + i * 131) % 97 < 55 ? OMISSIS : c;
     })
     .join('');
 }

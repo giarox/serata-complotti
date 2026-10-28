@@ -64,10 +64,10 @@ create or replace function public.party_norm(t text) returns text language sql i
  select upper(regexp_replace(coalesce(t,''),'\s','','g'));
 $$;
 -- What other guests see of someone who has not presented yet: name and readiness only.
--- "Tactical omissis": ~40% of the letters become a marker (never the first of a word); same arithmetic as censor() in src/domain.ts.
+-- "Tactical omissis": about half of the vowels become a marker (never the first letter of a word); same arithmetic as censor() in src/domain.ts.
 create or replace function public.party_censor(seed text, t text) returns text language sql immutable as $$
  with k as (select coalesce(sum(ascii(substr(seed,j,1))::bigint*j),0) s from generate_series(1,char_length(coalesce(seed,''))) j)
- select coalesce(string_agg(case when substr(t,i,1) ~ '[[:alpha:]]' and i>1 and substr(t,i-1,1) ~ '[[:alpha:]]' and ((k.s*31+i*i*7+i*131)%97)<42 then chr(9608) else substr(t,i,1) end, '' order by i),'')
+ select coalesce(string_agg(case when substr(t,i,1) ~* '[aeiouàèéìíòóùú]' and i>1 and substr(t,i-1,1) ~ '[[:alpha:]]' and ((k.s*31+i*i*7+i*131)%97)<55 then chr(9608) else substr(t,i,1) end, '' order by i),'')
  from k, generate_series(1,char_length(coalesce(t,''))) i;
 $$;
 create or replace function public.party_mask(p jsonb) returns jsonb language sql immutable as $$
