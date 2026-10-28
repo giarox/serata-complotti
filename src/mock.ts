@@ -1,4 +1,4 @@
-import { initialState, type Actor, type Participant, type State, type Vote } from './domain';
+import { initialState, type Actor, type Participant, type StampKey, type State, type Vote } from './domain';
 
 /** What the GM can type in the previews page. Only invented data: nothing here touches the database. */
 export type Mock = {
@@ -7,7 +7,7 @@ export type Mock = {
   mode: 'slides' | 'paper';
   partnerName: string;
   viewer: string;
-  /** Which award (1–4) the reveal previews show. */
+  /** Which prize the reveal previews show: 1–4 in reveal order, 5 = the Cappello. */
   award: number;
 };
 export const defaultMock: Mock = {
@@ -44,18 +44,19 @@ export const previewScreens: PreviewScreen[] = [
     note: 'Senza tecnologia: niente slide, resta a schermo per tutto il turno.',
   },
   { id: 'p-domande', kind: 'projector', label: 'Question time', note: 'Dopo la presentazione.' },
-  { id: 'p-voto', kind: 'projector', label: 'Votazione', note: 'Mentre la sala vota dal telefono.' },
+  { id: 'p-voto', kind: 'projector', label: 'Votazione a timbri', note: 'Mentre la sala timbra dal telefono.' },
   {
     id: 'p-pausa',
     kind: 'projector',
     label: 'Tra un turno e l’altro',
     note: 'Dopo il voto, prima del prossimo relatore.',
   },
+  { id: 'p-revisione', kind: 'projector', label: 'Revisione', note: 'Dopo l’ultimo talk, prima del verdetto.' },
   {
     id: 'p-annuncio',
     kind: 'projector',
-    label: 'Verdetto: annuncio del premio',
-    note: 'Prima busta sigillata, poi il vincitore.',
+    label: 'Verdetto: apertura del premio',
+    note: 'Nome del premio, il suo timbro, una frase.',
   },
   { id: 'p-terzo', kind: 'projector', label: 'Verdetto: 3° posto', note: 'Il podio si scopre dal fondo.' },
   { id: 'p-secondo', kind: 'projector', label: 'Verdetto: 2° posto', note: 'Il primo resta sigillato.' },
@@ -65,17 +66,13 @@ export const previewScreens: PreviewScreen[] = [
     label: 'Verdetto: 1° posto',
     note: 'Il vincitore, con l’esplosione di coriandoli.',
   },
-  {
-    id: 'p-riepilogo',
-    kind: 'projector',
-    label: 'Verdetto: riepilogo finale',
-    note: 'Dopo il quarto premio. Chiude la serata.',
-  },
+  { id: 'p-interludio', kind: 'projector', label: 'Verdetto: interludio', note: 'Prima del Cappello di Stagnola.' },
+  { id: 'p-registro', kind: 'projector', label: 'Il Registro dei Timbri', note: 'Chiude la serata. Nessun numero.' },
   { id: 'g-ascolta', kind: 'phone', label: 'Ascolta', note: 'Telefono di chi è in sala mentre un altro presenta.' },
   { id: 'g-tocca', kind: 'phone', label: 'Tocca a te', note: 'Telefono di chi presenta: il telecomando.' },
   { id: 'g-domande', kind: 'phone', label: 'Question time', note: 'Telefono di chi è in sala.' },
-  { id: 'g-voto', kind: 'phone', label: 'Scheda di voto', note: 'Si può cliccare: nessun voto viene inviato.' },
-  { id: 'g-votato', kind: 'phone', label: 'Voto consegnato', note: 'La stessa scheda dopo aver votato.' },
+  { id: 'g-voto', kind: 'phone', label: 'Scheda a timbri', note: 'Si può cliccare: niente viene inviato.' },
+  { id: 'g-votato', kind: 'phone', label: 'Fascicolo consegnato', note: 'La stessa scheda dopo aver timbrato.' },
   { id: 'g-proprio', kind: 'phone', label: 'Mentre votano te', note: 'Telefono di chi ha appena presentato.' },
   {
     id: 'g-pausa',
@@ -83,7 +80,14 @@ export const previewScreens: PreviewScreen[] = [
     label: 'Tra un turno e l’altro',
     note: 'Telefono di chi è in sala, dopo il primo turno.',
   },
-  { id: 'g-verdetto', kind: 'phone', label: 'Il verdetto', note: 'Telefono di chi è in sala durante il reveal.' },
+  { id: 'g-revisione', kind: 'phone', label: 'Revisione', note: 'Si può cliccare: niente viene inviato.' },
+  {
+    id: 'g-verdetto',
+    kind: 'phone',
+    label: 'Durante il verdetto',
+    note: 'Telefono di chi è in sala durante il reveal.',
+  },
+  { id: 'g-attestato', kind: 'phone', label: 'Attestato', note: 'Alla fine, sul telefono del relatore. Privato.' },
 ];
 
 const person = (id: string, name: string, role: string, mode: Participant['mode'] = 'paper'): Participant => ({
@@ -113,6 +117,7 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
     person('mock-1', 'Giulia', 'Cartografa delle verità scomode'),
     person('mock-2', 'Marco', 'Esperto di segnali sospetti', 'slides'),
     person('mock-3', 'Sara', 'Archivista delle coincidenze'),
+    person('mock-4', 'Luca', 'Perito di scie sospette'),
   ];
   const s: State = { ...initialState(), participants: [presenter, ...others, viewer] };
   const guest: Actor = { role: 'guest', participantId: viewer.id };
@@ -135,33 +140,58 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
     s.rounds = [earlier, now];
     s.activeRoundId = now.id;
     if (id === 'g-votato')
-      s.votes = [{ roundId: now.id, voterId: viewer.id, credibility: 7, delivery: 9, research: 4, supercazzola: true }];
+      s.votes = [{ roundId: now.id, voterId: viewer.id, idea: true, ricerca: false, performance: true, qa: false }];
   } else if (id === 'p-pausa' || id === 'g-pausa') {
     s.rounds = [earlier];
-  } else if (['p-annuncio', 'p-terzo', 'p-secondo', 'p-premio', 'p-riepilogo', 'g-verdetto'].includes(id)) {
-    // Everyone presented once, everyone else voted, with scores that give a varied podium.
+  } else if (
+    id.startsWith('p-')
+      ? !['p-attesa', 'p-pausa'].includes(id)
+      : ['g-revisione', 'g-verdetto', 'g-attestato'].includes(id)
+  ) {
+    // Everyone presented once and everyone else stamped, with a pattern that gives varied podiums.
     const speakers = [presenter, ...others];
     s.rounds = speakers.map((p, i) => ({ id: 'mock-r' + i, presenterId: p.id, closed: true }));
+    // Each speaker shines at something different (hand-made, so every podium fills up and some ties show).
+    const table: StampKey[][][] = [
+      [['idea', 'ricerca'], ['idea', 'performance'], ['ricerca', 'qa'], ['idea', 'qa'], ['performance', 'ricerca']],
+      [['idea'], ['idea', 'ricerca'], ['idea'], ['qa'], ['idea']],
+      [['ricerca'], ['ricerca'], ['ricerca', 'idea'], [], ['ricerca']],
+      [['performance'], ['performance', 'idea'], ['performance'], [], ['performance', 'ricerca']],
+      [['qa'], ['qa', 'performance'], ['qa'], ['qa'], []],
+    ];
+    const voterList = [...speakers, viewer];
     s.votes = s.rounds.flatMap((r, i) =>
-      [...speakers, viewer]
+      voterList
         .filter((v) => v.id !== r.presenterId)
-        .map((v, j): Vote => ({
-          roundId: r.id,
-          voterId: v.id,
-          credibility: (3 + i * 2 + j) % 11,
-          delivery: (9 - i * 2 + j) % 11,
-          research: (5 + i * 3 + j * 2) % 11,
-          supercazzola: (i + j) % 3 !== 0,
-        })),
+        .map((v, j): Vote => {
+          const b: Vote = { roundId: r.id, voterId: v.id, idea: false, ricerca: false, performance: false, qa: false };
+          for (const k of table[i][j] ?? []) b[k] = true;
+          return b;
+        }),
     );
-    s.phase = 'results';
-    const n = Math.max(1, Math.min(4, m.award));
-    s.revealed =
-      id === 'p-riepilogo'
-        ? 17
-        : 4 * (n - 1) + (id === 'p-annuncio' ? 1 : id === 'p-terzo' ? 2 : id === 'p-secondo' ? 3 : 4);
+    if (id === 'p-revisione' || id === 'g-revisione') {
+      s.phase = 'review';
+      s.reviewed = ['mock-1', 'mock-2'];
+    } else {
+      s.phase = 'results';
+      const n = Math.max(1, Math.min(5, m.award)),
+        sub = id === 'p-annuncio' ? 0 : id === 'p-terzo' ? 1 : id === 'p-secondo' ? 2 : 3;
+      s.revealed =
+        id === 'p-registro' || id === 'g-attestato'
+          ? 22
+          : id === 'p-interludio'
+            ? 17
+            : id === 'g-verdetto'
+              ? 6
+              : n === 5
+                ? 18 + sub
+                : 4 * (n - 1) + 1 + sub;
+    }
   }
-  const actor: Actor = id === 'g-tocca' || id === 'g-proprio' ? { role: 'guest', participantId: presenter.id } : guest;
+  const actor: Actor =
+    id === 'g-tocca' || id === 'g-proprio' || id === 'g-attestato'
+      ? { role: 'guest', participantId: presenter.id }
+      : guest;
   return { s, actor };
 }
 

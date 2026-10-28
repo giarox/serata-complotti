@@ -33,21 +33,17 @@ import {
 } from 'lucide-react';
 import {
   activeRound,
-  awards,
-  categories,
-  category,
   countVotes,
   defaultSettings,
   displayName,
   dossierGaps,
   modes,
-  openAwards,
   phaseNames,
-  revealMoment,
   REVEAL_STEPS,
-  runnersUp,
   presenter,
   voteBlocker,
+  voterOf,
+  ownerOf,
   type Action,
   type Admission,
   type Actor,
@@ -69,6 +65,19 @@ import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { Fit } from './fit';
+import {
+  GuestReveal,
+  nextStepLabel,
+  nowLabel,
+  RevealedList,
+  RevealSlide,
+  ReviewBoard,
+  ReviewSlide,
+  reviewTally,
+  RulesSummary,
+  StampBallot,
+  VotingSlide,
+} from './stamps';
 import { DossierHome } from './dossier';
 import { Overview, RequestsBoard, SlideRemote, TestLab, GuestMirror } from './regia';
 import {
@@ -218,10 +227,12 @@ function App() {
       : s.phase === 'voting'
         ? 'Torna al question time'
         : s.phase === 'results'
-          ? 'Esci dal reveal'
-          : s.phase === 'waiting' && lastRound?.closed
-            ? `Riapri il voto${lastPresenter ? ' per ' + displayName(lastPresenter) : ''}`
-            : '';
+          ? 'Esci dal reveal (riapre la revisione)'
+          : s.phase === 'review'
+            ? 'Chiudi la revisione senza verdetto'
+            : s.phase === 'waiting' && lastRound?.closed
+              ? `Riapri il voto${lastPresenter ? ' per ' + displayName(lastPresenter) : ''}`
+              : '';
   const me = s.participants.find((p) => p.id === actor.participantId);
   return (
     <>
@@ -397,7 +408,7 @@ function App() {
                       {tab === 'fascicoli'
                         ? 'Prepara i ricercatori, le prove e i loro fascicoli.'
                         : tab === 'premi'
-                          ? 'Quattro categorie. Nessun premio alla normalità.'
+                          ? 'Cinque premi. Nessuno alla normalità.'
                           : tab === 'anteprime'
                             ? 'Le schermate della serata con dati inventati. Le stesse che vedrà la sala.'
                             : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
@@ -464,9 +475,11 @@ function App() {
                               ? person.role || displayName(person)
                               : s.phase === 'results'
                                 ? 'Ci sono delle conclusioni.'
-                                : allDone
-                                  ? 'Tutti hanno parlato.'
-                                  : 'La parola al prossimo sospettato.'}
+                                : s.phase === 'review'
+                                  ? 'Revisione dei fascicoli.'
+                                  : allDone
+                                    ? 'Tutti hanno parlato.'
+                                    : 'La parola al prossimo sospettato.'}
                           </h2>
                           <p>
                             {person ? (
@@ -475,9 +488,11 @@ function App() {
                                 {person.role ? ` · ${person.role}` : ''}
                               </>
                             ) : s.phase === 'results' ? (
-                              'Il congresso ha parlato. Svela una categoria alla volta dal Verdetto.'
+                              'Il congresso ha parlato. Il reveal si guida da Il verdetto, un passo alla volta.'
+                            ) : s.phase === 'review' ? (
+                              `${reviewTally(s).confirmed} su ${reviewTally(s).voters} votanti hanno confermato. Quando sei pronto, chiudi e vai al verdetto.`
                             ) : allDone ? (
-                              'Le presentazioni sono finite. Passa al verdetto e svela i premi una categoria alla volta.'
+                              'Le presentazioni sono finite. Apri la revisione: ognuno potrà spostare i timbri prima del verdetto.'
                             ) : completed > 0 ? (
                               `Scegli il prossimo ricercatore (ne mancano ${left.length}), oppure chiudi i turni e passa al verdetto.`
                             ) : (
@@ -511,10 +526,10 @@ function App() {
                                 >
                                   Chiudi la votazione <LockKeyhole size={18} />
                                 </Button>
-                                <span className="vote-tally">{countVotes(s)} voti ricevuti</span>
+                                <span className="vote-tally">Schede consegnate: {countVotes(s)}</span>
                                 {api.sandbox && (
                                   <Button secondary disabled={busy} onClick={() => void perform({ type: 'botVotes' })}>
-                                    Fai votare i tester
+                                    Fai timbrare i tester
                                   </Button>
                                 )}
                               </>
@@ -525,11 +540,29 @@ function App() {
                                 <ArrowRight size={18} />
                               </a>
                             )}
+                            {s.phase === 'waiting' && allDone && (
+                              <Button disabled={busy || !connected} onClick={() => setConfirm({ type: 'review' })}>
+                                Apri la revisione
+                                <ArrowRight size={18} />
+                              </Button>
+                            )}
                             {s.phase === 'waiting' && completed > 0 && (
-                              <Button secondary={!allDone} onClick={() => setTab('premi')}>
+                              <Button secondary onClick={() => setConfirm({ type: 'reveal' })}>
                                 Vai al verdetto
                                 <Trophy size={18} />
                               </Button>
+                            )}
+                            {s.phase === 'review' && (
+                              <>
+                                <Button disabled={busy || !connected} onClick={() => setConfirm({ type: 'reveal' })}>
+                                  Chiudi la revisione e vai al verdetto <Trophy size={18} />
+                                </Button>
+                                {api.sandbox && (
+                                  <Button secondary disabled={busy} onClick={() => void perform({ type: 'botVotes' })}>
+                                    Fai rivedere i tester
+                                  </Button>
+                                )}
+                              </>
                             )}
                             {s.phase === 'results' && (
                               <Button onClick={() => setTab('premi')}>
@@ -652,39 +685,88 @@ function App() {
                 {tab === 'anteprime' && <Previews />}
                 {tab === 'premi' && (
                   <>
-                    {s.phase !== 'results' && <AwardSettings s={s} busy={busy} perform={perform} />}
-                    <Results s={s} />
-                    <div className="result-actions">
-                      {s.phase === 'waiting' && (
-                        <Button disabled={busy || !completed} onClick={() => setConfirm({ type: 'reveal' })}>
-                          Inizia il reveal
-                          <Trophy size={18} />
-                        </Button>
+                    <section className="panel verdict-panel">
+                      <div className="panel-heading">
+                        <div>
+                          <p className="eyebrow">{phaseNames[s.phase]}</p>
+                          <h2>
+                            {s.phase === 'results'
+                              ? 'Il reveal, un passo alla volta'
+                              : s.phase === 'review'
+                                ? 'Revisione in corso'
+                                : 'Prima del verdetto'}
+                          </h2>
+                        </div>
+                      </div>
+                      {s.phase === 'results' ? (
+                        <>
+                          <p className="verdict-now">{nowLabel(s)}</p>
+                          <p className="verdict-next">{nextStepLabel(s)}</p>
+                          <div className="result-actions">
+                            {s.revealed < REVEAL_STEPS && (
+                              <Button disabled={busy} onClick={() => void perform({ type: 'nextAward' })}>
+                                Avanti <ArrowRight size={18} />
+                              </Button>
+                            )}
+                            <Button
+                              secondary
+                              disabled={busy}
+                              onClick={() => void perform(s.revealed > 1 ? { type: 'prevAward' } : { type: 'back' })}
+                            >
+                              <ArrowLeft size={17} /> {s.revealed > 1 ? 'Indietro' : 'Riapri la revisione'}
+                            </Button>
+                            <Button secondary onClick={download}>
+                              <Download size={17} /> Esporta risultati
+                            </Button>
+                          </div>
+                        </>
+                      ) : s.phase === 'review' ? (
+                        <>
+                          <p className="verdict-now">
+                            <strong>{reviewTally(s).confirmed}</strong> su {reviewTally(s).voters} votanti hanno
+                            confermato le timbrature. Chi non conferma: valgono i timbri come sono.
+                          </p>
+                          <div className="result-actions">
+                            <Button disabled={busy} onClick={() => setConfirm({ type: 'reveal' })}>
+                              Chiudi la revisione e vai al verdetto <Trophy size={18} />
+                            </Button>
+                            {api.sandbox && (
+                              <Button secondary disabled={busy} onClick={() => void perform({ type: 'botVotes' })}>
+                                Fai rivedere i tester
+                              </Button>
+                            )}
+                            <Button secondary disabled={busy} onClick={() => void perform({ type: 'back' })}>
+                              <ArrowLeft size={17} /> Chiudi la revisione senza verdetto
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="verdict-now">
+                            {completed
+                              ? 'Quando tutti hanno parlato apri la revisione: ognuno potrà spostare i timbri prima del verdetto.'
+                              : 'Il verdetto arriva dopo almeno un talk con il voto chiuso.'}
+                          </p>
+                          <div className="result-actions">
+                            <Button
+                              disabled={busy || !completed || s.phase !== 'waiting'}
+                              onClick={() => setConfirm({ type: 'review' })}
+                            >
+                              Apri la revisione <ArrowRight size={18} />
+                            </Button>
+                            <Button
+                              secondary
+                              disabled={busy || !completed || s.phase !== 'waiting'}
+                              onClick={() => setConfirm({ type: 'reveal' })}
+                            >
+                              Salta la revisione e vai al verdetto
+                            </Button>
+                          </div>
+                        </>
                       )}
-                      {s.phase === 'results' && s.revealed < REVEAL_STEPS && (
-                        <Button disabled={busy} onClick={() => void perform({ type: 'nextAward' })}>
-                          {nextRevealLabel(s)}
-                          <ArrowRight size={18} />
-                        </Button>
-                      )}
-                      {s.phase === 'results' && <p className="verdict-done">{revealNow(s)}</p>}
-                      {s.phase === 'results' && (
-                        <Button secondary disabled={busy} onClick={() => void perform({ type: 'back' })}>
-                          <ArrowLeft size={17} />
-                          Esci dal reveal
-                        </Button>
-                      )}
-                      {s.phase === 'results' && (
-                        <Button secondary onClick={download}>
-                          <Download size={17} />
-                          Esporta risultati
-                        </Button>
-                      )}
-                    </div>
-                    <p className="footnote">
-                      A pari merito vince chi non ha ancora un premio; se nessuno o tutti ne hanno già uno, il premio è
-                      condiviso. Le medie si confrontano senza arrotondare.
-                    </p>
+                    </section>
+                    {s.phase === 'results' && <RevealedList s={s} />}
+                    {s.phase !== 'results' && <RulesSummary />}
                   </>
                 )}
                 {tab === 'regia' && <TestLab s={s} busy={busy} perform={perform} />}
@@ -774,11 +856,13 @@ function App() {
                       ? confirm.everyone
                         ? 'Svuotare tutto?'
                         : 'Azzerare la serata?'
-                      : confirm.type === 'reveal'
-                        ? 'È il momento della verità?'
-                        : confirm.type === 'phase' && confirm.phase === 'voting'
-                          ? 'Aprire la votazione?'
-                          : 'Chiudere la votazione?'
+                      : confirm.type === 'review'
+                        ? 'Aprire la revisione?'
+                        : confirm.type === 'reveal'
+                          ? 'È il momento della verità?'
+                          : confirm.type === 'phase' && confirm.phase === 'voting'
+                            ? 'Aprire la votazione?'
+                            : 'Chiudere la votazione?'
             }
             onClose={() => setConfirm(null)}
           >
@@ -793,11 +877,17 @@ function App() {
                     ? `${s.participants.find((p) => p.id === confirm.participantId)?.name} sparirà dal registro, con i suoi turni e voti, e il suo telefono verrà scollegato. Non si può annullare.`
                     : confirm.type === 'release'
                       ? `Il telefono che ha scelto ${s.participants.find((p) => p.id === confirm.participantId)?.name} verrà scollegato. I voti già dati restano salvati; la persona giusta potrà rientrare con questo nome.`
-                      : confirm.type === 'reveal'
-                        ? `Le regole dei premi verranno bloccate${s.settings.maxAwards ? ` (massimo ${s.settings.maxAwards} per persona)` : ''}. La serata passa al reveal finale.`
-                        : confirm.type === 'phase' && confirm.phase === 'voting'
-                          ? `Si voterà per ${person ? displayName(person) : ''}.`
-                          : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
+                      : confirm.type === 'review'
+                        ? left.length
+                          ? `Mancano ancora ${left.length} relatori. Dopo la revisione si va al verdetto.`
+                          : 'Tutti potranno rivedere e spostare i timbri su ogni talk dal telefono. Poi chiudi tu.'
+                        : confirm.type === 'reveal'
+                          ? s.phase === 'review'
+                            ? 'La revisione si chiude: da qui in poi i timbri sono bloccati. Parte il reveal.'
+                            : 'Salti la revisione: i timbri restano come sono e si bloccano. Parte il reveal.'
+                          : confirm.type === 'phase' && confirm.phase === 'voting'
+                            ? `Si voterà per ${person ? displayName(person) : ''}.`
+                            : 'Dopo la chiusura non sarà più possibile inviare o modificare i voti.'}
             </p>
             <Button disabled={busy} onClick={() => void perform(confirm)}>
               Conferma
@@ -921,26 +1011,34 @@ function Guest({
 }) {
   const p = presenter(s),
     r = activeRound(s),
-    me = s.participants.find((p) => p.id === actor.participantId);
-  if (s.phase === 'results')
-    return (
-      <>
-        <p className="eyebrow">IL CONGRESSO HA PARLATO</p>
-        <h1>Il verdetto.</h1>
-        <Results s={s} />
-      </>
-    );
+    me = s.participants.find((p) => p.id === actor.participantId),
+    voter = voterOf(s, actor.participantId),
+    onStage = !!r && voter && ownerOf(voter.id) === r.presenterId;
+  if (s.phase === 'results') return <GuestReveal s={s} actor={actor} />;
+  if (s.phase === 'review') return <ReviewBoard s={s} actor={actor} busy={busy} perform={perform} />;
   const blocker = voteBlocker(s, actor.participantId);
   if (s.phase === 'voting' && r && !blocker)
-    return <Voting key={r.id} s={s} actor={actor} busy={busy} perform={perform} />;
-  // Before the first talk the page is the guest's registration dossier.
+    return <StampBallot key={r.id} s={s} actor={actor} busy={busy} perform={perform} />;
+  // Before the first talk the page is the guest's registration dossier (companions get a short welcome).
   if (s.phase === 'waiting' && s.rounds.length === 0)
-    return <DossierHome s={s} actor={actor} busy={busy} perform={perform} />;
+    return voter?.companion ? (
+      <section className="guest-stage">
+        <span className="phase-badge">Sala d’attesa</span>
+        <Mark large />
+        <h1>Benvenuto, {voter.name}.</h1>
+        <p>
+          Sei {voter.owner.partner === 'copresenter' ? 'co-relatore' : 'testimone'} di {voter.owner.name}. Durante la
+          serata timbrerai i fascicoli degli altri da questo telefono. Il vostro, no.
+        </p>
+      </section>
+    ) : (
+      <DossierHome s={s} actor={actor} busy={busy} perform={perform} />
+    );
   return (
     <>
       <div className="guest-welcome">
         <span className="eyebrow">SEI DENTRO. NON DIRLO A NESSUNO.</span>
-        <span className="guest-id">{me ? displayName(me) : ''}</span>
+        <span className="guest-id">{voter?.companion ? voter.name : me ? displayName(me) : ''}</span>
       </div>
       <section className="guest-stage">
         <span className="phase-badge">{phaseNames[s.phase]}</span>
@@ -951,7 +1049,9 @@ function Guest({
             : s.phase === 'questions'
               ? 'Fatti delle domande.'
               : s.phase === 'voting'
-                ? 'Ora parlano gli altri.'
+                ? onStage
+                  ? 'Il popolo sta timbrando il tuo fascicolo.'
+                  : 'Ora parlano gli altri.'
                 : r?.presenterId === actor.participantId
                   ? 'La parola è tua. Svegliali.'
                   : 'Ascolta. Prendi appunti. Non fidarti di nessuno.'}
@@ -960,13 +1060,15 @@ function Guest({
           {s.phase === 'waiting'
             ? 'Il prossimo ricercatore sta per farsi avanti. Questa pagina si aggiorna da sola (sì, è inquietante).'
             : s.phase === 'voting'
-              ? `${blocker ?? ''} Aspetta che la regia chiuda il turno.`
+              ? onStage
+                ? 'Nessun indizio sui timbri: lo scoprirai al verdetto. Respira.'
+                : `${blocker ?? ''} Aspetta che la regia chiuda il turno.`
               : s.phase === 'questions'
                 ? 'Alza la mano e fai la tua domanda scomoda dal vivo. Il voto arriva dopo.'
                 : r?.presenterId === actor.participantId
                   ? me?.mode === 'paper'
                     ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo.'
-                    : 'Stai presentando. Il telecomando delle slide arriverà qui.'
+                    : 'Stai presentando: avanti e indietro con i tasti qui sotto.'
                   : 'Tra poco potrai emettere il tuo verdetto insindacabile.'}
         </p>
         {p && (
@@ -982,254 +1084,6 @@ function Guest({
       </section>
       {s.phase === 'waiting' && <DossierHome s={s} actor={actor} busy={busy} perform={perform} compact />}
     </>
-  );
-}
-function Voting({
-  s,
-  actor,
-  busy,
-  perform,
-}: {
-  s: State;
-  actor: Actor;
-  busy: boolean;
-  perform: (a: Action) => Promise<boolean>;
-}) {
-  const r = activeRound(s)!,
-    p = presenter(s)!,
-    saved = s.votes.find((v) => v.roundId === r.id && v.voterId === actor.participantId);
-  const [draft, setDraft] = useState<Partial<Ballot>>(saved ?? {}),
-    [dirty, setDirty] = useState(false);
-  const complete = categories.every((c) => draft[c.key] !== undefined);
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    await perform({ type: 'vote', roundId: r.id, ballot: draft as Ballot });
-  }
-  return (
-    <form className="voting-form" onSubmit={submit}>
-      <p className="eyebrow">IL TUO VERDETTO / VOTO RISERVATO</p>
-      <h1>Convinto o confuso?</h1>
-      <div className="ballot-person">
-        <span>
-          Stai votando per <strong>{displayName(p)}</strong>
-        </span>
-        <h2>{p.role}</h2>
-      </div>
-      {saved && (
-        <p className="saved-banner" role="status">
-          <Check size={17} />
-          {dirty ? 'Voto salvato. Hai modifiche da inviare.' : 'Voto salvato. Puoi modificarlo fino alla chiusura.'}
-        </p>
-      )}
-      {categories.slice(0, 3).map((c, i) => (
-        <fieldset key={c.key}>
-          <legend>
-            <span>0{i + 1}</span>
-            {c.title}
-          </legend>
-          <p>{c.description}</p>
-          <div className="score-options" role="group" aria-label={c.label}>
-            {Array.from({ length: 11 }, (_, n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={draft[c.key] === n}
-                onClick={() => {
-                  setDraft({ ...draft, [c.key]: n });
-                  setDirty(true);
-                }}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-          <div className="scale-labels">
-            <span>Per niente</span>
-            <span>Assolutamente</span>
-          </div>
-        </fieldset>
-      ))}
-      <fieldset>
-        <legend>
-          <span>04</span>BONUS SUPERCAZZOLA
-        </legend>
-        <p>La risposta al question time era una supercazzola degna di questo nome?</p>
-        <div className="yes-no">
-          {[true, false].map((v) => (
-            <button
-              key={String(v)}
-              type="button"
-              aria-pressed={draft.supercazzola === v}
-              onClick={() => {
-                setDraft({ ...draft, supercazzola: v });
-                setDirty(true);
-              }}
-            >
-              {v ? 'Sì, come se fosse antani.' : 'No, troppo sensata.'}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <Button type="submit" disabled={!complete || busy}>
-        {busy ? 'Salvataggio…' : saved ? 'Aggiorna il voto' : 'Consegna il verdetto'}
-        <Check size={18} />
-      </Button>
-      <p className="footnote">
-        Tutte le risposte sono obbligatorie. I punteggi restano segreti fino al reveal, come tutto il resto.
-      </p>
-    </form>
-  );
-}
-const fmt = (n: number) => n.toLocaleString('it-IT', { maximumFractionDigits: 2 });
-const list = (names: string[]) =>
-  names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' e ' + names[names.length - 1];
-function Results({ s }: { s: State }) {
-  const all = awards(s);
-  return (
-    <div className="awards-grid">
-      {all.map((award, i) => {
-        const c = category(award.key),
-          open = i < openAwards(s),
-          unit = award.key === 'supercazzola' ? ' sì' : ' / 10';
-        return (
-          <section className={'award-card ' + (open ? 'award-open' : '')} key={award.key}>
-            <span className="mono">CATEGORIA 0{i + 1}</span>
-            {open ? <Trophy size={27} /> : <LockKeyhole size={27} />}
-            <h2>{c.title}</h2>
-            {!open ? (
-              <p>Il verdetto è ancora sotto chiave.</p>
-            ) : (
-              <>
-                {award.winners.length ? (
-                  <div className="award-winner">
-                    <span className="mono">{award.outcome === 'shared' ? 'PARI MERITO' : 'IL PREMIO VA A'}</span>
-                    <strong>{list(award.winners.map(displayName))}</strong>
-                    <small>
-                      {fmt(award.value!)}
-                      {unit}
-                    </small>
-                  </div>
-                ) : (
-                  <p>
-                    {award.rows.length ? 'Nessun premio assegnato in questa categoria.' : 'Nessun intervento concluso.'}
-                  </p>
-                )}
-                {award.outcome === 'tieBreak' && (
-                  <p className="award-reason">
-                    Pari merito con {list(award.passedOver.map(displayName))},{' '}
-                    {award.passedOver.length > 1 ? 'che hanno' : 'che ha'} già un premio: vince chi non ne ha ancora.
-                  </p>
-                )}
-                {award.capped.length > 0 && (
-                  <p className="award-reason">
-                    {list(award.capped.map(displayName))} {award.capped.length > 1 ? 'hanno' : 'ha'} già raggiunto il
-                    massimo di premi per persona.
-                  </p>
-                )}
-                {award.rows.length > 0 && (
-                  <ol>
-                    {award.rows.map((row) => (
-                      <li key={row.participant.id}>
-                        <span>
-                          {displayName(row.participant)}
-                          <small>{row.count} voti</small>
-                        </span>
-                        <strong>
-                          {row.value === null ? '—' : fmt(row.value)}
-                          <small>{unit}</small>
-                        </strong>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </>
-            )}
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-function AwardSettings({ s, busy, perform }: { s: State; busy: boolean; perform: (a: Action) => Promise<boolean> }) {
-  const current = s.settings;
-  const save = (patch: Partial<Settings>) => void perform({ type: 'settings', settings: { ...current, ...patch } });
-  const move = (i: number, by: number) => {
-    const order = [...current.awardOrder];
-    [order[i], order[i + by]] = [order[i + by], order[i]];
-    save({ awardOrder: order });
-  };
-  const isDefault = JSON.stringify(current) === JSON.stringify(defaultSettings());
-  return (
-    <section className="panel award-settings">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">REGOLE PROVVISORIE · DA CONFERMARE</p>
-          <h2>Come si assegnano i premi</h2>
-        </div>
-        <SlidersHorizontal size={22} />
-      </div>
-      <div className="settings-grid">
-        <label>
-          Premi massimi per persona
-          <select
-            aria-label="Premi massimi per persona"
-            value={current.maxAwards ?? ''}
-            disabled={busy}
-            onChange={(e) => save({ maxAwards: e.target.value ? Number(e.target.value) : null })}
-          >
-            <option value="">Nessun limite</option>
-            {[1, 2, 3].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={current.spectatorsVote}
-            disabled={busy}
-            onChange={(e) => save({ spectatorsVote: e.target.checked })}
-          />
-          Anche il pubblico senza presentazione vota
-        </label>
-        <div className="order-list" role="group" aria-label="Ordine del reveal">
-          <span>Ordine del reveal</span>
-          <ol>
-            {current.awardOrder.map((key, i) => (
-              <li key={key}>
-                <span>
-                  <small>0{i + 1}</small> {category(key).title}
-                </span>
-                <span>
-                  <button
-                    className="icon-button"
-                    aria-label={'Anticipa ' + category(key).label}
-                    disabled={busy || i === 0}
-                    onClick={() => move(i, -1)}
-                  >
-                    <ArrowUp size={16} />
-                  </button>
-                  <button
-                    className="icon-button"
-                    aria-label={'Posticipa ' + category(key).label}
-                    disabled={busy || i === current.awardOrder.length - 1}
-                    onClick={() => move(i, 1)}
-                  >
-                    <ArrowDown size={16} />
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </div>
-      <p className="footnote">
-        L’ordine conta: spareggi e limite guardano i premi già svelati. {isDefault ? 'Impostazioni iniziali.' : ''} Le
-        regole si bloccano all’inizio del reveal.
-      </p>
-    </section>
   );
 }
 /** Shown in the GM view when the GM also has a name: their ballot, or their presenter controls. */
@@ -1249,7 +1103,13 @@ function GmOwnTurn({
   if (s.phase === 'voting' && r && !voteBlocker(s, me.id))
     return (
       <section className="panel gm-own-turn">
-        <Voting key={r.id} s={s} actor={actor} busy={busy} perform={perform} />
+        <StampBallot key={r.id} s={s} actor={actor} busy={busy} perform={perform} />
+      </section>
+    );
+  if (s.phase === 'review')
+    return (
+      <section className="panel gm-own-turn">
+        <ReviewBoard s={s} actor={actor} busy={busy} perform={perform} />
       </section>
     );
   if (s.phase === 'presenting' && r?.presenterId === me.id)
@@ -1260,323 +1120,6 @@ function GmOwnTurn({
       </section>
     );
   return null;
-}
-/** Regia: what the projector shows now during the reveal. */
-function revealNow(s: State) {
-  const m = revealMoment(s);
-  if (!m) return '';
-  if (m.kind === 'summary') return 'Sul proiettore: il riepilogo finale. La serata è conclusa.';
-  const c = category(s.settings.awardOrder[m.index]);
-  const what = m.kind === 'tease' ? 'annuncio' : ['', '3° posto', '2° posto', 'vincitore'][m.shown];
-  return `Sul proiettore: ${what} del premio ${m.index + 1} di 4, «${c.title}».`;
-}
-function nextRevealLabel(s: State) {
-  const m = revealMoment(s);
-  if (m?.kind === 'tease') return 'Svela il 3° posto';
-  if (m?.kind === 'award' && m.shown === 1) return 'Svela il 2° posto';
-  if (m?.kind === 'award' && m.shown === 2) return 'Svela il vincitore';
-  if (m?.kind === 'award' && m.index === 3) return 'Chiudi con il riepilogo';
-  return 'Annuncia il prossimo premio';
-}
-const unitOf = (key: string) => (key === 'supercazzola' ? ' sì' : ' / 10');
-/** The reveal on the projector: announce each award, then 3rd, 2nd and the winner; then a summary. */
-function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
-  const m = revealMoment(s),
-    all = awards(s);
-  if (!m) return <div className="projector">{top}</div>;
-  if (m.kind === 'summary')
-    return (
-      <div className="projector pj-summary">
-        {top}
-        <p className="eyebrow">IL CONGRESSO HA PARLATO</p>
-        <h1>Verdetto finale.</h1>
-        <ol className="pj-podium">
-          {all.map((a, i) => (
-            <li key={a.key}>
-              <span className="mono">CATEGORIA 0{i + 1}</span>
-              <strong>{category(a.key).title}</strong>
-              <Fit as="em" lines={2}>
-                {a.winners.length ? list(a.winners.map(displayName)) : 'Nessun premio'}
-              </Fit>
-              {a.winners.length > 0 && (
-                <small>
-                  {fmt(a.value!)}
-                  {unitOf(a.key)}
-                </small>
-              )}
-            </li>
-          ))}
-        </ol>
-        <p className="pj-thanks">
-          Grazie a tutti i ricercatori, ai co-relatori e ai testimoni. Avete visto troppo: ora siete dei nostri.
-        </p>
-        <div className="codeline">
-          <span>FASCICOLO CHIUSO</span>
-          <i />
-          <span>CONTINUA… CONGRESSO N. 002</span>
-        </div>
-        <p className="pj-next">Data e luogo verranno comunicati quando sarà sicuro farlo.</p>
-      </div>
-    );
-  const a = all[m.index],
-    c = category(a.key),
-    count = `CATEGORIA 0${m.index + 1} DI 04`;
-  if (m.kind === 'tease')
-    return (
-      <div className="projector pj-stage pj-tease">
-        {top}
-        <div className="codeline">
-          <span>{count}</span>
-          <i />
-          <span>BUSTA SIGILLATA</span>
-        </div>
-        <p className="pj-lead">E la nomination per il premio</p>
-        <div className="pj-envelope">
-          <span className="mono">CATEGORIA 0{m.index + 1} · RISERVATO AI SOLI MEMBRI</span>
-          <strong>{c.title}</strong>
-          <i className="pj-seal" aria-hidden="true">
-            <Eye strokeWidth={1.4} />
-          </i>
-        </div>
-        <p className="pj-sub">{c.description}</p>
-        <p className="pj-foot">Rullo di tamburi a cura del pubblico. La busta non è stata aperta (dicono).</p>
-      </div>
-    );
-  // Suspense: third place, then second, then the winner with the confetti.
-  const shown = m.shown,
-    done = shown === 3,
-    places = runnersUp(a),
-    second = places.find((p) => p.place === 2),
-    third = places.find((p) => p.place === 3),
-    winner = a.winners.length === 1 ? a.winners[0] : null,
-    // The place in the spotlight on this slide: 3rd, then 2nd.
-    litPlace = done ? 1 : shown === 1 ? 3 : 2,
-    featured = litPlace === 3 ? third : litPlace === 2 ? second : undefined,
-    featuredOne = featured?.people.length === 1 ? featured.people[0] : null;
-  const step = (pl: { people: Participant[]; value: number } | undefined, n: 2 | 3) => {
-    const open = n === 3 ? shown >= 1 : shown >= 2;
-    return (
-      <div className={'pj-step pj-step-' + n + (open ? ' open' : ' sealed') + (litPlace === n ? ' lit' : '')}>
-        <Fit as="span" className="pj-step-name" lines={3} min={0.6}>
-          {!open ? '?' : pl ? list(pl.people.map(displayName)) : '—'}
-        </Fit>
-        {open && pl && (
-          <small>
-            {fmt(pl.value)}
-            {unitOf(a.key)}
-          </small>
-        )}
-        <b>{n}°</b>
-      </div>
-    );
-  };
-  return (
-    <div className={'projector pj-stage pj-award' + (done ? ' done' : ' suspense')}>
-      {top}
-      {done && a.winners.length > 0 && <ConfettiBurst key={a.key} />}
-      <div className="codeline">
-        <span>{count}</span>
-        <i />
-        <span>{c.title}</span>
-      </div>
-      {done ? (
-        <div className="pj-wreath">
-          <Laurel />
-          <div className="pj-wreath-in">
-            <p className="pj-lead">{a.winners.length && a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}</p>
-            <Fit as="h1" className="pj-name" lines={2}>
-              {a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}
-            </Fit>
-            {winner?.role && <Fit className="pj-role">{winner.role}</Fit>}
-            {a.winners.length > 0 ? (
-              <p className="pj-score">
-                {fmt(a.value!)}
-                <small>{unitOf(a.key)}</small>
-              </p>
-            ) : (
-              <p className="pj-sub">
-                {a.rows.length
-                  ? 'Nessun premio assegnato in questa categoria. Insabbiato.'
-                  : 'Nessun intervento concluso.'}
-              </p>
-            )}
-          </div>
-          <Laurel right />
-        </div>
-      ) : (
-        // 3rd and 2nd place get their own moment: name, qualification and score, under a spotlight.
-        <div className="pj-feature" key={litPlace}>
-          <p className="pj-place">{litPlace}° posto</p>
-          <Fit as="h1" className="pj-name" lines={2}>
-            {featured ? list(featured.people.map(displayName)) : 'Posto vacante.'}
-          </Fit>
-          {featuredOne?.role && <Fit className="pj-role">{featuredOne.role}</Fit>}
-          {featured ? (
-            <p className="pj-score">
-              {fmt(featured.value)}
-              <small>{unitOf(a.key)}</small>
-            </p>
-          ) : (
-            <p className="pj-sub">Nessuno sul gradino. Sospetto.</p>
-          )}
-        </div>
-      )}
-      {(a.winners.length > 0 || !done) && (
-        <div className="pj-podium-steps">
-          {step(second, 2)}
-          <div className={'pj-step pj-step-1' + (done ? ' open lit' : ' sealed')}>
-            <b>1°</b>
-          </div>
-          {step(third, 3)}
-        </div>
-      )}
-      {done && a.outcome === 'tieBreak' && (
-        <p className="pj-foot">
-          Pari merito con {list(a.passedOver.map(displayName))}, che ha già un premio: vince chi non ne ha ancora.
-        </p>
-      )}
-      {done && a.capped.length > 0 && (
-        <p className="pj-foot">{list(a.capped.map(displayName))}: già raggiunto il massimo di premi per persona.</p>
-      )}
-    </div>
-  );
-}
-/** One brass laurel branch, drawn leaf by leaf; the right one is mirrored. */
-function Laurel({ right = false }: { right?: boolean }) {
-  // Stem: a quadratic curve from the bottom (inner side) up and outward.
-  const P0 = [78, 236],
-    P1 = [-6, 150],
-    P2 = [44, 8];
-  const at = (t: number) => [
-    (1 - t) ** 2 * P0[0] + 2 * (1 - t) * t * P1[0] + t * t * P2[0],
-    (1 - t) ** 2 * P0[1] + 2 * (1 - t) * t * P1[1] + t * t * P2[1],
-  ];
-  const leaves = Array.from({ length: 9 }, (_, i) => {
-    const t = 0.08 + i * 0.105,
-      [x, y] = at(t),
-      [x2, y2] = at(t + 0.01),
-      dir = (Math.atan2(y2 - y, x2 - x) * 180) / Math.PI;
-    return [
-      { x, y, rot: dir - 38, k: 1 - i * 0.045 },
-      { x, y, rot: dir + 38, k: 1 - i * 0.045 },
-    ];
-  }).flat();
-  return (
-    <svg
-      className={'pj-laurel' + (right ? ' right' : '')}
-      viewBox="0 0 100 240"
-      aria-hidden="true"
-      style={right ? { transform: 'scaleX(-1)' } : undefined}
-    >
-      <path d={`M ${P0} Q ${P1} ${P2}`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      {leaves.map((l, i) => (
-        <path
-          key={i}
-          d="M 0 0 C 8 -7 22 -7 30 0 C 22 7 8 7 0 0 Z"
-          transform={`translate(${l.x} ${l.y}) rotate(${l.rot}) scale(${l.k * 0.72})`}
-          fill="currentColor"
-        />
-      ))}
-      <ellipse cx="44" cy="8" rx="6" ry="9" fill="currentColor" transform="rotate(20 44 8)" />
-    </svg>
-  );
-}
-/**
- * Confetti that bursts out of the winner's name, flies up and floats down: flat squares and discs that
- * flip as they fall (they look thinner, then wider), with a little side wobble. Canvas, one burst, then gone.
- */
-const confettiColors = [
-  '#f44336',
-  '#e91e63',
-  '#9c27b0',
-  '#673ab7',
-  '#3f51b5',
-  '#2196f3',
-  '#03a9f4',
-  '#00bcd4',
-  '#009688',
-  '#4caf50',
-  '#8bc34a',
-  '#cddc39',
-  '#ffeb3b',
-  '#ffc107',
-  '#ff9800',
-  '#ff5722',
-];
-function ConfettiBurst() {
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
-  useEffect(() => {
-    if (!canvas || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const ctx = canvas.getContext('2d')!,
-      dpr = Math.min(devicePixelRatio || 1, 2),
-      W = innerWidth,
-      H = innerHeight,
-      k = H / 1080; // same look on any projector resolution
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.scale(dpr, dpr);
-    const name = document.querySelector('.pj-award .pj-name')?.getBoundingClientRect();
-    const ox = name ? name.left + name.width / 2 : W / 2,
-      oy = name ? name.top + name.height / 2 : H / 2,
-      spread = name ? name.width / 2 : 100;
-    const rnd = (a: number, b: number) => a + Math.random() * (b - a);
-    const parts = Array.from({ length: 320 }, () => {
-      const angle = rnd(-Math.PI * 0.92, -Math.PI * 0.08),
-        speed = rnd(9, 25) * k;
-      return {
-        x: ox + rnd(-spread, spread),
-        y: oy + rnd(-20, 20) * k,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        friction: rnd(0.975, 0.99),
-        size: Math.round(rnd(7, 17) * k),
-        square: Math.random() < 0.5,
-        color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
-        wobble: rnd(-0.02, 0.02),
-        wobbleAmp: rnd(0.01, 0.08),
-        wobbleAngle: rnd(0, Math.PI * 2),
-      };
-    });
-    const gravity = 0.26 * k;
-    let frame = 0,
-      alive = true;
-    const tick = () => {
-      ctx.clearRect(0, 0, W, H);
-      let left = 0;
-      for (const p of parts) {
-        if (p.y > H + 40) continue;
-        left++;
-        p.vy += gravity;
-        p.vx += p.wobble + Math.cos(p.wobbleAngle) * p.wobbleAmp;
-        p.wobbleAngle += 0.05;
-        p.vx *= p.friction;
-        p.vy *= p.friction;
-        p.x += p.vx;
-        p.y += p.vy;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.vx * 0.2);
-        ctx.scale(1, 0.5 + Math.sin(p.vy * 2 + p.wobbleAngle * 3) * 0.5); // the flip
-        ctx.fillStyle = p.color;
-        if (p.square) ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-        else {
-          ctx.beginPath();
-          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-      if (left && alive) frame = requestAnimationFrame(tick);
-    };
-    const start = window.setTimeout(() => (frame = requestAnimationFrame(tick)), 250);
-    return () => {
-      alive = false;
-      clearTimeout(start);
-      cancelAnimationFrame(frame);
-    };
-  }, [canvas]);
-  // On the body: no ancestor's layout or transform can move or clip it.
-  return createPortal(<canvas ref={setCanvas} className="pj-confetti" aria-hidden="true" />, document.body);
 }
 /** The projector: one slide per moment of the evening, read from afar, never scrolling. */
 function Projector({ s }: { s: State }) {
@@ -1598,8 +1141,10 @@ function Projector({ s }: { s: State }) {
     </div>
   );
   if (s.phase === 'results') return <RevealSlide s={s} top={top} />;
+  if (s.phase === 'review') return <ReviewSlide s={s} top={top} />;
+  if (s.phase === 'voting') return <VotingSlide s={s} top={top} />;
   // A presenter on stage: the lines follow how the host announces them.
-  if (p && s.phase !== 'waiting') {
+  if (p && (s.phase === 'presenting' || s.phase === 'questions')) {
     const slide = {
       presenting: {
         eyebrow: 'Presentazione',
@@ -1615,12 +1160,6 @@ function Projector({ s }: { s: State }) {
         lead: 'Sotto interrogatorio',
         punch: 'Fatevi delle domande. Poi fatele ad alta voce.',
         foot: 'Alzate la mano. Le domande scomode sono le uniche ammesse.',
-      },
-      voting: {
-        eyebrow: 'Votazione aperta',
-        lead: 'Sotto giudizio',
-        punch: 'Credete a quello che volete. Ma votate.',
-        foot: null,
       },
     }[s.phase];
     return (
@@ -1646,7 +1185,6 @@ function Projector({ s }: { s: State }) {
           </Fit>
         )}
         {slide.foot && <p className="pj-foot">{slide.foot}</p>}
-        {s.phase === 'voting' && <span className="phase-badge">Vota dal tuo telefono</span>}
       </div>
     );
   }
@@ -1813,7 +1351,8 @@ function PreviewPage({ id }: { id: string }) {
   const screenDef = previewScreens.find((p) => p.id === id);
   if (!screenDef) return <p className="board-empty">Anteprima sconosciuta.</p>;
   const { s, actor } = mockState(id, mock);
-  const perform = async () => false;
+  // Previews accept taps but send nothing anywhere.
+  const perform = async () => true;
   const projector = screenDef.kind === 'projector';
   return (
     <div className={projector ? 'app screen-mode preview-app' : 'app preview-app'}>
@@ -1835,7 +1374,7 @@ function PreviewPage({ id }: { id: string }) {
             <Projector s={s} />
           ) : (
             // Only the ballot reacts to taps; everything else is look-only (the remote would send real commands).
-            <div inert={id !== 'g-voto' && id !== 'g-votato'}>
+            <div inert={!['g-voto', 'g-votato', 'g-revisione'].includes(id)}>
               <Guest key={id + JSON.stringify(mock)} s={s} actor={actor} busy={false} perform={perform} />
             </div>
           )}
@@ -1913,9 +1452,15 @@ function Previews() {
           <label>
             Premio da vedere nel verdetto
             <select value={mock.award} onChange={(e) => set({ award: Number(e.target.value) })}>
-              {categories.map((c, i) => (
-                <option key={c.key} value={i + 1}>
-                  {i + 1}. {c.title}
+              {[
+                'La Ventosa d’Oro',
+                'Il Pifferaio Magico',
+                'Il Faldone d’Oro',
+                'Premio Illuminato',
+                'Il Cappello di Stagnola d’Oro',
+              ].map((name, i) => (
+                <option key={name} value={i + 1}>
+                  {i + 1}. {name}
                 </option>
               ))}
             </select>

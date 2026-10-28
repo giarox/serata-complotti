@@ -161,7 +161,7 @@ describe('removing people (GM)', () => {
       {
         type: 'vote',
         roundId: rid,
-        ballot: { credibility: 5, delivery: 5, research: 5, supercazzola: false },
+        ballot: { idea: true, ricerca: false, performance: false, qa: false },
       },
     );
     s = applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: rid });
@@ -210,7 +210,7 @@ describe('going back (GM)', () => {
     expect(reopened).toMatchObject({ phase: 'voting', activeRoundId: rid });
     expect(reopened.rounds[0].closed).toBe(false);
     s = applyAction(s, gm, { type: 'reveal' });
-    expect(applyAction(s, gm, { type: 'back' })).toMatchObject({ phase: 'waiting', revealed: 0 });
+    expect(applyAction(s, gm, { type: 'back' })).toMatchObject({ phase: 'review', revealed: 0 }); // leaving the reveal reopens the review
     expect(() => applyAction(s, { role: 'guest', participantId: 'ugo' }, { type: 'back' })).toThrow('regia');
   });
 });
@@ -242,7 +242,14 @@ describe('fake testers', () => {
     s = applyAction(s, gm, { type: 'phase', phase: 'questions', roundId: rid });
     s = applyAction(s, gm, { type: 'phase', phase: 'voting', roundId: rid });
     s = applyAction(applyAction(s, gm, { type: 'botVotes' }), gm, { type: 'botVotes' });
-    expect(s.votes.filter((v) => v.roundId === rid)).toHaveLength(3);
+    const ballots = s.votes.filter((v) => v.roundId === rid);
+    expect(ballots).toHaveLength(3);
+    for (const b of ballots)
+      expect([b.idea, b.ricerca, b.performance, b.qa].filter(Boolean).length).toBeLessThanOrEqual(2);
+    // In the review they also fill every talk and confirm.
+    s = applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: rid });
+    s = applyAction(applyAction(s, gm, { type: 'review' }), gm, { type: 'botVotes' });
+    expect(s.reviewed).toHaveLength(3);
   });
 });
 

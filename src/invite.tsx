@@ -219,7 +219,7 @@ function ReturningStep({
   onEnter: (a: Actor) => void;
   onBack: () => void;
 }) {
-  const [names, setNames] = useState<Pick<Participant, 'id' | 'name'>[]>([]),
+  const [names, setNames] = useState<api.Entrant[]>([]),
     [id, setId] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -268,11 +268,14 @@ function ReturningStep({
             <option value="">Scegli dalla lista</option>
             {names.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {p.companionOf ? `${p.name} (con ${p.companionOf})` : p.name}
               </option>
             ))}
           </select>
         </label>
+      )}
+      {names.length > 0 && (
+        <p className="footnote">Testimoni e co-relatori: cercate il vostro nome, così votate dal vostro telefono.</p>
       )}
       {error && (
         <p role="alert" className="field-error">

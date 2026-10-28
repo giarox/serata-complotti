@@ -1,184 +1,88 @@
 import { describe, expect, it } from 'vitest';
-import {
-  applyAction,
-  awards,
-  defaultSettings,
-  initialState,
-  normalize,
-  runnersUp,
-  snapshot,
-  type Actor,
-  type Ballot,
-  type CategoryKey,
-  type Settings,
-  type State,
-} from '../src/domain';
+import { applyAction, emptyBallot, initialState, type Actor, type StampKey, type State } from '../src/domain';
+import { certificate, registro, talks, verdict, type PrizeKey } from '../src/verdict';
 
 const gm: Actor = { role: 'gm' };
 const guest = (id: string): Actor => ({ role: 'guest', participantId: id });
-const ballot = (c: number, d: number, r: number, s: boolean): Ballot => ({
-  credibility: c,
-  delivery: d,
-  research: r,
-  supercazzola: s,
-});
 
-/** Runs a full round for `presenter`, with each voter's ballot, and closes it. */
-function round(s: State, presenter: string, ballots: Record<string, Ballot>) {
+/** Runs a full talk for `presenter`, each voter pressing the given stamps, and closes it. */
+function talk(s: State, presenter: string, ballots: Record<string, StampKey[]>) {
   s = applyAction(s, gm, { type: 'start', participantId: presenter });
   const id = s.activeRoundId!;
   s = applyAction(s, gm, { type: 'phase', phase: 'questions', roundId: id });
   s = applyAction(s, gm, { type: 'phase', phase: 'voting', roundId: id });
-  for (const [voter, b] of Object.entries(ballots))
-    s = applyAction(s, guest(voter), { type: 'vote', roundId: id, ballot: b });
+  for (const [voter, keys] of Object.entries(ballots)) {
+    const ballot = emptyBallot();
+    for (const k of keys) ballot[k] = true;
+    s = applyAction(s, guest(voter), { type: 'vote', roundId: id, ballot });
+  }
   return applyAction(s, gm, { type: 'phase', phase: 'waiting', roundId: id });
 }
-const withSettings = (s: State, patch: Partial<Settings>) =>
-  applyAction(s, gm, { type: 'settings', settings: { ...s.settings, ...patch } });
-const names = (s: State, key: CategoryKey) =>
-  awards(s)
-    .find((a) => a.key === key)!
-    .winners.map((p) => p.id);
+const ids = (s: State, prize: PrizeKey, place: 1 | 2 | 3) => verdict(s)[prize].podium[place].map((t) => t.presenter.id);
 
-describe('awards and tie-breaks', () => {
-  it('gives each category to its own top average, compared unrounded', () => {
+describe('verdict with stamps', () => {
+  /**
+   * Sara: 3 ballots, all performance+qa → total 2 (Cappello).
+   * Paolo: idea 3/3, ricerca 2/3. Giulia: ricerca 2/3, idea 1/3. Marco: performance 1/2.
+   */
+  function evening() {
     let s = initialState();
-    // Paolo credibility mean 7.333…, Giulia 7.5 → Giulia; delivery Paolo 9 vs 5 → Paolo.
-    s = round(s, 'paolo', {
-      giulia: ballot(7, 9, 1, false),
-      marco: ballot(7, 9, 1, false),
-      sara: ballot(8, 9, 1, false),
-    });
-    s = round(s, 'giulia', { paolo: ballot(7, 5, 2, true), marco: ballot(8, 5, 2, false) });
-    expect(names(s, 'credibility')).toEqual(['giulia']);
-    expect(names(s, 'delivery')).toEqual(['paolo']);
-    expect(names(s, 'research')).toEqual(['giulia']);
-    expect(names(s, 'supercazzola')).toEqual(['giulia']);
-    expect(awards(s)[0].outcome).toBe('clear');
+    s = talk(s, 'sara', { paolo: ['performance', 'qa'], giulia: ['performance', 'qa'], marco: ['performance', 'qa'] });
+    s = talk(s, 'paolo', { giulia: ['idea', 'ricerca'], marco: ['idea', 'ricerca'], sara: ['idea'] });
+    s = talk(s, 'giulia', { paolo: ['ricerca'], marco: ['ricerca', 'idea'], sara: [] });
+    s = talk(s, 'marco', { paolo: ['performance'], giulia: [] });
+    return s;
+  }
+  it('shares per talk divide by that talk’s ballots, empty ballots included', () => {
+    const t = talks(evening());
+    expect(t.find((x) => x.presenter.id === 'giulia')).toMatchObject({ ballots: 3, counts: { ricerca: 2, idea: 1 } });
+    expect(t.find((x) => x.presenter.id === 'marco')!.share.performance).toBe(0.5);
   });
-
-  it('puts second and third place on the podium, ties sharing a step', () => {
+  it('gives the Cappello to the best total and takes its winner off every other podium', () => {
+    const s = evening();
+    expect(ids(s, 'cappello', 1)).toEqual(['sara']);
+    expect(ids(s, 'cappello', 2)).toEqual(['paolo']);
+    expect(ids(s, 'cappello', 3)).toEqual(['giulia']);
+    for (const k of ['idea', 'ricerca', 'performance', 'qa'] as const)
+      for (const place of [1, 2, 3] as const) expect(ids(s, k, place)).not.toContain('sara');
+  });
+  it('one prize each, best combination overall; a tie goes to whoever has no prize yet', () => {
+    const s = evening();
+    expect(ids(s, 'idea', 1)).toEqual(['paolo']);
+    // Paolo and Giulia tie on ricerca (2/3): Paolo already has a prize, so Giulia wins it alone.
+    expect(ids(s, 'ricerca', 1)).toEqual(['giulia']);
+    expect(ids(s, 'ricerca', 2)).toEqual(['paolo']); // a mention, not a second prize
+    expect(ids(s, 'performance', 1)).toEqual(['marco']);
+  });
+  it('leaves a prize unassigned when no candidate got that stamp', () => {
+    const v = verdict(evening());
+    expect(v.qa.podium[1]).toEqual([]); // only Sara had qa stamps, and she has the Cappello
+  });
+  it('shares the prize (pari merito) when the tied people have no prize', () => {
     let s = initialState();
-    s = round(s, 'paolo', { giulia: ballot(9, 1, 1, false), marco: ballot(9, 1, 1, false) });
-    s = round(s, 'giulia', { paolo: ballot(7, 1, 1, false), marco: ballot(7, 1, 1, false) });
-    s = round(s, 'marco', { paolo: ballot(7, 1, 1, false), giulia: ballot(7, 1, 1, false) });
-    s = round(s, 'sara', { paolo: ballot(5, 1, 1, false), giulia: ballot(5, 1, 1, false) });
-    const a = awards(s).find((x) => x.key === 'credibility')!;
-    expect(a.winners.map((p) => p.id)).toEqual(['paolo']);
-    expect(runnersUp(a).map((p) => [p.place, p.people.map((x) => x.id), p.value])).toEqual([
-      [2, ['giulia', 'marco'], 7],
-      [3, ['sara'], 5],
-    ]);
+    s = talk(s, 'paolo', { giulia: ['idea'], marco: [] });
+    s = talk(s, 'giulia', { paolo: ['idea'], marco: [] });
+    s = talk(s, 'marco', { paolo: ['performance', 'qa'], giulia: ['performance', 'qa'] });
+    const v = verdict(s);
+    expect(ids(s, 'cappello', 1)).toEqual(['marco']);
+    expect(ids(s, 'idea', 1)).toEqual(['paolo', 'giulia']);
+    expect(v.idea.shared).toBe(true);
   });
-
-  it('breaks a tie in favour of the person without an earlier award', () => {
+  it('ignores a talk with no ballots and keeps podiums incomplete when stamps are few', () => {
     let s = initialState();
-    // Paolo wins credibility outright, then ties with Giulia on delivery → Giulia gets delivery.
-    s = round(s, 'paolo', { giulia: ballot(10, 8, 0, false), marco: ballot(10, 8, 0, false) });
-    s = round(s, 'giulia', { paolo: ballot(2, 8, 0, false), marco: ballot(2, 8, 0, false) });
-    const delivery = awards(s).find((a) => a.key === 'delivery')!;
-    expect(names(s, 'credibility')).toEqual(['paolo']);
-    expect(delivery.winners.map((p) => p.id)).toEqual(['giulia']);
-    expect(delivery.outcome).toBe('tieBreak');
-    expect(delivery.passedOver.map((p) => p.id)).toEqual(['paolo']);
+    s = talk(s, 'paolo', {});
+    s = talk(s, 'giulia', { paolo: ['idea'], marco: [] });
+    expect(talks(s).find((t) => t.presenter.id === 'paolo')!.ballots).toBe(0);
+    expect(ids(s, 'cappello', 1)).toEqual(['giulia']);
+    expect(ids(s, 'cappello', 2)).toEqual([]);
   });
-
-  it('shares the prize (pari merito) when nobody tied has won yet, or everybody has', () => {
-    let s = initialState();
-    s = round(s, 'paolo', { giulia: ballot(6, 6, 0, false), marco: ballot(6, 6, 0, false) });
-    s = round(s, 'giulia', { paolo: ballot(6, 6, 0, false), marco: ballot(6, 6, 0, false) });
-    const [credibility, delivery] = awards(s);
-    expect(credibility.outcome).toBe('shared');
-    expect(credibility.winners.map((p) => p.id).sort()).toEqual(['giulia', 'paolo']);
-    // Both already won credibility, so delivery is shared again.
-    expect(delivery.outcome).toBe('shared');
-    expect(delivery.winners).toHaveLength(2);
-  });
-
-  it('applies the tie-break in reveal order, so changing the order can change winners', () => {
-    let s = initialState();
-    // Paolo wins Supercazzola alone; Paolo and Giulia tie on credibility.
-    s = round(s, 'paolo', { giulia: ballot(5, 1, 1, true), marco: ballot(5, 1, 1, true) });
-    s = round(s, 'giulia', { paolo: ballot(5, 1, 1, false), marco: ballot(5, 1, 1, false) });
-    expect(names(s, 'credibility').sort()).toEqual(['giulia', 'paolo']);
-    s = withSettings(s, { awardOrder: ['supercazzola', 'credibility', 'delivery', 'research'] });
-    expect(awards(s).map((a) => a.key)).toEqual(['supercazzola', 'credibility', 'delivery', 'research']);
-    expect(names(s, 'credibility')).toEqual(['giulia']);
-  });
-
-  it('skips people who reached the cap and gives the prize to the next best', () => {
-    let s = initialState();
-    s = round(s, 'paolo', { giulia: ballot(10, 10, 10, true), marco: ballot(10, 10, 10, true) });
-    s = round(s, 'giulia', { paolo: ballot(5, 4, 3, true), marco: ballot(5, 4, 3, false) });
-    expect(awards(s).every((a) => a.winners[0]?.id === 'paolo')).toBe(true);
-    s = withSettings(s, { maxAwards: 1 });
-    const result = awards(s);
-    expect(result.map((a) => a.winners.map((p) => p.id))).toEqual([['paolo'], ['giulia'], [], []]);
-    expect(result[1].capped.map((p) => p.id)).toEqual(['paolo']);
-    expect(result[2].outcome).toBe('none');
-  });
-
-  it('gives no automatic award to talks without votes, nor a Supercazzola with zero yes', () => {
-    let s = initialState();
-    s = round(s, 'paolo', {});
-    s = round(s, 'giulia', { paolo: ballot(3, 3, 3, false) });
-    expect(names(s, 'credibility')).toEqual(['giulia']);
-    const supercazzola = awards(s).find((a) => a.key === 'supercazzola')!;
-    expect(supercazzola.outcome).toBe('none');
-    expect(supercazzola.winners).toEqual([]);
-  });
-});
-
-describe('settings, spectators and the GM as participant', () => {
-  it('only accepts valid settings, and freezes them during the reveal', () => {
-    const s = round(initialState(), 'paolo', { giulia: ballot(1, 1, 1, true) });
-    const bad: Settings[] = [
-      { ...defaultSettings(), maxAwards: 0 },
-      { ...defaultSettings(), maxAwards: 1.5 },
-      { ...defaultSettings(), awardOrder: ['credibility', 'credibility', 'delivery', 'research'] },
-      { ...defaultSettings(), awardOrder: ['credibility', 'delivery', 'research'] },
-    ];
-    for (const settings of bad) expect(() => applyAction(s, gm, { type: 'settings', settings })).toThrow();
-    expect(() => applyAction(s, guest('giulia'), { type: 'settings', settings: defaultSettings() })).toThrow();
-    const revealed = applyAction(s, gm, { type: 'reveal' });
-    expect(() => applyAction(revealed, gm, { type: 'settings', settings: defaultSettings() })).toThrow();
-  });
-
-  it('lets spectators vote only when the setting allows it', () => {
-    let s = applyAction(initialState(), gm, { type: 'start', participantId: 'paolo' });
-    const id = s.activeRoundId!;
-    s = applyAction(s, gm, { type: 'phase', phase: 'questions', roundId: id });
-    s = applyAction(s, gm, { type: 'phase', phase: 'voting', roundId: id });
-    const spectatorVote = (st: State) =>
-      applyAction(st, guest('pubblico'), { type: 'vote', roundId: id, ballot: ballot(5, 5, 5, true) });
-    expect(spectatorVote(s).votes).toHaveLength(1);
-    const noSpectators: State = { ...s, settings: { ...s.settings, spectatorsVote: false } };
-    expect(() => spectatorVote(noSpectators)).toThrow('pubblico non vota');
-  });
-
-  it('lets a GM with a name vote, sees only their own ballot, and blocks their self-vote', () => {
-    const gmGianluca: Actor = { role: 'gm', participantId: 'gianluca' };
-    let s = applyAction(initialState(), gmGianluca, { type: 'start', participantId: 'paolo' });
-    let id = s.activeRoundId!;
-    s = applyAction(s, gmGianluca, { type: 'phase', phase: 'questions', roundId: id });
-    s = applyAction(s, gmGianluca, { type: 'phase', phase: 'voting', roundId: id });
-    s = applyAction(s, gmGianluca, { type: 'vote', roundId: id, ballot: ballot(9, 9, 9, true) });
-    s = applyAction(s, guest('giulia'), { type: 'vote', roundId: id, ballot: ballot(1, 1, 1, false) });
-    expect(snapshot(s, gmGianluca).votes.map((v) => v.voterId)).toEqual(['gianluca']);
-    expect(snapshot(s, gm).votes).toEqual([]);
-    s = applyAction(s, gmGianluca, { type: 'phase', phase: 'waiting', roundId: id });
-    s = applyAction(s, gmGianluca, { type: 'start', participantId: 'gianluca' });
-    id = s.activeRoundId!;
-    s = applyAction(s, gmGianluca, { type: 'phase', phase: 'questions', roundId: id });
-    s = applyAction(s, gmGianluca, { type: 'phase', phase: 'voting', roundId: id });
-    expect(() => applyAction(s, gmGianluca, { type: 'vote', roundId: id, ballot: ballot(9, 9, 9, true) })).toThrow(
-      'tuo intervento',
-    );
-  });
-
-  it('fills in default settings for older saved states', () => {
-    const old = { ...initialState() } as Partial<State>;
-    delete old.settings;
-    expect(normalize(old as State).settings).toEqual(defaultSettings());
+  it('the Registro lists stamps received (no counts); the certificate has counts and prizes', () => {
+    const s = evening();
+    expect(registro(s).find((r) => r.talk.presenter.id === 'giulia')!.stamps).toEqual(['idea', 'ricerca']);
+    const c = certificate(s, 'paolo')!;
+    expect(c.talk.counts.idea).toBe(3);
+    expect(c.prizes).toEqual(['idea']);
+    expect(c.mentions).toContainEqual({ prize: 'ricerca', place: 2 });
+    expect(certificate(s, 'gianluca')).toBeNull(); // did not present
   });
 });

@@ -6773,3 +6773,542 @@ label,
 .pj-voting .phase-badge {
   margin-top: 2.6vh;
 }
+
+/* ================= 28 Oct — the Stamps (Timbri) ================= */
+/* A rubber stamp: inked when pressed, a dashed ghost when not; the name is always written. */
+.ink-stamp {
+  --ink: var(--stamp);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--type);
+  font-size: 15px;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 7px 10px 6px;
+  border: 2.5px solid var(--ink);
+  outline: 1.5px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  filter: url(#ink-wear);
+  max-width: 100%;
+}
+.ink-stamp.off {
+  color: var(--dim);
+  border: 2px dashed #ffffff40;
+  outline-color: transparent;
+  background: transparent;
+  filter: none;
+}
+.ink-stamp.on {
+  transform: rotate(-3deg);
+  color: color-mix(in srgb, var(--ink) 70%, white);
+  border-color: color-mix(in srgb, var(--ink) 70%, white);
+  outline-color: color-mix(in srgb, var(--ink) 70%, white);
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+.ink-stamp.small {
+  font-size: 10.5px;
+  padding: 4px 6px 3px;
+  border-width: 1.5px;
+  outline-width: 1px;
+  outline-offset: 2px;
+  letter-spacing: 0.04em;
+}
+/* Phone ballot */
+.stamp-ballot .ballot-hint {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 18px 0 12px;
+  font-size: 15px;
+  color: var(--bone);
+}
+.stamp-count {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass-hi);
+  white-space: nowrap;
+}
+.stamp-count.full {
+  color: #e0604f;
+}
+.stamp-grid {
+  display: grid;
+  gap: 10px;
+}
+.stamp-choice {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  text-align: left;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: #ffffff06;
+  color: var(--bone);
+  cursor: pointer;
+}
+.stamp-choice.pressed {
+  border-color: #ffffff40;
+  background: #ffffff10;
+}
+.stamp-choice .ink-stamp {
+  font-size: 16px;
+}
+.stamp-choice.pressed .ink-stamp {
+  animation: stamp-press 0.28s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.stamp-line {
+  font-family: 'Geist', var(--serif), sans-serif;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--dim);
+}
+.shake {
+  animation: shake 0.42s;
+}
+@keyframes stamp-press {
+  0% {
+    transform: scale(1.35) rotate(-3deg);
+    opacity: 0.4;
+  }
+  100% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stamp-choice.pressed .ink-stamp,
+  .shake {
+    animation: none;
+  }
+}
+/* Review on the phone */
+.review-board {
+  padding-bottom: 96px;
+}
+.review-board h1 {
+  margin: 6px 0 8px;
+}
+.review-lede {
+  color: var(--dim);
+  margin: 0 0 18px;
+}
+.review-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.review-row {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #ffffff05;
+}
+.review-row.mine {
+  opacity: 0.55;
+}
+.review-who {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.review-who > div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.review-who strong {
+  font-family: var(--type);
+  font-weight: 400;
+  font-size: 17px;
+}
+.review-who small {
+  color: var(--dim);
+  font-size: 13px;
+}
+.review-who .mono {
+  color: var(--brass-dim);
+  font-size: 12px;
+  padding-top: 3px;
+}
+.review-count {
+  font-style: normal;
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--brass);
+  white-space: nowrap;
+}
+.review-stamps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stamp-chip {
+  background: none;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+  display: flex;
+}
+.stamp-chip .ink-stamp {
+  width: 100%;
+  min-height: 40px;
+}
+.review-confirm {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, var(--night) 30%);
+  display: flex;
+  justify-content: center;
+  z-index: 20;
+}
+.review-confirm .button,
+.review-confirm .saved-banner {
+  width: min(560px, 100%);
+}
+.gm-own-turn .review-confirm {
+  position: static;
+  background: none;
+  padding: 12px 0 0;
+}
+.gm-own-turn .review-board {
+  padding-bottom: 0;
+}
+/* Certificate */
+.certificate {
+  background: var(--paper);
+  background-image: var(--fibres);
+  color: var(--ink);
+  padding: 26px 22px 22px;
+  border-radius: 4px;
+  box-shadow: 0 10px 30px #000a;
+  display: grid;
+  gap: 12px;
+  transform: rotate(-0.4deg);
+}
+.certificate .mono {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--stamp);
+  margin: 0;
+}
+.certificate h1 {
+  font-family: var(--type);
+  font-size: 32px;
+  color: var(--ink);
+  margin: 0;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+.cert-role {
+  font-family: var(--type);
+  margin: 0;
+}
+.cert-prize {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-family: var(--type);
+  font-size: 20px;
+  color: var(--stamp);
+  margin: 4px 0 0;
+}
+.cert-prize small {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.cert-mention {
+  font-family: var(--type);
+  margin: 0;
+}
+.cert-stamps {
+  list-style: none;
+  padding: 10px 0 0;
+  margin: 0;
+  border-top: 1px dashed var(--ink-soft);
+  display: grid;
+  gap: 10px;
+}
+.cert-stamps li {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+.certificate .ink-stamp {
+  --dim: var(--ink-soft);
+}
+.certificate .ink-stamp.on,
+.certificate .ink-stamp {
+  color: var(--ink);
+}
+.cert-body {
+  margin: 0;
+}
+.cert-foot {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin: 6px 0 0;
+}
+/* Projector: vote open */
+.pj-vote .pj-punch {
+  margin: 2vh 0 3vh;
+}
+.pj-stamps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.2vh 3vw;
+  width: min(1500px, 90vw);
+  text-align: left;
+}
+.pj-stamp-card {
+  display: grid;
+  gap: 1.2vh;
+  justify-items: start;
+}
+.pj-stamp-card .ink-stamp,
+.pj-big-stamp .ink-stamp,
+.pj-stamp-drop .ink-stamp,
+.pj-registro-stamps .ink-stamp {
+  font-size: clamp(14px, min(1.6vw, 2.9vh), 32px);
+  padding: 0.5em 0.8em 0.4em;
+  border-width: 3px;
+  outline-width: 2px;
+  outline-offset: 4px;
+}
+.pj-stamp-card span:last-child {
+  font-family: 'Geist', sans-serif;
+  font-size: clamp(14px, min(1.4vw, 2.5vh), 28px);
+  color: var(--bone);
+  line-height: 1.3;
+}
+/* Projector: review */
+.pj-confirmed {
+  font-family: var(--type) !important;
+  font-style: normal !important;
+  font-size: clamp(18px, min(2vw, 3.4vh), 36px) !important;
+  color: var(--brass-hi) !important;
+  margin-top: 3vh;
+}
+.pj-confirmed strong {
+  font-size: 1.6em;
+}
+/* Projector: prize opening */
+.pj-open-prize h1 {
+  font-size: clamp(40px, min(6vw, 11vh), 130px) !important;
+  letter-spacing: 0.04em !important;
+  margin: 1vh auto 0 !important;
+}
+.pj-big-stamp {
+  margin: 3.5vh 0 0;
+}
+.pj-big-stamp .ink-stamp {
+  font-size: clamp(20px, min(2.4vw, 4.4vh), 48px);
+  transform: rotate(-6deg);
+}
+.pj-open-prize .pj-punch {
+  margin: 4vh 0 0;
+}
+.pj-open-prize.gold h1 {
+  background: linear-gradient(180deg, #ffe39a, #b8862c);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+/* Winner: the stamp falls on the dossier */
+.pj-stamp-drop {
+  margin-top: 2vh;
+  display: flex;
+  justify-content: center;
+}
+.pj-stamp-drop .ink-stamp {
+  animation: stamp-drop 0.7s 0.5s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes stamp-drop {
+  0% {
+    transform: scale(2.6) rotate(-14deg);
+    opacity: 0;
+  }
+  100% {
+    transform: rotate(-6deg);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pj-stamp-drop .ink-stamp {
+    animation: none;
+    transform: rotate(-6deg);
+  }
+}
+/* Projector: Registro dei Timbri */
+.pj-registro {
+  justify-content: center;
+}
+.pj-registro h1 {
+  font-size: clamp(32px, min(4.4vw, 8vh), 96px) !important;
+  margin: 1vh auto 3vh !important;
+}
+.pj-registro-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  width: min(1700px, 94vw);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15vw), 1fr));
+  gap: 1.4vh 1.2vw;
+  text-align: left;
+}
+.pj-registro-grid li {
+  background: var(--paper);
+  background-image: var(--fibres);
+  color: var(--ink);
+  padding: 1.4vh 1vw;
+  display: grid;
+  gap: 1vh;
+  align-content: start;
+  box-shadow: 0 4px 12px #0008;
+}
+.pj-registro-grid li:nth-child(odd) {
+  transform: rotate(-0.6deg);
+}
+.pj-registro-grid strong {
+  font-family: var(--type);
+  font-weight: 400;
+  font-size: clamp(14px, min(1.5vw, 2.7vh), 30px);
+  line-height: 1.1;
+}
+.pj-registro-grid em {
+  font-family: var(--type);
+  font-style: normal;
+  font-size: clamp(11px, min(1vw, 1.9vh), 18px);
+  color: var(--ink-soft);
+}
+.pj-registro-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8vh 0.5vw;
+}
+.pj-registro-stamps .ink-stamp {
+  font-size: clamp(8px, min(0.75vw, 1.4vh), 15px);
+  padding: 0.4em 0.5em 0.3em;
+  border-width: 2px;
+  outline-width: 1px;
+  outline-offset: 2px;
+  color: var(--ink);
+}
+.pj-registro .pj-thanks {
+  margin-top: 3vh;
+}
+/* Regia: verdict */
+.verdict-now {
+  font-size: 17px;
+  margin: 4px 0 4px;
+}
+.verdict-next {
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass-hi);
+  margin: 0 0 14px;
+}
+.rules-list {
+  margin: 4px 0 14px;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  color: var(--bone);
+}
+.stamp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 14px;
+  color: var(--dim);
+}
+.stamp-legend > span {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.revealed-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
+}
+.revealed-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dashed var(--rule);
+  padding-bottom: 6px;
+}
+.revealed-list strong {
+  font-family: var(--type);
+  font-weight: 400;
+}
+.reveal-wait h1 {
+  margin-top: 10px;
+}
+/* On paper (Registro, certificate) the ink is the ink: no light mix, no tint */
+.pj-registro-stamps .ink-stamp.on,
+.certificate .ink-stamp.on {
+  color: var(--ink);
+  border-color: var(--ink);
+  outline-color: var(--ink);
+  background: transparent;
+}
+.pj-registro-stamps .ink-stamp.on {
+  transform: rotate(-2deg);
+}
+/* Vote slide: stamps as the main act */
+.pj-vote .pj-stamp-card .ink-stamp {
+  font-size: clamp(16px, min(2vw, 3.6vh), 40px);
+}
+.pj-vote .pj-stamps {
+  gap: 4vh 4vw;
+  margin-top: 1vh;
+}
+.pj-award.done .pj-podium-steps {
+  margin-top: 7vh;
+}
+.pj-award.done .pj-stamp-drop {
+  margin-top: 1.2vh;
+}
+.pj-award.done .pj-wreath-in .pj-sub {
+  margin-top: 1.2vh;
+}
+.stamp-ballot .ballot-person h2 {
+  font-size: 19px;
+  line-height: 1.25;
+}
+.verdict-panel + .panel {
+  margin-top: 16px;
+}

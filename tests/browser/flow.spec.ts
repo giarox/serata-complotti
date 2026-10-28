@@ -32,51 +32,53 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await expect(voter.getByRole('heading', { name: 'Fatti delle domande.' })).toBeVisible();
     await page.getByRole('button', { name: 'Apri il voto per ' + name }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-    if (name === 'Paolo') await expect(speaker.getByRole('heading', { name: 'Ora parlano gli altri.' })).toBeVisible();
-    for (const label of ['Credibilità', 'Esposizione', 'Le prove'])
-      await voter
-        .getByRole('group', { name: label, exact: true })
-        .getByRole('button', { name: '8', exact: true })
-        .click();
-    await voter.getByRole('button', { name: 'Sì, come se fosse antani.' }).click();
-    await voter.getByRole('button', { name: 'Consegna il verdetto' }).click();
-    await expect(voter.getByRole('status')).toContainText('Voto salvato');
+    if (name === 'Paolo')
+      await expect(speaker.getByRole('heading', { name: 'Il popolo sta timbrando il tuo fascicolo.' })).toBeVisible();
+    const stampBtn = (title: string) => voter.getByRole('button', { name: new RegExp('^' + title) });
+    await stampBtn('CHE TEORIA!').click();
+    await stampBtn('HA FATTO I COMPITI').click();
+    await stampBtn('VENDEREBBE GHIACCIO').click(); // a third stamp is refused
+    await expect(voter.getByRole('alert')).toContainText('Due timbri al massimo');
+    await voter.getByRole('button', { name: 'Consegna il fascicolo' }).click();
+    await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
     await voter.reload();
-    await expect(voter.getByRole('status')).toContainText('Voto salvato');
-    await voter
-      .getByRole('group', { name: 'Credibilità', exact: true })
-      .getByRole('button', { name: '9', exact: true })
-      .click();
-    await voter.getByRole('button', { name: 'Aggiorna il voto' }).click();
-    await expect(page.getByText('1 voti ricevuti')).toBeVisible();
+    await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
+    await stampBtn('HA FATTO I COMPITI').click();
+    await stampBtn('SI È ARRAMPICATO').click();
+    await voter.getByRole('button', { name: 'Consegna le modifiche' }).click();
+    await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
     await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
     await expect(voter.getByRole('heading', { name: 'Apri la mente. Non troppo, che entra il 5G.' })).toBeVisible();
   }
+  // Review: everyone can move stamps, then the GM closes it and the verdict starts.
   await page.getByRole('button', { name: 'Il verdetto', exact: true }).click();
-  await expect(page.getByText('Il verdetto è ancora sotto chiave.').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Inizia il reveal' }).click();
+  await page.getByRole('button', { name: 'Apri la revisione' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  await expect(voter.getByRole('heading', { name: 'Il verdetto.', exact: true })).toBeVisible();
-  // One step at a time: the projector announces the award, then shows the winner.
-  const podium = async () => {
-    for (const label of ['Svela il 3° posto', 'Svela il 2° posto', 'Svela il vincitore'])
-      await page.getByRole('button', { name: label }).click();
-  };
-  await page.getByRole('button', { name: 'Svela il 3° posto' }).click();
-  await expect(page.locator('.award-open')).toHaveCount(0); // winner still sealed
-  await page.getByRole('button', { name: 'Svela il 2° posto' }).click();
-  await page.getByRole('button', { name: 'Svela il vincitore' }).click();
-  await expect(page.locator('.award-open')).toHaveCount(1);
-  for (let i = 0; i < 3; i++) {
-    await page.getByRole('button', { name: 'Annuncia il prossimo premio' }).click();
-    await podium();
-  }
-  await expect(page.locator('.award-open')).toHaveCount(4);
-  await page.getByRole('button', { name: 'Chiudi con il riepilogo' }).click();
-  await expect(page.getByText('Sul proiettore: il riepilogo finale.')).toBeVisible();
-  // Paolo and Marco received identical ballots: nobody had a prize yet, so it is a shared prize.
-  await expect(page.getByText('PARI MERITO').first()).toBeVisible();
+  await expect(voter.getByRole('heading', { name: 'Rivedi le tue timbrature.' })).toBeVisible();
+  await voter
+    .getByRole('group', { name: 'Timbri per Marco' })
+    .getByRole('button', { name: /^VENDEREBBE/ })
+    .click();
+  await voter.getByRole('button', { name: 'Confermo le mie timbrature' }).click();
+  await expect(voter.getByRole('status')).toContainText('Confermato');
+  await expect(page.locator('.verdict-now')).toContainText('1 su');
+  await page.getByRole('button', { name: 'Chiudi la revisione e vai al verdetto' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
+  await expect(voter.getByRole('heading', { name: 'Guardate il proiettore.' })).toBeVisible();
+  // The regia sees only the next step, never the names ahead of the projector.
+  await expect(page.locator('.verdict-next')).toContainText('Prossimo: 3° posto');
+  await expect(page.locator('.revealed-list')).toHaveCount(0);
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Avanti' }).click();
+  await expect(page.locator('.revealed-list')).toContainText('La Ventosa d’Oro');
+  await page.getByRole('button', { name: 'Indietro' }).click();
+  await expect(page.locator('.revealed-list')).toHaveCount(0);
+  for (let i = 0; i < 19; i++) await page.getByRole('button', { name: 'Avanti' }).click();
+  await expect(page.locator('.verdict-now')).toContainText('Registro dei Timbri');
+  await expect(page.getByRole('button', { name: 'Avanti' })).toHaveCount(0);
+  // At the end everyone gets a private certificate.
+  await expect(voter.locator('.certificate')).toContainText('ATTESTATO');
+  await expect(speaker.locator('.certificate')).toContainText('Il popolo ti ha timbrato');
 });
 test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -93,7 +95,7 @@ test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await expect(page.locator('.req-name', { hasText: 'Paolo Demo' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
-test('GM with a name votes from the regia and sees the provisional award rules', async ({ page, context }) => {
+test('GM with a name stamps from the regia and can skip the review', async ({ page, context }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Accesso riservato alla regia' }).click();
   await page.getByLabel('PIN della regia').fill('0000');
@@ -106,23 +108,17 @@ test('GM with a name votes from the regia and sees the provisional award rules',
   await page.getByRole('button', { name: 'Passa al question time' }).click();
   await page.getByRole('button', { name: 'Apri il voto per Sara' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  for (const label of ['Credibilità', 'Esposizione', 'Le prove'])
-    await page.getByRole('group', { name: label, exact: true }).getByRole('button', { name: '7', exact: true }).click();
-  await page.getByRole('button', { name: 'No, troppo sensata.' }).click();
-  await page.getByRole('button', { name: 'Consegna il verdetto' }).click();
-  await expect(page.getByText('1 voti ricevuti')).toBeVisible();
+  await page.getByRole('button', { name: /^CHE TEORIA!/ }).click();
+  await page.getByRole('button', { name: 'Consegna il fascicolo' }).click();
+  await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
   await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
   await page.getByRole('button', { name: 'Il verdetto', exact: true }).click();
-  await page.getByLabel('Premi massimi per persona').selectOption('1');
-  await page.getByRole('button', { name: 'Anticipa Supercazzola' }).click();
-  await expect(page.locator('.order-list li').nth(2)).toContainText('SUPERCAZZOLA');
-  await page.getByRole('button', { name: 'Inizia il reveal' }).click();
+  await expect(page.getByText('LE REGOLE DEL VERDETTO')).toBeVisible();
+  await page.getByRole('button', { name: 'Salta la revisione e vai al verdetto' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  for (const label of ['Svela il 3° posto', 'Svela il 2° posto', 'Svela il vincitore'])
-    await page.getByRole('button', { name: label }).click();
-  await expect(page.getByText('IL PREMIO VA A').first()).toBeVisible();
-  await expect(page.locator('.award-settings')).toHaveCount(0);
+  await expect(page.locator('.verdict-next')).toContainText('Prossimo');
+  await expect(page.locator('.rules-summary')).toHaveCount(0);
 });
 test('a friend registers on one screen, then adds the Slides link before the deadline', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });

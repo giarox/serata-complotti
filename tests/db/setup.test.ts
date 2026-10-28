@@ -53,13 +53,16 @@ const act = (uid: string, command: object) =>
 type Snap = {
   phase: string;
   activeRoundId: string | null;
-  votes: { voterId: string; credibility: number }[];
+  votes: { voterId: string; roundId: string; idea: boolean; qa: boolean }[];
+  reviewed?: string[];
+  rounds: { id: string }[];
   voteCount: number;
   claimed?: string[];
   settings: { spectatorsVote: boolean; maxAwards: number | null };
 };
 const snap = (uid: string) => as<Snap>(uid, 'select public.party_snapshot() as r');
-const ballot = { credibility: 8, delivery: 7, research: 6, supercazzola: true };
+const ballot = { idea: true, ricerca: true, performance: false, qa: false };
+const none = { idea: false, ricerca: false, performance: false, qa: false };
 
 beforeAll(async () => {
   hashes = await hashPasswords(normGuest(GUEST), GM);
@@ -124,7 +127,7 @@ describe('access', () => {
         type: 'settings',
         settings: {
           maxAwards: 1,
-          awardOrder: ['credibility', 'delivery', 'research', 'supercazzola'],
+          awardOrder: ['idea', 'ricerca', 'performance', 'qa'],
           spectatorsVote: true,
         },
       },
@@ -137,26 +140,22 @@ describe('ballots', () => {
   it('stores one editable ballot per person, built from the server-side identity', async () => {
     const roundId = await openVoting();
     await act(giulia, { type: 'vote', roundId, ballot: { ...ballot, voterId: 'marco', roundId: 'altro' } });
-    await act(giulia, { type: 'vote', roundId, ballot: { ...ballot, credibility: 3 } });
+    await act(giulia, { type: 'vote', roundId, ballot: { ...none, qa: true } });
     const mine = await snap(giulia);
     expect(mine.votes).toHaveLength(1);
-    expect(mine.votes[0]).toMatchObject({ voterId: 'giulia', credibility: 3 });
+    expect(mine.votes[0]).toMatchObject({ voterId: 'giulia', qa: true, idea: false });
     expect(mine.voteCount).toBe(1);
   });
 
-  it('rejects self-votes and invalid or incomplete ballots', async () => {
+  it('rejects self-stamps, a third stamp and malformed ballots; accepts zero stamps', async () => {
     const roundId = await openVoting();
-    await expect(act(paolo, { type: 'vote', roundId, ballot })).rejects.toThrow('tuo intervento');
-    for (const bad of [
-      { ...ballot, credibility: 11 },
-      { ...ballot, credibility: -1 },
-      { ...ballot, credibility: 3.5 },
-      { ...ballot, credibility: '8' },
-      { credibility: 1, delivery: 1, research: 1 },
-      { ...ballot, supercazzola: 'sì' },
-    ])
+    await expect(act(paolo, { type: 'vote', roundId, ballot })).rejects.toThrow('tuo fascicolo');
+    await expect(act(giulia, { type: 'vote', roundId, ballot: { ...ballot, qa: true } })).rejects.toThrow('Due timbri');
+    for (const bad of [{ ...ballot, idea: 'sì' }, { ...ballot, idea: 1 }, { idea: true }, null])
       await expect(act(giulia, { type: 'vote', roundId, ballot: bad })).rejects.toThrow();
     expect((await snap(gm)).voteCount).toBe(0);
+    await act(giulia, { type: 'vote', roundId, ballot: none });
+    expect((await snap(gm)).voteCount).toBe(1);
   });
 
   it('rejects ballots before opening, after closing, and for another round', async () => {
@@ -191,6 +190,43 @@ describe('ballots', () => {
   });
 });
 
+describe('review', () => {
+  async function twoTalks() {
+    const first = await openVoting('paolo');
+    await act(giulia, { type: 'vote', roundId: first, ballot });
+    await act(gm, { type: 'phase', phase: 'waiting', roundId: first });
+    const second = await openVoting('marco');
+    await act(gm, { type: 'phase', phase: 'waiting', roundId: second });
+    return [first, second];
+  }
+  it('lets everyone move stamps on any finished talk, confirm, and keeps ballots private', async () => {
+    const [first, second] = await twoTalks();
+    await expect(act(giulia, { type: 'review' })).rejects.toThrow('Solo la regia');
+    await act(gm, { type: 'review' });
+    await act(giulia, { type: 'vote', roundId: first, ballot: { ...none, qa: true } });
+    await act(giulia, { type: 'vote', roundId: second, ballot: none }); // a ballot missed during the evening
+    await expect(act(marco, { type: 'vote', roundId: second, ballot })).rejects.toThrow('tuo fascicolo');
+    await act(giulia, { type: 'confirmReview' });
+    await act(giulia, { type: 'confirmReview' });
+    expect((await snap(gm)).reviewed).toEqual(['giulia']);
+    expect((await snap(giulia)).votes).toHaveLength(2);
+    expect((await snap(marco)).votes).toEqual([]);
+    expect((await snap(gm)).votes).toEqual([]);
+  });
+  it('locks every ballot once the verdict starts; stepping back reopens the review', async () => {
+    const [first] = await twoTalks();
+    await act(gm, { type: 'review' });
+    await act(gm, { type: 'reveal' });
+    await expect(act(giulia, { type: 'vote', roundId: first, ballot: none })).rejects.toThrow('chiusa');
+    await expect(act(giulia, { type: 'confirmReview' })).rejects.toThrow('chiusa');
+    for (let i = 0; i < 21; i++) await act(gm, { type: 'nextAward' });
+    await expect(act(gm, { type: 'nextAward' })).rejects.toThrow();
+    await act(gm, { type: 'back' });
+    expect((await snap(gm)).phase).toBe('review');
+    await act(giulia, { type: 'vote', roundId: first, ballot: none });
+  });
+});
+
 describe('GM as participant, spectators, settings and releasing a name', () => {
   it('lets a GM with a name vote and see only their own ballot', async () => {
     const director = await user();
@@ -201,30 +237,33 @@ describe('GM as participant, spectators, settings and releasing a name', () => {
     expect((await snap(director)).votes.map((v) => v.voterId)).toEqual(['gianluca']);
   });
 
-  it('lets spectators vote only when the setting allows it', async () => {
-    const guest = await user();
-    await join(guest, GUEST, 'pubblico');
-    let roundId = await openVoting();
-    await act(guest, { type: 'vote', roundId, ballot });
-    await act(gm, { type: 'phase', phase: 'waiting', roundId });
-    await act(gm, {
-      type: 'settings',
-      settings: {
-        maxAwards: null,
-        awardOrder: ['credibility', 'delivery', 'research', 'supercazzola'],
-        spectatorsVote: false,
-      },
-    });
-    roundId = await openVoting('marco');
-    await expect(act(guest, { type: 'vote', roundId, ballot })).rejects.toThrow('pubblico non vota');
+  it('lets witnesses and co-speakers vote from their own phone, never on their own talk', async () => {
+    const edit = async (id: string, partner: string, partnerName: string) => {
+      const p = (
+        await as<{ participants: { id: string }[] }>(gm, 'select public.party_snapshot() as r')
+      ).participants.find((x) => x.id === id)!;
+      await act(gm, { type: 'participant', participant: { ...p, partner, partnerName } });
+    };
+    await edit('paolo', 'copresenter', 'Camilla');
+    await edit('giulia', 'witness', 'Ugo');
+    const names = await as<{ id: string; name: string }[]>(giulia, 'select public.party_names($1) as r', ['']);
+    expect(names.filter((n) => n.id.endsWith('+')).map((n) => n.name)).toEqual(['Camilla', 'Ugo']);
+    const [camilla, ugo] = [await user(), await user()];
+    await join(camilla, GUEST, 'paolo+');
+    await join(ugo, GUEST, 'giulia+');
+    await expect(join(await user(), GUEST, 'marco+')).rejects.toThrow('Nome non disponibile');
+    const roundId = await openVoting('paolo');
+    await expect(act(camilla, { type: 'vote', roundId, ballot })).rejects.toThrow('tuo fascicolo');
+    await act(ugo, { type: 'vote', roundId, ballot });
+    expect((await snap(ugo)).votes.map((v) => v.voterId)).toEqual(['giulia+']);
   });
 
   it('validates award settings and freezes them at the reveal', async () => {
-    const order = ['supercazzola', 'credibility', 'delivery', 'research'];
+    const order = ['qa', 'idea', 'ricerca', 'performance'];
     for (const settings of [
       { maxAwards: 0, awardOrder: order, spectatorsVote: true },
       { maxAwards: 1.5, awardOrder: order, spectatorsVote: true },
-      { maxAwards: null, awardOrder: ['credibility', 'credibility', 'delivery', 'research'], spectatorsVote: true },
+      { maxAwards: null, awardOrder: ['idea', 'idea', 'ricerca', 'qa'], spectatorsVote: true },
       { maxAwards: null, awardOrder: order, spectatorsVote: 'sì' },
     ])
       await expect(act(gm, { type: 'settings', settings })).rejects.toThrow('non valide');
@@ -455,7 +494,7 @@ describe('self-registration and own dossier', () => {
     await act(giulia, {
       type: 'vote',
       roundId,
-      ballot: { credibility: 7, delivery: 7, research: 7, supercazzola: true },
+      ballot,
     });
     await act(gm, { type: 'phase', phase: 'waiting', roundId });
     await expect(act(giulia, { type: 'remove', participantId: id })).rejects.toThrow('Solo la regia');

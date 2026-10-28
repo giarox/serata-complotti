@@ -96,6 +96,11 @@ end; $$;
 create or replace function public.party_actor() returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
  select jsonb_strip_nulls(jsonb_build_object('role',role,'participantId',person_id)) from public.party_members where user_id=auth.uid();
 $$;
+-- Who can hold a ballot: a request id, or a request id + '+' for its named witness or co-speaker.
+create or replace function public.party_is_voter(s jsonb, vid text) returns boolean language sql immutable as $$
+ select exists(select 1 from jsonb_array_elements(s->'participants') p
+  where p->>'id'=vid or (vid=(p->>'id')||'+' and p->>'partner' in ('witness','copresenter') and coalesce(trim(p->>'partnerName'),'')<>''));
+$$;
 drop function if exists public.party_names(text);
 create or replace function public.party_names(passcode text, sandbox boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
 declare st public.party_store;
@@ -107,7 +112,12 @@ begin
  if not found or length(coalesce(passcode,''))>200 or (coalesce(trim(passcode),'')<>'' and extensions.crypt(trim(passcode),st.gm_hash) is distinct from st.gm_hash) then
   perform pg_sleep(1.5); raise exception 'Password non corretta.';
  end if;
- return (select coalesce(jsonb_agg(jsonb_build_object('id',p->>'id','name',p->>'name')), '[]'::jsonb) from jsonb_array_elements(st.state->'participants') p);
+ -- Each request, plus its named witness or co-speaker (they vote from their own phone: id + '+').
+ return (select coalesce(jsonb_agg(x order by ord, k), '[]'::jsonb) from (
+   select jsonb_build_object('id',p->>'id','name',p->>'name') x, ord, 0 k from jsonb_array_elements(st.state->'participants') with ordinality t(p,ord)
+   union all
+   select jsonb_build_object('id',(p->>'id')||'+','name',p->>'partnerName','companionOf',p->>'name'), ord, 1 from jsonb_array_elements(st.state->'participants') with ordinality t(p,ord)
+    where p->>'partner' in ('witness','copresenter') and coalesce(trim(p->>'partnerName'),'')<>'') q);
 end; $$;
 drop function if exists public.party_join(text,text,boolean);
 create or replace function public.party_join(passcode text, person_id text default null, as_gm boolean default false, sandbox boolean default false) returns jsonb language plpgsql security definer set search_path=public,extensions,pg_temp as $$
@@ -125,7 +135,7 @@ begin
  if found then return jsonb_strip_nulls(jsonb_build_object('role',existing.role,'participantId',existing.person_id)); end if;
  if not as_gm and coalesce(person_id,'')='' then raise exception 'Scegli il tuo nome.'; end if;
  if coalesce(person_id,'')<>'' then
-  if not exists(select 1 from jsonb_array_elements(st.state->'participants') p where p->>'id'=person_id) then raise exception 'Nome non disponibile.'; end if;
+  if not public.party_is_voter(st.state, person_id) then raise exception 'Nome non disponibile.'; end if;
   if exists(select 1 from public.party_members m where m.person_id=party_join.person_id) then raise exception 'Nome già in uso. Chiedi alla regia di liberarlo.'; end if;
  end if;
  insert into public.party_members(user_id,role,person_id,sandbox) values(auth.uid(),case when as_gm then 'gm' else 'guest' end,nullif(person_id,''),party_join.sandbox);
@@ -162,15 +172,15 @@ begin
  if length(nm)<2 or length(nm)>40 then raise exception 'Scrivi il tuo nome (da 2 a 40 caratteri).'; end if;
 end; $$;
 create or replace function public.party_action(command jsonb) returns void language plpgsql security definer set search_path=public,pg_temp as $$
-declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb; pid text; nm text; md text; prev jsonb; ev boolean;
+declare s jsonb; actor jsonb; kind text; phase text; rid text; r jsonb; p jsonb; ballot jsonb; votes jsonb; rounds jsonb; field text; cfg jsonb; voter jsonb; pid text; nm text; md text; prev jsonb; ev boolean; tr jsonb; n integer;
 begin
  actor:=public.party_actor(); if actor is null then raise exception 'Entra nel congresso.'; end if;
  ev:=public.party_event();
  select state into s from public.party_store where id=ev for update;
  kind:=command->>'type'; phase:=s->>'phase'; rid:=s->>'activeRoundId';
  select v into r from jsonb_array_elements(s->'rounds') v where v->>'id'=rid;
- if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset','addBots','botVotes','slide') then raise exception 'Operazione non riconosciuta.'; end if;
- if kind not in ('vote','participant','slide') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
+ if kind is null or kind not in ('start','phase','cancel','vote','reveal','nextAward','participant','release','remove','settings','back','reset','addBots','botVotes','slide','review','confirmReview','prevAward') then raise exception 'Operazione non riconosciuta.'; end if;
+ if kind not in ('vote','participant','slide','confirmReview') and actor->>'role'<>'gm' then raise exception 'Solo la regia può fare questa operazione.'; end if;
  if kind='slide' then
   if phase<>'presenting' or r is null then raise exception 'Le slide si cambiano solo durante la presentazione.'; end if;
   if actor->>'role'<>'gm' and actor->>'participantId' is distinct from r->>'presenterId' then raise exception 'Solo chi presenta può cambiare slide.'; end if;
@@ -200,26 +210,42 @@ begin
   select jsonb_agg(case when v->>'id'=rid then r else v end order by ord) into rounds from jsonb_array_elements(s->'rounds') with ordinality as t(v,ord);
   s:=jsonb_set(s,'{rounds}',rounds);
  elsif kind='vote' then
-  if actor->>'participantId' is null then raise exception 'Scegli il tuo nome per votare.'; end if;
-  select v into voter from jsonb_array_elements(s->'participants') v where v->>'id'=actor->>'participantId';
-  if voter is null then raise exception 'Scegli il tuo nome per votare.'; end if;
-  if phase<>'voting' or r is null or command->>'roundId' is distinct from rid or (r->>'closed')::boolean then raise exception 'Questa votazione è chiusa.'; end if;
-  if r->>'presenterId'=actor->>'participantId' then raise exception 'Non puoi votare il tuo intervento.'; end if;
-  if (voter->>'spectator')::boolean and coalesce((s->'settings'->>'spectatorsVote')::boolean,true)=false then raise exception 'In questa serata il pubblico non vota.'; end if;
+  -- Stamps: 0–2 of four, never on your own talk (co-speakers included). Filed on the open vote,
+  -- or on any finished talk during the review. Never after the verdict starts.
+  if actor->>'participantId' is null or not public.party_is_voter(s, actor->>'participantId') then raise exception 'Scegli il tuo nome per votare.'; end if;
+  if phase='voting' then
+   if r is null or command->>'roundId' is distinct from rid or (r->>'closed')::boolean then raise exception 'Questa votazione è chiusa.'; end if;
+   tr:=r;
+  elsif phase='review' then
+   select v into tr from jsonb_array_elements(s->'rounds') v where v->>'id'=command->>'roundId' and (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false);
+   if tr is null then raise exception 'Questa votazione è chiusa.'; end if;
+  else raise exception 'Questa votazione è chiusa.';
+  end if;
+  if tr->>'presenterId'=regexp_replace(actor->>'participantId','[+]$','') then raise exception 'Non puoi timbrare il tuo fascicolo.'; end if;
   ballot:=command->'ballot';
-  if ballot is null or jsonb_typeof(ballot)<>'object' then raise exception 'Completa tutti i voti.'; end if;
-  foreach field in array array['credibility','delivery','research'] loop
-   if jsonb_typeof(ballot->field) is distinct from 'number' then raise exception 'Inserisci tre voti interi da 0 a 10.'; end if;
-   if (ballot->>field)::numeric<0 or (ballot->>field)::numeric>10 or trunc((ballot->>field)::numeric)<>(ballot->>field)::numeric then raise exception 'Inserisci tre voti interi da 0 a 10.'; end if;
+  if ballot is null or jsonb_typeof(ballot)<>'object' then raise exception 'Scheda non valida.'; end if;
+  n:=0;
+  foreach field in array array['idea','ricerca','performance','qa'] loop
+   if jsonb_typeof(ballot->field) is distinct from 'boolean' then raise exception 'Scheda non valida.'; end if;
+   if (ballot->>field)::boolean then n:=n+1; end if;
   end loop;
-  if jsonb_typeof(ballot->'supercazzola') is distinct from 'boolean' then raise exception 'Scegli sì o no per la Supercazzola.'; end if;
+  if n>2 then raise exception 'Due timbri al massimo. Toglierne uno per cambiare idea.'; end if;
   -- Construct only allowed fields; never accept client-supplied voter or round identities.
-  ballot:=jsonb_build_object('credibility',ballot->'credibility','delivery',ballot->'delivery','research',ballot->'research','supercazzola',ballot->'supercazzola','roundId',rid,'voterId',actor->>'participantId');
-  select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where not(v->>'roundId'=rid and v->>'voterId'=actor->>'participantId');
+  ballot:=jsonb_build_object('idea',ballot->'idea','ricerca',ballot->'ricerca','performance',ballot->'performance','qa',ballot->'qa','roundId',tr->>'id','voterId',actor->>'participantId');
+  select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v where not(v->>'roundId'=tr->>'id' and v->>'voterId'=actor->>'participantId');
   s:=jsonb_set(s,'{votes}',votes||jsonb_build_array(ballot));
+ elsif kind='confirmReview' then
+  if phase<>'review' then raise exception 'La revisione è chiusa.'; end if;
+  if actor->>'participantId' is null or not public.party_is_voter(s, actor->>'participantId') then raise exception 'Scegli il tuo nome per votare.'; end if;
+  if not coalesce(s->'reviewed','[]'::jsonb) ? (actor->>'participantId') then
+   s:=jsonb_set(s,'{reviewed}',coalesce(s->'reviewed','[]'::jsonb)||to_jsonb(actor->>'participantId'));
+  end if;
+ elsif kind='review' then
+  if phase<>'waiting' or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
+  s:=s||'{"phase":"review","reviewed":[]}'::jsonb;
  elsif kind='reset' then
   -- GM only: start the evening over. With everyone=true the register is emptied and guest phones unlinked.
-  s:=s||jsonb_build_object('rounds','[]'::jsonb,'votes','[]'::jsonb,'activeRoundId',null,'phase','waiting','revealed',0);
+  s:=s||jsonb_build_object('rounds','[]'::jsonb,'votes','[]'::jsonb,'activeRoundId',null,'phase','waiting','revealed',0,'reviewed','[]'::jsonb);
   if coalesce((command->>'everyone')::boolean,false) then
    s:=jsonb_set(s,'{participants}','[]'::jsonb);
    delete from public.party_members where role='guest' and sandbox = not ev;
@@ -235,20 +261,32 @@ begin
    into rounds from generate_series(1,least(greatest(coalesce((command->>'n')::int,4),1),8)) g;
   s:=jsonb_set(s,'{participants}',(s->'participants')||rounds);
  elsif kind='botVotes' then
-  if phase<>'voting' or r is null then raise exception 'Apri prima una votazione.'; end if;
+  -- Fake testers press 0–2 random stamps: on the open vote, or on every finished talk during the review (and confirm).
+  if not ((phase='voting' and r is not null) or phase='review') then raise exception 'Apri prima una votazione o la revisione.'; end if;
+  select coalesce(jsonb_agg(v),'[]'::jsonb) into rounds from jsonb_array_elements(s->'rounds') v
+   where case when phase='voting' then v->>'id'=rid else (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false) end;
   select coalesce(jsonb_agg(v),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') v
-   where not (v->>'roundId'=rid and exists(select 1 from jsonb_array_elements(s->'participants') b where b->>'id'=v->>'voterId' and coalesce((b->>'bot')::boolean,false)));
-  select votes||coalesce(jsonb_agg(jsonb_build_object('credibility',floor(random()*11)::int,'delivery',floor(random()*11)::int,'research',floor(random()*11)::int,
-    'supercazzola',random()<0.5,'roundId',rid,'voterId',b->>'id')),'[]'::jsonb)
-   into votes from jsonb_array_elements(s->'participants') b where coalesce((b->>'bot')::boolean,false) and b->>'id'<>r->>'presenterId';
+   where not (exists(select 1 from jsonb_array_elements(rounds) x where x->>'id'=v->>'roundId')
+     and exists(select 1 from jsonb_array_elements(s->'participants') b where b->>'id'=v->>'voterId' and coalesce((b->>'bot')::boolean,false)));
+  select votes||coalesce(jsonb_agg(jsonb_build_object('idea',k=1 or k2=1,'ricerca',k=2 or k2=2,'performance',k=3 or k2=3,'qa',k=4 or k2=4,'roundId',x->>'id','voterId',b->>'id')),'[]'::jsonb)
+   into votes from jsonb_array_elements(rounds) x, jsonb_array_elements(s->'participants') b,
+   lateral (select floor(random()*6)::int k, floor(random()*6)::int k2) z
+   where coalesce((b->>'bot')::boolean,false) and b->>'id'<>x->>'presenterId';
   s:=jsonb_set(s,'{votes}',votes);
+  if phase='review' then
+   select coalesce(jsonb_agg(distinct e),'[]'::jsonb) into prev from (
+    select jsonb_array_elements(coalesce(s->'reviewed','[]'::jsonb)) e
+    union select to_jsonb(b->>'id') from jsonb_array_elements(s->'participants') b where coalesce((b->>'bot')::boolean,false)) q;
+   s:=jsonb_set(s,'{reviewed}',prev);
+  end if;
  elsif kind='back' then
   if phase='questions' then
    s:=jsonb_set(s,'{phase}','"presenting"'::jsonb);
    select v into p from jsonb_array_elements(s->'participants') v where v->>'id'=r->>'presenterId';
    if p->>'mode'='slides' and coalesce(p->>'deckUrl','')<>'' then perform public.party_slide_push(ev, 'open', p->>'deckUrl'); end if;
   elsif phase='voting' then s:=jsonb_set(s,'{phase}','"questions"'::jsonb);
-  elsif phase='results' then s:=s||'{"phase":"waiting","revealed":0}'::jsonb;
+  elsif phase='results' then s:=s||'{"phase":"review","revealed":0}'::jsonb; -- leaving the reveal reopens the review
+  elsif phase='review' then s:=jsonb_set(s,'{phase}','"waiting"'::jsonb);
   elsif phase='waiting' then
    select v into r from jsonb_array_elements(s->'rounds') with ordinality t(v,ord) where not coalesce((v->>'cancelled')::boolean,false) order by ord desc limit 1;
    if r is null or not coalesce((r->>'closed')::boolean,false) then raise exception 'Non c''è niente da riaprire.'; end if;
@@ -258,12 +296,16 @@ begin
   else raise exception 'Per tornare indietro dalla presentazione, annulla il turno.';
   end if;
  elsif kind='reveal' then
-  if phase<>'waiting' or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
+  -- From the review (which closes it for good) or straight from the waiting room.
+  if phase not in ('waiting','review') or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
   s:=s||'{"phase":"results","revealed":1}'::jsonb;
  elsif kind='nextAward' then
-  -- Steps per award: announce, 3rd place, 2nd place, winner; then a summary (17 steps).
-  if phase<>'results' or (s->>'revealed')::int>=17 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
+  -- 4 prizes × (open, 3rd, 2nd, 1st), interlude, Cappello × 4, Registro: 22 steps.
+  if phase<>'results' or (s->>'revealed')::int>=22 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
   s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::int+1));
+ elsif kind='prevAward' then
+  if phase<>'results' or (s->>'revealed')::int<=1 then raise exception 'Sei già all''inizio del reveal.'; end if;
+  s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::int-1));
  elsif kind='release' then
   if not exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId') then raise exception 'Nome non trovato.'; end if;
   delete from public.party_members where person_id=command->>'participantId' and role='guest';
@@ -277,7 +319,7 @@ begin
   select coalesce(jsonb_agg(v->'id'),'[]'::jsonb) into prev from jsonb_array_elements(s->'rounds') v where v->>'presenterId'=pid;
   select coalesce(jsonb_agg(v order by ord),'[]'::jsonb) into rounds from jsonb_array_elements(s->'rounds') with ordinality t(v,ord) where v->>'presenterId'<>pid;
   s:=jsonb_set(s,'{rounds}',rounds);
-  select coalesce(jsonb_agg(v order by ord),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') with ordinality t(v,ord) where v->>'voterId'<>pid and not prev ? (v->>'roundId');
+  select coalesce(jsonb_agg(v order by ord),'[]'::jsonb) into votes from jsonb_array_elements(s->'votes') with ordinality t(v,ord) where regexp_replace(v->>'voterId','[+]$','')<>pid and not prev ? (v->>'roundId');
   s:=jsonb_set(s,'{votes}',votes);
   if phase='results' and not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then
    s:=s||'{"phase":"waiting","revealed":0}'::jsonb;
@@ -291,7 +333,7 @@ begin
    or not (jsonb_typeof(cfg->'maxAwards')='null' or (jsonb_typeof(cfg->'maxAwards')='number' and (cfg->>'maxAwards')::numeric in (1,2,3,4)))
    or jsonb_typeof(cfg->'spectatorsVote') is distinct from 'boolean'
    or jsonb_typeof(cfg->'awardOrder') is distinct from 'array' or jsonb_array_length(cfg->'awardOrder')<>4
-   or (select count(distinct k) from jsonb_array_elements_text(cfg->'awardOrder') k where k in ('credibility','delivery','research','supercazzola'))<>4
+   or (select count(distinct k) from jsonb_array_elements_text(cfg->'awardOrder') k where k in ('idea','ricerca','performance','qa'))<>4
   then raise exception 'Regole dei premi non valide.'; end if;
   s:=s||jsonb_build_object('settings',jsonb_build_object('maxAwards',cfg->'maxAwards','awardOrder',cfg->'awardOrder','spectatorsVote',cfg->'spectatorsVote'));
  elsif kind='participant' then
@@ -357,7 +399,7 @@ begin
  insert into public.party_members(user_id,role,person_id,sandbox) values(auth.uid(),'guest',pid,party_register.sandbox);
  return public.party_actor();
 end; $$;
-revoke all on function public.party_actor(),public.party_event(),public.party_ensure_sandbox(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean),public.party_ready(jsonb),public.party_mask(jsonb),public.party_check_name(text),public.party_norm(text) from public,anon;
+revoke all on function public.party_actor(),public.party_event(),public.party_ensure_sandbox(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean),public.party_ready(jsonb),public.party_mask(jsonb),public.party_is_voter(jsonb,text),public.party_check_name(text),public.party_norm(text) from public,anon;
 revoke all on function public.party_event(),public.party_ensure_sandbox(),public.party_slide_push(boolean,text,text) from public,anon,authenticated;
 grant execute on function public.party_actor(),public.party_names(text,boolean),public.party_join(text,text,boolean,boolean),public.party_snapshot(),public.party_action(jsonb),public.party_register(text,text,boolean) to authenticated;
 -- Only a harmless revision number is broadcast; no scores, names or passwords.

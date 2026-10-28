@@ -232,16 +232,20 @@ export function TestLab({
         </div>
       </div>
       <p className="footnote">
-        {bots ? `${bots} tester finti in sala, già ammessi.` : 'Nessun tester finto, per ora.'} Votano a caso quando
-        glielo dici tu, durante la votazione. Li puoi anche far presentare: scegli il loro nome come un relatore
-        qualsiasi.
+        {bots ? `${bots} tester finti in sala, già ammessi.` : 'Nessun tester finto, per ora.'} Danno 0–2 timbri a caso
+        quando glielo dici tu: durante la votazione, o in revisione (dove confermano anche). Li puoi far presentare:
+        scegli il loro nome come un relatore qualsiasi.
       </p>
       <div className="result-actions">
         <Button secondary disabled={busy} onClick={() => void perform({ type: 'addBots', n: 4 })}>
           Aggiungi 4 tester finti
         </Button>
-        <Button secondary disabled={busy || s.phase !== 'voting'} onClick={() => void perform({ type: 'botVotes' })}>
-          Fai votare i tester
+        <Button
+          secondary
+          disabled={busy || (s.phase !== 'voting' && s.phase !== 'review')}
+          onClick={() => void perform({ type: 'botVotes' })}
+        >
+          {s.phase === 'review' ? 'Fai rivedere i tester' : 'Fai timbrare i tester'}
         </Button>
         <a className="button secondary" href={location.origin + location.pathname}>
           Torna alla serata vera

@@ -1,5 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import { applyAction, initialState, makeId, normalize, snapshot, type State, type Action, type Actor } from './domain';
+import {
+  applyAction,
+  initialState,
+  makeId,
+  normalize,
+  snapshot,
+  voters,
+  type State,
+  type Action,
+  type Actor,
+} from './domain';
+/** A name to pick when entering: a request, or its witness / co-speaker (companionOf = whose). */
+export type Entrant = { id: string; name: string; companionOf?: string };
 /** Demo-mode check, same normalisation as the database: guests' word ignores case and spaces. */
 const demoOk = (code: string, gm: boolean) =>
   // Local demo only: a fake PIN, never the real one. Guests need nothing.
@@ -94,10 +106,12 @@ export async function entryList(): Promise<State['participants']> {
   return []; // Names are fetched after validating the event password.
 }
 /** Both the event password and the GM password unlock the list of names. */
-export async function unlockNames(code: string, gm = false): Promise<State['participants']> {
+export async function unlockNames(code: string, gm = false): Promise<Entrant[]> {
   if (!client) {
     if (!demoOk(code, gm)) throw new Error('Password non corretta.');
-    return readDemo().participants;
+    return voters(readDemo()).map((v) =>
+      v.companion ? { id: v.id, name: v.name, companionOf: v.owner.name } : { id: v.id, name: v.name },
+    );
   }
   await entryList();
   const { data, error } = await client.rpc('party_names', { passcode: code, sandbox });

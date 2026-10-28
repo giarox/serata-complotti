@@ -7,7 +7,8 @@ export const cleanPartner = (v: unknown): Partner | null => (v === 'witness' || 
 /** A request to join: pending until the GM admits it or puts it in reserve. */
 export type Admission = 'pending' | 'admitted' | 'reserve';
 export const admissions: Admission[] = ['pending', 'admitted', 'reserve'];
-export type Phase = 'waiting' | 'presenting' | 'questions' | 'voting' | 'results';
+/** review: after the last talk, everyone can move their stamps before the verdict. */
+export type Phase = 'waiting' | 'presenting' | 'questions' | 'voting' | 'review' | 'results';
 /** How someone presents: Google Slides, paper/props/voice, or not at all. null = not decided yet. */
 export type Mode = 'slides' | 'paper' | 'none';
 export type Participant = {
@@ -35,11 +36,13 @@ export type Participant = {
   ready?: boolean;
 };
 export type Round = { id: string; presenterId: string; closed: boolean; cancelled?: boolean };
-export type Ballot = { credibility: number; delivery: number; research: number; supercazzola: boolean };
+/** The four stamps a voter can press on a talk (at most two per talk). */
+export type StampKey = 'idea' | 'ricerca' | 'performance' | 'qa';
+export type Ballot = Record<StampKey, boolean>;
 export type Vote = Ballot & { roundId: string; voterId: string };
 /** The GM may also have a participantId: then they present and vote like everyone else. */
 export type Actor = { role: 'gm' | 'guest' | 'screen'; participantId?: string };
-export type CategoryKey = keyof Ballot;
+export type CategoryKey = StampKey;
 /**
  * Award rules still to be confirmed. Defaults keep the current behaviour:
  * no cap, reveal in the order of the ballot, spectators vote.
@@ -64,6 +67,8 @@ export type State = {
   revealed: number;
   revision: number;
   settings: Settings;
+  /** Voters who confirmed their stamps during the review. */
+  reviewed?: string[];
 };
 export type Action =
   | { type: 'start'; participantId: string }
@@ -71,6 +76,10 @@ export type Action =
   | { type: 'vote'; roundId: string; ballot: Ballot }
   | { type: 'cancel'; roundId: string }
   | { type: 'reveal' }
+  /** GM: after the last talk, open the review (everyone can move their stamps). */
+  | { type: 'review' }
+  /** A voter confirms their stamps during the review (still editable until the GM closes it). */
+  | { type: 'confirmReview' }
   /** GM: one step back (questions→presentation, voting→questions, reopen the last vote, leave the reveal). */
   | { type: 'back' }
   /** Test evening only: fake testers who vote on command. */
@@ -81,61 +90,70 @@ export type Action =
   /** GM: start the evening over. everyone=false keeps the requests; true empties the register too. */
   | { type: 'reset'; everyone: boolean }
   | { type: 'nextAward' }
+  /** GM: one reveal step back on the projector. */
+  | { type: 'prevAward' }
   | { type: 'participant'; participant: Participant }
   | { type: 'register'; id: string; name: string }
   | { type: 'release'; participantId: string }
   /** GM only: delete a person with their turns and votes. */
   | { type: 'remove'; participantId: string }
   | { type: 'settings'; settings: Settings };
-export const categories = [
-  {
-    key: 'credibility',
-    title: 'MA SAI CHE…',
-    label: 'Credibilità',
-    description: 'Quanto ti ha fatto dubitare di tutto? Anche del tuo frigorifero?',
-  },
-  {
-    key: 'delivery',
-    title: 'NON SONO UN ESPERTO, MA…',
-    label: 'Esposizione',
-    description: 'Quanto ti ha tenuto incollato? Più di un video da 3 ore su YouTube?',
-  },
-  {
-    key: 'research',
-    title: 'HO FATTO LE MIE RICERCHE',
-    label: 'Le prove',
-    description: 'Quanto erano approfondite le sue ricerche? (Il cugino non vale come fonte.)',
-  },
-  {
-    key: 'supercazzola',
-    title: 'SUPERCAZZOLA',
-    label: 'Supercazzola',
-    description: 'La risposta al question time era una supercazzola come se fosse antani?',
-  },
-] as const;
 /**
- * The reveal goes one step at a time on the projector. For each award: announce it, 3rd place, 2nd place,
- * the winner (with confetti). After the fourth award, a summary. `revealed` counts those steps (1…17).
+ * The stamps: what you judge is plain on the ballot; the irony lives in the prize names and the reveal.
+ * Ink colours differ (and the name is always written), so colour never carries the meaning alone.
  */
-export const REVEAL_STEPS = 17;
-/** How many awards have their winner revealed (phones and regia only show these). */
-export const openAwards = (s: Pick<State, 'phase' | 'revealed'>) =>
-  s.phase === 'results' ? Math.min(4, Math.floor(s.revealed / 4)) : 0;
-/**
- * What the projector shows now: the announcement of award n (0-based), its podium with `shown` places
- * revealed (1 = third, 2 = third and second, 3 = everyone), or the summary.
- */
-export function revealMoment(
-  s: Pick<State, 'phase' | 'revealed'>,
-): { kind: 'tease'; index: number } | { kind: 'award'; index: number; shown: 1 | 2 | 3 } | { kind: 'summary' } | null {
-  if (s.phase !== 'results' || s.revealed < 1) return null;
-  if (s.revealed >= REVEAL_STEPS) return { kind: 'summary' };
-  const index = Math.floor((s.revealed - 1) / 4),
-    sub = (s.revealed - 1) % 4;
-  return sub === 0 ? { kind: 'tease', index } : { kind: 'award', index, shown: sub as 1 | 2 | 3 };
-}
-export const categoryKeys: CategoryKey[] = categories.map((c) => c.key);
-export const category = (key: CategoryKey) => categories.find((c) => c.key === key)!;
+export const stamps = [
+  {
+    key: 'idea',
+    title: 'CHE TEORIA!',
+    line: 'La teoria in sé, scelta o inventata, a prescindere da come è stata presentata.',
+    prize: 'Premio Illuminato',
+    reason: 'per aver avuto l’illuminazione',
+    ink: '#c0392b',
+  },
+  {
+    key: 'ricerca',
+    title: 'HA FATTO I COMPITI',
+    line: 'Struttura, prove, ricerche: ci si è impegnato davvero.',
+    prize: 'Il Faldone d’Oro',
+    reason: 'per il fascicolo più pesante del Congresso',
+    ink: '#2c5f9e',
+  },
+  {
+    key: 'performance',
+    title: 'VENDEREBBE GHIACCIO AI PINGUINI',
+    line: 'Come l’ha raccontata, a prescindere dal tema.',
+    prize: 'Il Pifferaio Magico',
+    reason: 'ci avrebbe portati ovunque',
+    ink: '#2e7d4f',
+  },
+  {
+    key: 'qa',
+    title: 'SI È ARRAMPICATO SUGLI SPECCHI',
+    line: 'Come se l’è cavata alle domande.',
+    prize: 'La Ventosa d’Oro',
+    reason: 'aderenza totale anche su superfici lisce',
+    ink: '#7b3fa0',
+  },
+] as const satisfies readonly {
+  key: StampKey;
+  title: string;
+  line: string;
+  prize: string;
+  reason: string;
+  ink: string;
+}[];
+export const stampKeys: StampKey[] = stamps.map((c) => c.key);
+export const stamp = (key: StampKey) => stamps.find((c) => c.key === key)!;
+/** Kept for older code paths: the categories are the stamps. */
+export const categories = stamps;
+export const categoryKeys = stampKeys;
+export const category = stamp;
+export const emptyBallot = (): Ballot => ({ idea: false, ricerca: false, performance: false, qa: false });
+export const stampCount = (b: Partial<Ballot>) => stampKeys.filter((k) => b[k] === true).length;
+export const MAX_STAMPS = 2;
+/** Reveal steps: 4 prizes × (open, 3rd, 2nd, 1st), an interlude, the Cappello × 4, the Registro. */
+export const REVEAL_STEPS = 22;
 export const defaultSettings = (): Settings => ({
   maxAwards: null,
   awardOrder: [...categoryKeys],
@@ -146,6 +164,7 @@ export const phaseNames: Record<Phase, string> = {
   presenting: 'Presentazione',
   questions: 'Question time',
   voting: 'Votazione aperta',
+  review: 'Revisione dei fascicoli',
   results: 'Il verdetto',
 };
 export const modes: { key: Mode; label: string; short: string; hint: string }[] = [
@@ -238,14 +257,10 @@ export function normalize(s: State): State {
     settings: { ...defaultSettings(), ...(s.settings ?? {}) },
   };
 }
+/** Four yes/no stamps, at most two pressed. Zero is a valid ballot ("seen it, nothing to stamp"). */
 export function validBallot(b: Ballot) {
   return (
-    ['credibility', 'delivery', 'research'].every(
-      (k) =>
-        Number.isInteger(b[k as keyof Ballot]) &&
-        Number(b[k as keyof Ballot]) >= 0 &&
-        Number(b[k as keyof Ballot]) <= 10,
-    ) && typeof b.supercazzola === 'boolean'
+    !!b && typeof b === 'object' && stampKeys.every((k) => typeof b[k] === 'boolean') && stampCount(b) <= MAX_STAMPS
   );
 }
 export function validSettings(x: Settings) {
@@ -257,12 +272,34 @@ export function validSettings(x: Settings) {
     typeof x.spectatorsVote === 'boolean'
   );
 }
-/** Why this participant cannot vote in the current round, or null if they can. */
-export function voteBlocker(s: State, participantId: string | undefined): string | null {
-  const me = s.participants.find((p) => p.id === participantId);
-  if (!me) return 'Scegli il tuo nome per votare.';
-  if (activeRound(s)?.presenterId === me.id) return 'Non puoi votare il tuo intervento.';
-  if (me.spectator && !s.settings.spectatorsVote) return 'In questa serata il pubblico non vota.';
+/** Companions (a witness or a co-speaker) vote from their own phone: their voter id is the request id + "+". */
+export const COMPANION = '+';
+export const ownerOf = (voterId: string) => (voterId.endsWith(COMPANION) ? voterId.slice(0, -1) : voterId);
+export type Voter = { id: string; name: string; owner: Participant; companion: boolean };
+/** Everyone who can hold a ballot: each request, plus its named witness or co-speaker. */
+export function voters(s: State): Voter[] {
+  return s.participants.flatMap((p) => {
+    const me: Voter = { id: p.id, name: p.name, owner: p, companion: false };
+    return p.partner && (p.partnerName ?? '').trim()
+      ? [me, { id: p.id + COMPANION, name: p.partnerName!, owner: p, companion: true }]
+      : [me];
+  });
+}
+export const voterOf = (s: State, id: string | undefined) => (id ? voters(s).find((v) => v.id === id) : undefined);
+/** The round a ballot may be filed for right now: the open vote, or any finished talk during the review. */
+export function ballotRound(s: State, roundId: string | null | undefined): Round | undefined {
+  if (s.phase === 'voting') {
+    const r = activeRound(s);
+    return r && !r.closed && r.id === roundId ? r : undefined;
+  }
+  if (s.phase === 'review') return s.rounds.find((r) => r.id === roundId && r.closed && !r.cancelled);
+  return undefined;
+}
+/** Why this voter cannot stamp this round (the current one by default), or null if they can. */
+export function voteBlocker(s: State, voterId: string | undefined, roundId = s.activeRoundId): string | null {
+  if (!voterOf(s, voterId)) return 'Scegli il tuo nome per votare.';
+  const r = s.rounds.find((x) => x.id === roundId);
+  if (r && ownerOf(voterId!) === r.presenterId) return 'Non puoi timbrare il tuo fascicolo.';
   return null;
 }
 export function initialState(): State {
@@ -336,6 +373,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
   const s = normalize(structuredClone(source));
   const guestAllowed =
     action.type === 'vote' ||
+    action.type === 'confirmReview' ||
     action.type === 'register' ||
     action.type === 'slide' ||
     (action.type === 'participant' && action.participant.id === actor.participantId);
@@ -370,18 +408,33 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       }
     }
   } else if (action.type === 'vote') {
-    const round = activeRound(s);
-    if (actor.role === 'screen' || !actor.participantId || !s.participants.some((p) => p.id === actor.participantId))
-      throw new Error('Scegli il tuo nome per votare.');
-    if (s.phase !== 'voting' || !round || round.closed || round.id !== action.roundId)
-      throw new Error('Questa votazione è chiusa.');
-    const blocker = voteBlocker(s, actor.participantId);
+    if (actor.role === 'screen' || !voterOf(s, actor.participantId)) throw new Error('Scegli il tuo nome per votare.');
+    const round = ballotRound(s, action.roundId);
+    if (!round) throw new Error('Questa votazione è chiusa.');
+    const blocker = voteBlocker(s, actor.participantId, round.id);
     if (blocker) throw new Error(blocker);
-    if (!validBallot(action.ballot)) throw new Error('Completa tutti i voti: tre numeri interi da 0 a 10 e sì/no.');
-    const vote = { ...action.ballot, roundId: round.id, voterId: actor.participantId };
+    if (!validBallot(action.ballot)) throw new Error('Due timbri al massimo. Toglierne uno per cambiare idea.');
+    const b = action.ballot;
+    const vote: Vote = {
+      idea: b.idea,
+      ricerca: b.ricerca,
+      performance: b.performance,
+      qa: b.qa,
+      roundId: round.id,
+      voterId: actor.participantId!,
+    };
     const i = s.votes.findIndex((v) => v.roundId === vote.roundId && v.voterId === vote.voterId);
     if (i >= 0) s.votes[i] = vote;
     else s.votes.push(vote);
+  } else if (action.type === 'confirmReview') {
+    if (s.phase !== 'review') throw new Error('La revisione è chiusa.');
+    if (!voterOf(s, actor.participantId)) throw new Error('Scegli il tuo nome per votare.');
+    s.reviewed = [...new Set([...(s.reviewed ?? []), actor.participantId!])];
+  } else if (action.type === 'review') {
+    if (s.phase !== 'waiting' || !s.rounds.some((r) => r.closed && !r.cancelled))
+      throw new Error('Completa almeno un turno e chiudi il voto.');
+    s.phase = 'review';
+    s.reviewed = [];
   } else if (action.type === 'slide') {
     const round = activeRound(s);
     if (s.phase !== 'presenting' || !round) throw new Error('Le slide si cambiano solo durante la presentazione.');
@@ -416,37 +469,42 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
         bot: true,
       });
   } else if (action.type === 'botVotes') {
-    const round = activeRound(s);
-    if (s.phase !== 'voting' || !round) throw new Error('Apri prima una votazione.');
-    const bots = s.participants.filter((p) => p.bot && p.id !== round.presenterId);
-    const ids = new Set(bots.map((b) => b.id));
-    const n = () => Math.floor(Math.random() * 11);
-    s.votes = s.votes
-      .filter((v) => !(v.roundId === round.id && ids.has(v.voterId)))
-      .concat(
-        bots.map((b) => ({
-          roundId: round.id,
-          voterId: b.id,
-          credibility: n(),
-          delivery: n(),
-          research: n(),
-          supercazzola: Math.random() < 0.5,
-        })),
-      );
+    // Fake testers press 0–2 random stamps: on the open vote, or on every talk during the review (and confirm).
+    const open = activeRound(s);
+    const rounds =
+      s.phase === 'voting' && open
+        ? [open]
+        : s.phase === 'review'
+          ? s.rounds.filter((r) => r.closed && !r.cancelled)
+          : null;
+    if (!rounds) throw new Error('Apri prima una votazione o la revisione.');
+    const bots = voters(s).filter((v) => v.owner.bot && !v.companion);
+    for (const r of rounds)
+      for (const b of bots) {
+        if (ownerOf(b.id) === r.presenterId) continue;
+        const keys = [...stampKeys].sort(() => Math.random() - 0.5).slice(0, Math.floor(Math.random() * 3));
+        const vote: Vote = { ...emptyBallot(), roundId: r.id, voterId: b.id };
+        for (const k of keys) vote[k] = true;
+        s.votes = s.votes.filter((v) => !(v.roundId === r.id && v.voterId === b.id)).concat(vote);
+      }
+    if (s.phase === 'review') s.reviewed = [...new Set([...(s.reviewed ?? []), ...bots.map((b) => b.id)])];
   } else if (action.type === 'reset') {
     s.rounds = [];
     s.votes = [];
     s.activeRoundId = null;
     s.phase = 'waiting';
     s.revealed = 0;
+    s.reviewed = [];
     if (action.everyone) s.participants = [];
   } else if (action.type === 'back') {
     if (s.phase === 'questions') s.phase = 'presenting';
     else if (s.phase === 'voting') s.phase = 'questions';
     else if (s.phase === 'results') {
-      s.phase = 'waiting';
+      // Leaving the reveal reopens the review: stamps can move again.
+      s.phase = 'review';
       s.revealed = 0;
-    } else if (s.phase === 'waiting') {
+    } else if (s.phase === 'review') s.phase = 'waiting';
+    else if (s.phase === 'waiting') {
       const last = [...s.rounds].reverse().find((x) => !x.cancelled);
       if (!last || !last.closed) throw new Error('Non c’è niente da riaprire.');
       last.closed = false;
@@ -454,13 +512,17 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
       s.phase = 'voting';
     } else throw new Error('Per tornare indietro dalla presentazione, annulla il turno.');
   } else if (action.type === 'reveal') {
-    if (s.phase !== 'waiting' || !s.rounds.some((r) => r.closed && !r.cancelled))
+    // From the review (closing it) or straight from the waiting room (review skipped).
+    if ((s.phase !== 'waiting' && s.phase !== 'review') || !s.rounds.some((r) => r.closed && !r.cancelled))
       throw new Error('Completa almeno un turno e chiudi il voto.');
     s.phase = 'results';
     s.revealed = 1;
   } else if (action.type === 'nextAward') {
     if (s.phase !== 'results' || s.revealed >= REVEAL_STEPS) throw new Error('Non ci sono altre categorie da svelare.');
     s.revealed++;
+  } else if (action.type === 'prevAward') {
+    if (s.phase !== 'results' || s.revealed <= 1) throw new Error('Sei già all’inizio del reveal.');
+    s.revealed--;
   } else if (action.type === 'release') {
     // Membership lives in Supabase; in the browser demo there is nothing to release.
     if (!s.participants.some((p) => p.id === action.participantId)) throw new Error('Nome non trovato.');
@@ -473,7 +535,7 @@ export function applyAction(source: State, actor: Actor, action: Action): State 
     const gone = new Set(s.rounds.filter((x) => x.presenterId === action.participantId).map((x) => x.id));
     s.participants = s.participants.filter((p) => p.id !== action.participantId);
     s.rounds = s.rounds.filter((x) => !gone.has(x.id));
-    s.votes = s.votes.filter((v) => v.voterId !== action.participantId && !gone.has(v.roundId));
+    s.votes = s.votes.filter((v) => ownerOf(v.voterId) !== action.participantId && !gone.has(v.roundId));
     if (s.phase === 'results' && !s.rounds.some((x) => x.closed && !x.cancelled)) {
       s.phase = 'waiting';
       s.revealed = 0;
@@ -580,83 +642,4 @@ export function snapshot(s: State, actor: Actor): State {
         ? structuredClone(s.votes)
         : s.votes.filter((v) => actor.role !== 'screen' && !!actor.participantId && v.voterId === actor.participantId),
   };
-}
-export type Ranking = { participant: Participant; count: number; value: number | null };
-export function rankings(s: State, key: CategoryKey): Ranking[] {
-  return s.rounds
-    .filter((r) => r.closed && !r.cancelled)
-    .map((r) => {
-      const votes = s.votes.filter((v) => v.roundId === r.id);
-      return {
-        participant: s.participants.find((p) => p.id === r.presenterId)!,
-        count: votes.length,
-        value: votes.length
-          ? votes.reduce((n, v) => n + Number(v[key]), 0) / (key === 'supercazzola' ? 1 : votes.length)
-          : null,
-      };
-    })
-    .sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
-}
-export type Award = {
-  key: CategoryKey;
-  rows: Ranking[];
-  winners: Participant[];
-  value: number | null;
-  /**
-   * none: nobody eligible scored (or Supercazzola got no yes at all).
-   * clear: one top score. shared: tie, everyone tied keeps the prize (pari merito).
-   * tieBreak: tie, the prize went only to tied people without an earlier award.
-   */
-  outcome: 'none' | 'clear' | 'shared' | 'tieBreak';
-  /** People with an equal or higher score skipped because they reached the cap. */
-  capped: Participant[];
-  /** Tied people who lost the tie-break because they already had an award. */
-  passedOver: Participant[];
-};
-/**
- * Assigns the four awards in reveal order. Averages are compared at full precision.
- * Tie rule from the brief: among tied people, those without an earlier award win;
- * if all or none of them already have one, the prize is shared.
- */
-export function awards(s: State): Award[] {
-  const { maxAwards, awardOrder } = normalize(s).settings;
-  const won = new Map<string, number>();
-  const wins = (id: string) => won.get(id) ?? 0;
-  return awardOrder.map((key) => {
-    const rows = rankings(s, key);
-    const scored = rows.filter((r) => r.value !== null && !(key === 'supercazzola' && r.value === 0));
-    const eligible = scored.filter((r) => maxAwards === null || wins(r.participant.id) < maxAwards);
-    const top = eligible.length ? eligible[0].value! : null;
-    const capped = scored
-      .filter((r) => !eligible.includes(r) && (top === null || r.value! >= top))
-      .map((r) => r.participant);
-    if (top === null) return { key, rows, winners: [], value: null, outcome: 'none', capped, passedOver: [] };
-    const tied = eligible.filter((r) => r.value === top).map((r) => r.participant);
-    const fresh = tied.filter((p) => wins(p.id) === 0);
-    const winners = fresh.length > 0 && fresh.length < tied.length ? fresh : tied;
-    for (const w of winners) won.set(w.id, wins(w.id) + 1);
-    return {
-      key,
-      rows,
-      winners,
-      value: top,
-      outcome: tied.length === 1 ? 'clear' : winners.length < tied.length ? 'tieBreak' : 'shared',
-      capped,
-      passedOver: tied.filter((p) => !winners.includes(p)),
-    };
-  });
-}
-export type Place = { place: 2 | 3; people: Participant[]; value: number };
-/** Second and third place of an award (ties share the step), after the winners. */
-export function runnersUp(a: Award): Place[] {
-  const taken = new Set(a.winners.map((p) => p.id));
-  const places: Place[] = [];
-  for (const r of a.rows) {
-    if (r.value === null || (a.key === 'supercazzola' && r.value === 0) || taken.has(r.participant.id)) continue;
-    const same = places.find((p) => p.value === r.value);
-    if (same) same.people.push(r.participant);
-    else if (places.length < 2)
-      places.push({ place: (places.length + 2) as 2 | 3, people: [r.participant], value: r.value });
-  }
-  return places;
 }
