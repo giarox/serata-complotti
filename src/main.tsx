@@ -1409,7 +1409,7 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
       {(a.winners.length > 0 || !done) && (
         <div className="pj-podium-steps">
           {step(second, 2)}
-          <div className={'pj-step pj-step-1' + (done ? ' open' : ' sealed')}>
+          <div className={'pj-step pj-step-1' + (done ? ' open lit' : ' sealed')}>
             <b>1°</b>
           </div>
           {step(third, 3)}
