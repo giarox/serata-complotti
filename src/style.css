@@ -7360,3 +7360,74 @@ label,
 .pj-vote .pj-stamp-card > span:nth-child(2) {
   margin-top: 0.6vh;
 }
+/* Cappello: the winner's placements on the four podiums */
+.pj-medals {
+  display: flex;
+  justify-content: center;
+  gap: 3vw;
+  margin-top: 2vh;
+}
+.pj-medals ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1vh;
+  justify-items: start;
+}
+.pj-medals li {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+}
+.pj-medals b {
+  font-family: var(--type);
+  font-weight: 400;
+  font-size: clamp(16px, min(1.8vw, 3.2vh), 34px);
+  color: var(--brass-hi);
+  min-width: 2.2em;
+}
+.pj-medals .ink-stamp {
+  font-size: clamp(11px, min(1.1vw, 2vh), 22px);
+}
+.pj-medals-who {
+  font-family: var(--type);
+  font-size: clamp(13px, min(1.2vw, 2.2vh), 22px);
+  color: var(--bone);
+}
+.pj-medals ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.2vh 1.6vw;
+  max-width: min(1300px, 70vw);
+}
+.pj-medals li {
+  gap: 0.5vw;
+}
+.pj-medals b {
+  min-width: 0;
+}
+.pj-medals-who {
+  width: 100%;
+  justify-content: center;
+}
+.pj-award.done.cappello .pj-sub {
+  margin-top: 0.6vh;
+}
+.pj-award.done.cappello .pj-podium-steps {
+  margin-top: 5vh;
+}
+.pj-award.done.cappello .pj-name {
+  font-size: clamp(40px, min(5.8vw, 10.5vh), 130px) !important;
+}
+.pj-award.done.cappello .pj-stamp-drop,
+.pj-award.done.cappello .pj-role {
+  margin-top: 0.6vh;
+}
+.pj-award.done.cappello .pj-medals {
+  margin-top: 1.4vh;
+}
+.pj-award.done.cappello .pj-laurel {
+  height: min(32vh, 360px);
+}

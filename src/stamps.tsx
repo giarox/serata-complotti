@@ -421,12 +421,12 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         {top}
         <Mark large />
         <div className="codeline">
-          <span>INTERLUDIO</span>
+          <span>GRAN FINALE</span>
           <i />
           <span>RISERVATO</span>
         </div>
-        <h1>Coincidenze? Io non credo.</h1>
-        <p className="pj-sub">Avrete notato che qualcuno non è mai stato nominato. Manca un ultimo premio.</p>
+        <h1>Ora, per il gran finale.</h1>
+        <p className="pj-sub">Il vincitore assoluto della serata.</p>
       </div>
     );
   if (m.kind === 'registro') return <RegistroSlide s={s} top={top} />;
@@ -473,7 +473,7 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     </div>
   );
   return (
-    <div className={'projector pj-stage pj-award' + (done ? ' done' : ' suspense')}>
+    <div className={'projector pj-stage pj-award ' + m.prize + (done ? ' done' : ' suspense')}>
       {top}
       {done && first.length > 0 && <ConfettiBurst key={m.prize} />}
       <div className="codeline">
@@ -491,9 +491,25 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
             </Fit>
             {first.length === 1 && first[0].presenter.role && <Fit className="pj-role">{first[0].presenter.role}</Fit>}
             <p className="pj-sub">{first.length ? info.reason : 'Il Congresso nega che sia mai esistito.'}</p>
-            {first.length > 0 && (
+            {first.length > 0 && info.stamp && (
               <div className="pj-stamp-drop">
-                <StampMark k={info.stamp ?? 'cappello'} />
+                <StampMark k={info.stamp} />
+              </div>
+            )}
+            {first.length > 0 && m.prize === 'cappello' && v.placements && (
+              // The Cappello's infographic: where the winner landed on the four podiums. No points shown.
+              <div className="pj-medals">
+                {first.map((t) => (
+                  <ul key={t.round.id} aria-label={'Piazzamenti di ' + displayName(t.presenter)}>
+                    {first.length > 1 && <li className="pj-medals-who">{displayName(t.presenter)}</li>}
+                    {(v.placements![t.round.id] ?? []).map((pl) => (
+                      <li key={pl.prize}>
+                        <b>{pl.place}°</b>
+                        <StampMark k={pl.prize} small />
+                      </li>
+                    ))}
+                  </ul>
+                ))}
               </div>
             )}
           </div>
@@ -567,7 +583,7 @@ export function RegistroSlide({ s, top }: { s: State; top: ReactNode }) {
 export function nextStepLabel(s: State) {
   const next = revealMoment({ phase: 'results', revealed: s.revealed + 1 });
   if (!next || s.revealed >= 22) return 'Fine: il Registro è sul proiettore.';
-  if (next.kind === 'interlude') return 'Prossimo: l’interludio';
+  if (next.kind === 'interlude') return 'Prossimo: il gran finale';
   if (next.kind === 'registro') return 'Prossimo: il Registro dei Timbri';
   const name = prizes[next.prize].name;
   return next.kind === 'open' ? `Prossimo: apertura · ${name}` : `Prossimo: ${next.place}° posto · ${name}`;
@@ -575,7 +591,7 @@ export function nextStepLabel(s: State) {
 export function nowLabel(s: State) {
   const m = revealMoment(s);
   if (!m) return '';
-  if (m.kind === 'interlude') return 'Sul proiettore: l’interludio.';
+  if (m.kind === 'interlude') return 'Sul proiettore: il passaggio al gran finale.';
   if (m.kind === 'registro') return 'Sul proiettore: il Registro dei Timbri. Ognuno ha l’attestato sul telefono.';
   const name = prizes[m.prize].name;
   return m.kind === 'open' ? `Sul proiettore: apertura · ${name}.` : `Sul proiettore: ${m.place}° posto · ${name}.`;
@@ -595,9 +611,13 @@ export function RulesSummary() {
         <li>Dopo ogni talk ognuno dà da 0 a 2 timbri. Mai sul proprio fascicolo.</li>
         <li>Prima del verdetto c’è la revisione: si possono spostare i timbri su tutti i talk.</li>
         <li>
-          Il <strong>Cappello di Stagnola d’Oro</strong> va al totale più alto; chi lo vince esce dagli altri podi.
+          Quattro premi-timbro, uno a testa: chi ha già vinto “scala” e il premio va al successivo con più timbri. Due
+          pari in testa lo condividono; se non resta nessuno libero, il primo vince un secondo premio.
         </li>
-        <li>Gli altri quattro premi: uno a testa al massimo. A pari merito vince chi non ha ancora un premio.</li>
+        <li>
+          Il <strong>Cappello di Stagnola d’Oro</strong> va al miglior medagliere sui podi (1° 3 punti, 2° 2, 3° 1) e si
+          può sommare a un altro premio.
+        </li>
         <li>Sul proiettore niente numeri: solo podi, 3° → 2° → 1°.</li>
       </ul>
       <div className="stamp-legend">

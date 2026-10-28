@@ -66,7 +66,12 @@ export const previewScreens: PreviewScreen[] = [
     label: 'Verdetto: 1° posto',
     note: 'Il vincitore, con l’esplosione di coriandoli.',
   },
-  { id: 'p-interludio', kind: 'projector', label: 'Verdetto: interludio', note: 'Prima del Cappello di Stagnola.' },
+  {
+    id: 'p-interludio',
+    kind: 'projector',
+    label: 'Verdetto: gran finale',
+    note: 'Il passaggio prima del Cappello di Stagnola.',
+  },
   { id: 'p-registro', kind: 'projector', label: 'Il Registro dei Timbri', note: 'Chiude la serata. Nessun numero.' },
   { id: 'g-ascolta', kind: 'phone', label: 'Ascolta', note: 'Telefono di chi è in sala mentre un altro presenta.' },
   { id: 'g-tocca', kind: 'phone', label: 'Tocca a te', note: 'Telefono di chi presenta: il telecomando.' },
@@ -153,7 +158,13 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
     s.rounds = speakers.map((p, i) => ({ id: 'mock-r' + i, presenterId: p.id, closed: true }));
     // Each speaker shines at something different (hand-made, so every podium fills up and some ties show).
     const table: StampKey[][][] = [
-      [['idea', 'ricerca'], ['idea', 'performance'], ['ricerca', 'qa'], ['idea', 'qa'], ['performance', 'ricerca']],
+      [
+        ['idea', 'ricerca'],
+        ['idea', 'performance'],
+        ['ricerca', 'qa'],
+        ['idea', 'qa'],
+        ['performance', 'ricerca'],
+      ],
       [['idea'], ['idea', 'ricerca'], ['idea'], ['qa'], ['idea']],
       [['ricerca'], ['ricerca'], ['ricerca', 'idea'], [], ['ricerca']],
       [['performance'], ['performance', 'idea'], ['performance'], [], ['performance', 'ricerca']],
