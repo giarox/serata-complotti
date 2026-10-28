@@ -50,13 +50,14 @@ export const previewScreens: PreviewScreen[] = [
     label: 'Verdetto: annuncio del premio',
     note: 'Prima busta sigillata, poi il vincitore.',
   },
+  { id: 'p-terzo', kind: 'projector', label: 'Verdetto: 3° posto', note: 'Il podio si scopre dal fondo.' },
+  { id: 'p-secondo', kind: 'projector', label: 'Verdetto: 2° posto', note: 'Il primo resta sigillato.' },
   {
-    id: 'p-podio',
+    id: 'p-premio',
     kind: 'projector',
-    label: 'Verdetto: 3° e 2° posto',
-    note: 'Il podio si scopre dal fondo; il primo resta sigillato.',
+    label: 'Verdetto: 1° posto',
+    note: 'Il vincitore, con l’esplosione di coriandoli.',
   },
-  { id: 'p-premio', kind: 'projector', label: 'Verdetto: il vincitore', note: 'Una slide per ogni premio.' },
   {
     id: 'p-riepilogo',
     kind: 'projector',
@@ -130,7 +131,7 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
       s.votes = [{ roundId: now.id, voterId: viewer.id, credibility: 7, delivery: 9, research: 4, supercazzola: true }];
   } else if (id === 'p-pausa' || id === 'g-pausa') {
     s.rounds = [earlier];
-  } else if (['p-annuncio', 'p-podio', 'p-premio', 'p-riepilogo', 'g-verdetto'].includes(id)) {
+  } else if (['p-annuncio', 'p-terzo', 'p-secondo', 'p-premio', 'p-riepilogo', 'g-verdetto'].includes(id)) {
     // Everyone presented once, everyone else voted, with scores that give a varied podium.
     const speakers = [presenter, ...others];
     s.rounds = speakers.map((p, i) => ({ id: 'mock-r' + i, presenterId: p.id, closed: true }));
@@ -148,7 +149,10 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
     );
     s.phase = 'results';
     const n = Math.max(1, Math.min(4, m.award));
-    s.revealed = id === 'p-riepilogo' ? 17 : 4 * (n - 1) + (id === 'p-annuncio' ? 1 : id === 'p-podio' ? 3 : 4);
+    s.revealed =
+      id === 'p-riepilogo'
+        ? 17
+        : 4 * (n - 1) + (id === 'p-annuncio' ? 1 : id === 'p-terzo' ? 2 : id === 'p-secondo' ? 3 : 4);
   }
   const actor: Actor = id === 'g-tocca' || id === 'g-proprio' ? { role: 'guest', participantId: presenter.id } : guest;
   return { s, actor };

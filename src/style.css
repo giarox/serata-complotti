@@ -6536,3 +6536,8 @@ label,
     animation: none !important;
   }
 }
+/* Confetti burst once on the winner, then the screen stays clean */
+.pj-shreds.burst i {
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}

@@ -1312,7 +1312,6 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     return (
       <div className="projector pj-stage pj-tease">
         {top}
-        <Shreds />
         <div className="codeline">
           <span>{count}</span>
           <i />
