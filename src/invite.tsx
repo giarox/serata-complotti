@@ -301,8 +301,13 @@ function GmStep({ onEnter, onBack }: { onEnter: (a: Actor) => void; onBack: () =
     setBusy(true);
     setError('');
     try {
-      if (!names.length) setNames(await api.unlockNames(code, true));
-      else onEnter(await api.login(code, id, true));
+      if (names.length) onEnter(await api.login(code, id, true));
+      else {
+        // Nobody registered yet: there is no name to pick, go straight in.
+        const list = await api.unlockNames(code, true);
+        if (list.length) setNames(list);
+        else onEnter(await api.login(code, '', true));
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {

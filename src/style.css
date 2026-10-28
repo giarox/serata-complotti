@@ -5448,11 +5448,11 @@ label,
 /* 27 Oct, 23:20 — inputs look like inputs even when idle; generator as a link */
 .booking .form-line input,
 .booking .form-line textarea {
-  background-color: #ffffff1c !important;
+  background-color: #ffffff4d !important;
 }
 .booking .form-line input:focus,
 .booking .form-line textarea:focus {
-  background-color: #ffffff4d !important;
+  background-color: #ffffff99 !important;
 }
 .examples-row {
   display: block;
