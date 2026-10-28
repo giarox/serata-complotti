@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { createPortal } from 'react-dom';
 import {
   Eye,
   Radio,
@@ -1354,7 +1355,7 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
   return (
     <div className={'projector pj-stage pj-award' + (done ? ' done' : ' suspense')}>
       {top}
-      {done && a.winners.length > 0 && <Shreds burst />}
+      {done && a.winners.length > 0 && <ConfettiBurst key={a.key} />}
       <div className="codeline">
         <span>{count}</span>
         <i />
@@ -1450,28 +1451,102 @@ function Laurel({ right = false }: { right?: boolean }) {
     </svg>
   );
 }
-/** Confetti, but it's shredded documents. */
-function Shreds({ burst = false }: { burst?: boolean }) {
-  return (
-    <div className={'pj-shreds' + (burst ? ' burst' : '')} aria-hidden="true">
-      {Array.from({ length: burst ? 44 : 14 }, (_, i) => (
-        <i
-          key={i}
-          style={
-            {
-              left: ((i * 37) % 100) + '%',
-              animationDelay: burst ? (i % 12) * 0.07 + 's' : -((i * 1.7) % 11) + 's',
-              animationDuration: (burst ? 3.4 + (i % 5) * 0.5 : 9 + (i % 5)) + 's',
-              '--r': ((i * 47) % 90) - 45 + 'deg',
-              '--y': ((i * 29) % 92) + '%',
-              opacity: 0.35 + (i % 4) * 0.12,
-            } as React.CSSProperties
-          }
-          className={i % 3 ? 'paper' : 'brass'}
-        />
-      ))}
-    </div>
-  );
+/**
+ * Confetti that bursts out of the winner's name, flies up and floats down: flat squares and discs that
+ * flip as they fall (they look thinner, then wider), with a little side wobble. Canvas, one burst, then gone.
+ */
+const confettiColors = [
+  '#f44336',
+  '#e91e63',
+  '#9c27b0',
+  '#673ab7',
+  '#3f51b5',
+  '#2196f3',
+  '#03a9f4',
+  '#00bcd4',
+  '#009688',
+  '#4caf50',
+  '#8bc34a',
+  '#cddc39',
+  '#ffeb3b',
+  '#ffc107',
+  '#ff9800',
+  '#ff5722',
+];
+function ConfettiBurst() {
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (!canvas || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const ctx = canvas.getContext('2d')!,
+      dpr = Math.min(devicePixelRatio || 1, 2),
+      W = innerWidth,
+      H = innerHeight,
+      k = H / 1080; // same look on any projector resolution
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    ctx.scale(dpr, dpr);
+    const name = document.querySelector('.pj-award .pj-name')?.getBoundingClientRect();
+    const ox = name ? name.left + name.width / 2 : W / 2,
+      oy = name ? name.top + name.height / 2 : H / 2,
+      spread = name ? name.width / 2 : 100;
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+    const parts = Array.from({ length: 320 }, () => {
+      const angle = rnd(-Math.PI * 0.92, -Math.PI * 0.08),
+        speed = rnd(9, 25) * k;
+      return {
+        x: ox + rnd(-spread, spread),
+        y: oy + rnd(-20, 20) * k,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        friction: rnd(0.975, 0.99),
+        size: Math.round(rnd(7, 17) * k),
+        square: Math.random() < 0.5,
+        color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+        wobble: rnd(-0.02, 0.02),
+        wobbleAmp: rnd(0.01, 0.08),
+        wobbleAngle: rnd(0, Math.PI * 2),
+      };
+    });
+    const gravity = 0.26 * k;
+    let frame = 0,
+      alive = true;
+    const tick = () => {
+      ctx.clearRect(0, 0, W, H);
+      let left = 0;
+      for (const p of parts) {
+        if (p.y > H + 40) continue;
+        left++;
+        p.vy += gravity;
+        p.vx += p.wobble + Math.cos(p.wobbleAngle) * p.wobbleAmp;
+        p.wobbleAngle += 0.05;
+        p.vx *= p.friction;
+        p.vy *= p.friction;
+        p.x += p.vx;
+        p.y += p.vy;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.vx * 0.2);
+        ctx.scale(1, 0.5 + Math.sin(p.vy * 2 + p.wobbleAngle * 3) * 0.5); // the flip
+        ctx.fillStyle = p.color;
+        if (p.square) ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      if (left && alive) frame = requestAnimationFrame(tick);
+    };
+    const start = window.setTimeout(() => (frame = requestAnimationFrame(tick)), 250);
+    return () => {
+      alive = false;
+      clearTimeout(start);
+      cancelAnimationFrame(frame);
+    };
+  }, [canvas]);
+  // On the body: no ancestor's layout or transform can move or clip it.
+  return createPortal(<canvas ref={setCanvas} className="pj-confetti" aria-hidden="true" />, document.body);
 }
 /** The projector: one slide per moment of the evening, read from afar, never scrolling. */
 function Projector({ s }: { s: State }) {
