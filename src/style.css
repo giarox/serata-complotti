@@ -8787,3 +8787,22 @@ label,
   font-weight: 600;
   letter-spacing: 0.04em;
 }
+
+/* prize opening: the rule is a small reminder, not a headline */
+.pj-open-prize .pj-link {
+  font: 400 clamp(12px, min(1.05vw, 1.9vh), 22px) / 1.4 var(--sans) !important;
+  color: var(--dim) !important;
+  letter-spacing: 0.02em;
+  margin-top: 4.4vh !important;
+}
+.pj-open-prize .pj-link strong {
+  font-weight: 600;
+  color: var(--bone);
+}
+/* a proper flourish of a signature */
+.cert-sign i {
+  height: 46px;
+  background-size: 92% 100%;
+  background-position: right 0 bottom 2px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 60'%3E%3Cg fill='none' stroke='%232a2218' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath stroke-width='2.2' d='M10 42c6-22 18-36 24-30s-10 34-4 34 14-26 22-28-4 22 4 22 10-16 16-18 2 14 8 14 8-12 12-14c6-2 2 12 8 12s14-22 20-34 6 6 0 22-8 28 0 26 12-18 18-20-2 14 6 14 10-10 16-12c8-2 4 10 12 8s14-14 20-14'/%3E%3Cpath stroke-width='1.6' d='M32 50c40 6 110 4 200-8 12-2 18 2 10 6'/%3E%3Cpath stroke-width='1.4' d='M150 18c10-6 20-6 26 0'/%3E%3Ccircle cx='222' cy='24' r='1.6' fill='%232a2218'/%3E%3C/g%3E%3C/svg%3E");
+}

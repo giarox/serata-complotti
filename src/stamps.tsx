@@ -500,7 +500,7 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
             </span>
             <div>
               <i />
-              <small>Il Gran Maestro di cerimonie</small>
+              <small>La Presidenza Occulta</small>
             </div>
           </div>
           <p className="cert-protocol">Prot. n. 001/2026 · Copia conforme · Non divulgare (o sì)</p>
