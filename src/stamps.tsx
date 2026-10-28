@@ -102,7 +102,7 @@ export const prizes: Record<PrizeKey, { name: string; reason: string; opener: st
   },
   cappello: {
     name: 'Il Cappello di Stagnola d’Oro',
-    reason: 'Gran Maestro del Congresso',
+    reason: 'Per aver scalato i podi del Congresso fino a toccare le scie chimiche.',
     opener: 'Siccome non cielo dicono, cielo diciamo noi.',
   },
 };

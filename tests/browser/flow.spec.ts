@@ -36,7 +36,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
       await expect(speaker.getByRole('heading', { name: 'Il Congresso sta timbrando il tuo fascicolo.' })).toBeVisible();
     const stampBtn = (title: string) => voter.getByRole('button', { name: new RegExp('^' + title) });
     await stampBtn('COMPLOTTO D’AUTORE').click();
-    await stampBtn('FASCICOLO SCOTTANTE').click();
+    await stampBtn('INDAGINE SCHIACCIANTE').click();
     await stampBtn('PERSUASORE OCCULTO').click(); // a third stamp is refused
     await expect(voter.getByRole('alert')).toContainText('Due timbri al massimo');
     await voter.getByRole('button', { name: 'Consegna il fascicolo timbrato' }).click();
@@ -68,7 +68,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await expect(page.locator('.verdict-next')).toContainText('Prossimo: 3° posto');
   await expect(page.locator('.revealed-list')).toHaveCount(0);
   for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Avanti' }).click();
-  await expect(page.locator('.revealed-list')).toContainText('La Ventosa d’Oro');
+  await expect(page.locator('.revealed-list')).toContainText('L’Avvocato del Diavolo');
   await page.getByRole('button', { name: 'Indietro' }).click();
   await expect(page.locator('.revealed-list')).toHaveCount(0);
   for (let i = 0; i < 19; i++) await page.getByRole('button', { name: 'Avanti' }).click();

@@ -8832,3 +8832,19 @@ label,
   border-top: 1px solid var(--ink);
   padding-top: 5px;
 }
+/* motivations are full sentences now */
+.cert-crown span {
+  font: italic 14px/1.4 var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.pj-open-prize .pj-label {
+  text-transform: none !important;
+  letter-spacing: 0.02em !important;
+  font-style: italic;
+  max-width: 50ch;
+}
+.pj-open-prize .pj-label {
+  font-size: clamp(14px, min(1.45vw, 2.6vh), 30px) !important;
+  line-height: 1.35 !important;
+}

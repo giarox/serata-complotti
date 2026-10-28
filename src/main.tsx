@@ -1470,10 +1470,10 @@ function Previews() {
             Premio da vedere nel verdetto
             <select value={mock.award} onChange={(e) => set({ award: Number(e.target.value) })}>
               {[
-                'La Ventosa d’Oro',
+                'L’Avvocato del Diavolo',
                 'Il Pifferaio Magico',
-                'Il Faldone d’Oro',
-                'Premio Illuminato',
+                'Il Ragno della Bacheca',
+                'Il Sommelier del Complotto',
                 'Il Cappello di Stagnola d’Oro',
               ].map((name, i) => (
                 <option key={name} value={i + 1}>
