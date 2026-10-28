@@ -5883,3 +5883,10 @@ label,
     font-size: 17px;
   }
 }
+/* Polaroid aligned with the top of the name, whatever the entry's length */
+.roster .roster-row.registry-row {
+  align-items: flex-start;
+}
+.roster .roster-badge.person-avatar {
+  margin-top: 2px;
+}
