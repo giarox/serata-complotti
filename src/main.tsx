@@ -1256,16 +1256,19 @@ function revealNow(s: State) {
   if (!m) return '';
   if (m.kind === 'summary') return 'Sul proiettore: il riepilogo finale. La serata è conclusa.';
   const c = category(s.settings.awardOrder[m.index]);
-  return `Sul proiettore: ${m.kind === 'tease' ? 'annuncio' : 'vincitore'} del premio ${m.index + 1} di 4, «${c.title}».`;
+  const what = m.kind === 'tease' ? 'annuncio' : ['', '3° posto', '2° posto', 'vincitore'][m.shown];
+  return `Sul proiettore: ${what} del premio ${m.index + 1} di 4, «${c.title}».`;
 }
 function nextRevealLabel(s: State) {
   const m = revealMoment(s);
-  if (m?.kind === 'tease') return 'Svela il vincitore';
+  if (m?.kind === 'tease') return 'Svela il 3° posto';
+  if (m?.kind === 'award' && m.shown === 1) return 'Svela il 2° posto';
+  if (m?.kind === 'award' && m.shown === 2) return 'Svela il vincitore';
   if (m?.kind === 'award' && m.index === 3) return 'Chiudi con il riepilogo';
   return 'Annuncia il prossimo premio';
 }
 const unitOf = (key: string) => (key === 'supercazzola' ? ' sì' : ' / 10');
-/** The reveal on the projector: one slide to announce each award, one to show it, then a summary. */
+/** The reveal on the projector: announce each award, then 3rd, 2nd and the winner; then a summary. */
 function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
   const m = revealMoment(s),
     all = awards(s);
@@ -1327,26 +1330,32 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         <p className="pj-foot">Rullo di tamburi a cura del pubblico. La busta non è stata aperta (dicono).</p>
       </div>
     );
-  const places = runnersUp(a),
+  // Suspense: third place, then second, then the winner with the confetti.
+  const shown = m.shown,
+    done = shown === 3,
+    places = runnersUp(a),
     second = places.find((p) => p.place === 2),
     third = places.find((p) => p.place === 3),
     winner = a.winners.length === 1 ? a.winners[0] : null;
-  const step = (pl: { people: Participant[]; value: number } | undefined, n: 2 | 3) => (
-    <div className={'pj-step pj-step-' + n}>
-      <span className="pj-step-name">{pl ? list(pl.people.map(displayName)) : '—'}</span>
-      {pl && (
-        <small>
-          {fmt(pl.value)}
-          {unitOf(a.key)}
-        </small>
-      )}
-      <b>{n}°</b>
-    </div>
-  );
+  const step = (pl: { people: Participant[]; value: number } | undefined, n: 2 | 3) => {
+    const open = n === 3 ? shown >= 1 : shown >= 2;
+    return (
+      <div className={'pj-step pj-step-' + n + (open ? ' open' : ' sealed')}>
+        <span className="pj-step-name">{!open ? '?' : pl ? list(pl.people.map(displayName)) : '—'}</span>
+        {open && pl && (
+          <small>
+            {fmt(pl.value)}
+            {unitOf(a.key)}
+          </small>
+        )}
+        <b>{n}°</b>
+      </div>
+    );
+  };
   return (
-    <div className="projector pj-stage pj-award">
+    <div className={'projector pj-stage pj-award' + (done ? ' done' : ' suspense')}>
       {top}
-      {a.winners.length > 0 && <Shreds />}
+      {done && a.winners.length > 0 && <Shreds burst />}
       <div className="codeline">
         <span>{count}</span>
         <i />
@@ -1356,11 +1365,15 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         <Laurel />
         <div className="pj-wreath-in">
           <p className="pj-lead">
-            {a.winners.length ? (a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a') : 'Il premio va a'}
+            {!done ? 'Il premio va a…' : a.winners.length && a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}
           </p>
-          <h1 className="pj-name">{a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}</h1>
-          {winner?.role && <p className="pj-role">{winner.role}</p>}
-          {a.winners.length > 0 ? (
+          <h1 className="pj-name">
+            {!done ? '? ? ?' : a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}
+          </h1>
+          {done && winner?.role && <p className="pj-role">{winner.role}</p>}
+          {!done ? (
+            <p className="pj-sub">{shown === 1 ? 'Partiamo dal fondo del podio.' : 'Manca solo il primo posto.'}</p>
+          ) : a.winners.length > 0 ? (
             <>
               <p className="pj-score">
                 {fmt(a.value!)}
@@ -1378,21 +1391,21 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         </div>
         <Laurel right />
       </div>
-      {a.winners.length > 0 && (
+      {(a.winners.length > 0 || !done) && (
         <div className="pj-podium-steps">
           {step(second, 2)}
-          <div className="pj-step pj-step-1">
+          <div className={'pj-step pj-step-1' + (done ? ' open' : ' sealed')}>
             <b>1°</b>
           </div>
           {step(third, 3)}
         </div>
       )}
-      {a.outcome === 'tieBreak' && (
+      {done && a.outcome === 'tieBreak' && (
         <p className="pj-foot">
           Pari merito con {list(a.passedOver.map(displayName))}, che ha già un premio: vince chi non ne ha ancora.
         </p>
       )}
-      {a.capped.length > 0 && (
+      {done && a.capped.length > 0 && (
         <p className="pj-foot">{list(a.capped.map(displayName))}: già raggiunto il massimo di premi per persona.</p>
       )}
     </div>
@@ -1439,17 +1452,17 @@ function Laurel({ right = false }: { right?: boolean }) {
   );
 }
 /** Confetti, but it's shredded documents. */
-function Shreds() {
+function Shreds({ burst = false }: { burst?: boolean }) {
   return (
-    <div className="pj-shreds" aria-hidden="true">
-      {Array.from({ length: 18 }, (_, i) => (
+    <div className={'pj-shreds' + (burst ? ' burst' : '')} aria-hidden="true">
+      {Array.from({ length: burst ? 44 : 14 }, (_, i) => (
         <i
           key={i}
           style={
             {
               left: ((i * 37) % 100) + '%',
-              animationDelay: -((i * 1.7) % 11) + 's',
-              animationDuration: 9 + (i % 5) + 's',
+              animationDelay: burst ? (i % 12) * 0.07 + 's' : -((i * 1.7) % 11) + 's',
+              animationDuration: (burst ? 3.4 + (i % 5) * 0.5 : 9 + (i % 5)) + 's',
               '--r': ((i * 47) % 90) - 45 + 'deg',
               '--y': ((i * 29) % 92) + '%',
               opacity: 0.35 + (i % 4) * 0.12,

@@ -108,10 +108,13 @@ describe('rounds and ballots', () => {
     expect(revealMoment(s)).toEqual({ kind: 'tease', index: 0 });
     expect(openAwards(s)).toBe(0);
     s = applyAction(s, gm, { type: 'nextAward' });
-    expect(revealMoment(s)).toEqual({ kind: 'award', index: 0 });
+    expect(revealMoment(s)).toEqual({ kind: 'award', index: 0, shown: 1 }); // third place first
+    expect(openAwards(s)).toBe(0);
+    s = applyAction(applyAction(s, gm, { type: 'nextAward' }), gm, { type: 'nextAward' });
+    expect(revealMoment(s)).toEqual({ kind: 'award', index: 0, shown: 3 }); // then the winner
     expect(openAwards(s)).toBe(1);
-    for (let i = 0; i < 7; i++) s = applyAction(s, gm, { type: 'nextAward' });
-    expect(s.revealed).toBe(9);
+    for (let i = 0; i < 13; i++) s = applyAction(s, gm, { type: 'nextAward' });
+    expect(s.revealed).toBe(17);
     expect(revealMoment(s)).toEqual({ kind: 'summary' });
     expect(openAwards(s)).toBe(4);
     expect(() => applyAction(s, gm, { type: 'nextAward' })).toThrow();

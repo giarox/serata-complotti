@@ -261,8 +261,8 @@ begin
   if phase<>'waiting' or not exists(select 1 from jsonb_array_elements(s->'rounds') v where (v->>'closed')::boolean and not coalesce((v->>'cancelled')::boolean,false)) then raise exception 'Completa almeno un turno e chiudi il voto.'; end if;
   s:=s||'{"phase":"results","revealed":1}'::jsonb;
  elsif kind='nextAward' then
-  -- Steps: announce award 1, show it, announce award 2, …, show award 4, summary (9 steps).
-  if phase<>'results' or (s->>'revealed')::int>=9 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
+  -- Steps per award: announce, 3rd place, 2nd place, winner; then a summary (17 steps).
+  if phase<>'results' or (s->>'revealed')::int>=17 then raise exception 'Non ci sono altre categorie da svelare.'; end if;
   s:=jsonb_set(s,'{revealed}',to_jsonb((s->>'revealed')::int+1));
  elsif kind='release' then
   if not exists(select 1 from jsonb_array_elements(s->'participants') v where v->>'id'=command->>'participantId') then raise exception 'Nome non trovato.'; end if;

@@ -6478,3 +6478,61 @@ label,
 .pj-podium-steps {
   margin-top: 6vh;
 }
+/* Suspense: sealed podium steps, then the winner pops with a burst of shredded files */
+.pj-step.sealed .pj-step-name {
+  color: var(--brass-dim);
+  font-size: clamp(20px, min(2.2vw, 4vh), 42px);
+}
+.pj-step.sealed b {
+  opacity: 0.45;
+}
+.pj-step.open:not(.pj-step-1) {
+  animation: pj-rise 0.7s ease-out both;
+}
+.pj-award.suspense .pj-name {
+  letter-spacing: 0.4em !important;
+  opacity: 0.55;
+}
+.pj-award.done .pj-wreath-in {
+  animation: pj-pop 0.9s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.pj-award.done .pj-laurel {
+  animation: pj-glow 1.6s ease-out both;
+}
+.pj-shreds.burst i {
+  width: 0.6vw;
+}
+@keyframes pj-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2vh);
+  }
+}
+@keyframes pj-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pj-glow {
+  0% {
+    filter: drop-shadow(0 0 0 #d2ad7000);
+  }
+  35% {
+    filter: drop-shadow(0 0 2.4vh #d2ad70cc);
+  }
+  100% {
+    filter: drop-shadow(0 0.4vh 0.8vh #000a);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pj-award.done .pj-wreath-in,
+  .pj-award.done .pj-laurel,
+  .pj-step.open {
+    animation: none !important;
+  }
+}

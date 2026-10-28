@@ -114,20 +114,25 @@ export const categories = [
   },
 ] as const;
 /**
- * The reveal goes one step at a time on the projector: announce award 1, show award 1, announce award 2, …,
- * show award 4, then a summary. `revealed` counts those steps (1…9).
+ * The reveal goes one step at a time on the projector. For each award: announce it, 3rd place, 2nd place,
+ * the winner (with confetti). After the fourth award, a summary. `revealed` counts those steps (1…17).
  */
-export const REVEAL_STEPS = 9;
-/** How many awards are already shown (phones and regia only show these). */
+export const REVEAL_STEPS = 17;
+/** How many awards have their winner revealed (phones and regia only show these). */
 export const openAwards = (s: Pick<State, 'phase' | 'revealed'>) =>
-  s.phase === 'results' ? Math.min(4, Math.floor(s.revealed / 2)) : 0;
-/** What the projector shows now: the announcement or the result of award n (0-based), or the summary. */
+  s.phase === 'results' ? Math.min(4, Math.floor(s.revealed / 4)) : 0;
+/**
+ * What the projector shows now: the announcement of award n (0-based), its podium with `shown` places
+ * revealed (1 = third, 2 = third and second, 3 = everyone), or the summary.
+ */
 export function revealMoment(
   s: Pick<State, 'phase' | 'revealed'>,
-): { kind: 'tease' | 'award'; index: number } | { kind: 'summary' } | null {
+): { kind: 'tease'; index: number } | { kind: 'award'; index: number; shown: 1 | 2 | 3 } | { kind: 'summary' } | null {
   if (s.phase !== 'results' || s.revealed < 1) return null;
   if (s.revealed >= REVEAL_STEPS) return { kind: 'summary' };
-  return s.revealed % 2 ? { kind: 'tease', index: (s.revealed - 1) / 2 } : { kind: 'award', index: s.revealed / 2 - 1 };
+  const index = Math.floor((s.revealed - 1) / 4),
+    sub = (s.revealed - 1) % 4;
+  return sub === 0 ? { kind: 'tease', index } : { kind: 'award', index, shown: sub as 1 | 2 | 3 };
 }
 export const categoryKeys: CategoryKey[] = categories.map((c) => c.key);
 export const category = (key: CategoryKey) => categories.find((c) => c.key === key)!;

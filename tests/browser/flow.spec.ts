@@ -59,12 +59,18 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
   await expect(voter.getByRole('heading', { name: 'Il verdetto.', exact: true })).toBeVisible();
   // One step at a time: the projector announces the award, then shows the winner.
-  await expect(page.locator('.award-open')).toHaveCount(0);
+  const podium = async () => {
+    for (const label of ['Svela il 3° posto', 'Svela il 2° posto', 'Svela il vincitore'])
+      await page.getByRole('button', { name: label }).click();
+  };
+  await page.getByRole('button', { name: 'Svela il 3° posto' }).click();
+  await expect(page.locator('.award-open')).toHaveCount(0); // winner still sealed
+  await page.getByRole('button', { name: 'Svela il 2° posto' }).click();
   await page.getByRole('button', { name: 'Svela il vincitore' }).click();
   await expect(page.locator('.award-open')).toHaveCount(1);
   for (let i = 0; i < 3; i++) {
     await page.getByRole('button', { name: 'Annuncia il prossimo premio' }).click();
-    await page.getByRole('button', { name: 'Svela il vincitore' }).click();
+    await podium();
   }
   await expect(page.locator('.award-open')).toHaveCount(4);
   await page.getByRole('button', { name: 'Chiudi con il riepilogo' }).click();
@@ -113,7 +119,8 @@ test('GM with a name votes from the regia and sees the provisional award rules',
   await expect(page.locator('.order-list li').nth(2)).toContainText('SUPERCAZZOLA');
   await page.getByRole('button', { name: 'Inizia il reveal' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  await page.getByRole('button', { name: 'Svela il vincitore' }).click();
+  for (const label of ['Svela il 3° posto', 'Svela il 2° posto', 'Svela il vincitore'])
+    await page.getByRole('button', { name: label }).click();
   await expect(page.getByText('IL PREMIO VA A').first()).toBeVisible();
   await expect(page.locator('.award-settings')).toHaveCount(0);
 });
