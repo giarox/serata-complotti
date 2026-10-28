@@ -219,7 +219,7 @@ describe('review', () => {
     await act(gm, { type: 'reveal' });
     await expect(act(giulia, { type: 'vote', roundId: first, ballot: none })).rejects.toThrow('chiusa');
     await expect(act(giulia, { type: 'confirmReview' })).rejects.toThrow('chiusa');
-    for (let i = 0; i < 21; i++) await act(gm, { type: 'nextAward' });
+    for (let i = 0; i < 19; i++) await act(gm, { type: 'nextAward' });
     await expect(act(gm, { type: 'nextAward' })).rejects.toThrow();
     await act(gm, { type: 'back' });
     expect((await snap(gm)).phase).toBe('review');
