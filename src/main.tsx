@@ -1336,11 +1336,15 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     places = runnersUp(a),
     second = places.find((p) => p.place === 2),
     third = places.find((p) => p.place === 3),
-    winner = a.winners.length === 1 ? a.winners[0] : null;
+    winner = a.winners.length === 1 ? a.winners[0] : null,
+    // The place in the spotlight on this slide: 3rd, then 2nd.
+    litPlace = done ? 1 : shown === 1 ? 3 : 2,
+    featured = litPlace === 3 ? third : litPlace === 2 ? second : undefined,
+    featuredOne = featured?.people.length === 1 ? featured.people[0] : null;
   const step = (pl: { people: Participant[]; value: number } | undefined, n: 2 | 3) => {
     const open = n === 3 ? shown >= 1 : shown >= 2;
     return (
-      <div className={'pj-step pj-step-' + n + (open ? ' open' : ' sealed')}>
+      <div className={'pj-step pj-step-' + n + (open ? ' open' : ' sealed') + (litPlace === n ? ' lit' : '')}>
         <span className="pj-step-name">{!open ? '?' : pl ? list(pl.people.map(displayName)) : '—'}</span>
         {open && pl && (
           <small>
@@ -1361,36 +1365,47 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         <i />
         <span>{c.title}</span>
       </div>
-      <div className="pj-wreath">
-        <Laurel />
-        <div className="pj-wreath-in">
-          <p className="pj-lead">
-            {!done ? 'Il premio va a…' : a.winners.length && a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}
-          </p>
-          <h1 className="pj-name">
-            {!done ? '? ? ?' : a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}
-          </h1>
-          {done && winner?.role && <p className="pj-role">{winner.role}</p>}
-          {!done ? (
-            <p className="pj-sub">{shown === 1 ? 'Partiamo dal fondo del podio.' : 'Manca solo il primo posto.'}</p>
-          ) : a.winners.length > 0 ? (
-            <>
-              <p className="pj-score">
-                {fmt(a.value!)}
-                <small>{unitOf(a.key)}</small>
+      {done ? (
+        <div className="pj-wreath">
+          <Laurel />
+          <div className="pj-wreath-in">
+            <p className="pj-lead">{a.winners.length && a.outcome === 'shared' ? 'Pari merito' : 'Il premio va a'}</p>
+            <h1 className="pj-name">{a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}</h1>
+            {winner?.role && <p className="pj-role">{winner.role}</p>}
+            {a.winners.length > 0 ? (
+              <>
+                <p className="pj-score">
+                  {fmt(a.value!)}
+                  <small>{unitOf(a.key)}</small>
+                </p>
+                <Stamp sub="Verdetto insindacabile">Confermato</Stamp>
+              </>
+            ) : (
+              <p className="pj-sub">
+                {a.rows.length
+                  ? 'Nessun premio assegnato in questa categoria. Insabbiato.'
+                  : 'Nessun intervento concluso.'}
               </p>
-              <Stamp sub="Verdetto insindacabile">Confermato</Stamp>
-            </>
-          ) : (
-            <p className="pj-sub">
-              {a.rows.length
-                ? 'Nessun premio assegnato in questa categoria. Insabbiato.'
-                : 'Nessun intervento concluso.'}
+            )}
+          </div>
+          <Laurel right />
+        </div>
+      ) : (
+        // 3rd and 2nd place get their own moment: name, qualification and score, under a spotlight.
+        <div className="pj-feature" key={litPlace}>
+          <p className="pj-place">{litPlace}° posto</p>
+          <h1 className="pj-name">{featured ? list(featured.people.map(displayName)) : 'Posto vacante.'}</h1>
+          {featuredOne?.role && <p className="pj-role">{featuredOne.role}</p>}
+          {featured ? (
+            <p className="pj-score">
+              {fmt(featured.value)}
+              <small>{unitOf(a.key)}</small>
             </p>
+          ) : (
+            <p className="pj-sub">Nessuno sul gradino. Sospetto.</p>
           )}
         </div>
-        <Laurel right />
-      </div>
+      )}
       {(a.winners.length > 0 || !done) && (
         <div className="pj-podium-steps">
           {step(second, 2)}

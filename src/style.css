@@ -6549,3 +6549,107 @@ label,
   pointer-events: none;
   z-index: 5;
 }
+
+/* 28 Oct — 3rd and 2nd place: dim room, a spotlight on the step being revealed */
+.pj-award.suspense {
+  background: radial-gradient(ellipse 50% 60% at 50% 42%, #2a201299 0%, transparent 75%), #0b0a08;
+}
+.pj-award.suspense .codeline,
+.pj-award.suspense .projector-top {
+  opacity: 0.35;
+}
+.pj-feature {
+  position: relative;
+  z-index: 2;
+  margin-top: 2vh;
+  animation: pj-pop 0.8s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.pj-feature .pj-place {
+  font-family: var(--type) !important;
+  font-style: normal !important;
+  font-size: clamp(22px, min(2.6vw, 4.6vh), 52px) !important;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brass-hi) !important;
+  margin: 0;
+}
+.pj-feature .pj-name {
+  font-size: clamp(40px, min(5.4vw, 10vh), 120px) !important;
+}
+.pj-feature .pj-role {
+  margin-top: 1vh;
+  font-size: clamp(16px, min(1.7vw, 3vh), 32px) !important;
+}
+.pj-award.suspense .pj-step {
+  opacity: 0.32;
+  transition: opacity 0.6s;
+}
+.pj-award.suspense .pj-step.lit {
+  opacity: 1;
+  border-color: #f3dca4;
+  background: linear-gradient(180deg, #4a3c24, #241d13);
+  box-shadow: 0 0 6vh #f3dca455, inset 0 1px 0 #fff5;
+}
+.pj-award.suspense .pj-step.lit b {
+  color: #fff1c9;
+}
+/* the beam: from the top of the screen down onto the lit step */
+.pj-award.suspense .pj-step.lit::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 260%;
+  height: 120vh;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #fff3d000 0%, #fff3d01a 45%, #fff3d04d 100%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  pointer-events: none;
+  z-index: -1;
+  animation: pj-beam 0.9s ease-out both;
+}
+.pj-award.suspense .pj-step.lit::after {
+  content: '';
+  position: absolute;
+  left: -30%;
+  right: -30%;
+  top: -1.2vh;
+  height: 3vh;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #fff3d066, transparent 70%);
+  pointer-events: none;
+}
+.pj-award.suspense .pj-step.lit .pj-step-name {
+  color: #fff1c9;
+  font-size: clamp(16px, min(1.8vw, 3.2vh), 34px);
+}
+.pj-award.suspense .pj-step.sealed .pj-step-name {
+  opacity: 0.6;
+}
+@keyframes pj-beam {
+  from {
+    opacity: 0;
+  }
+}
+.pj-podium-steps {
+  position: relative;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pj-feature,
+  .pj-award.suspense .pj-step.lit::before {
+    animation: none !important;
+  }
+}
+.pj-award.suspense {
+  background: radial-gradient(ellipse 50% 60% at 50% 42%, #2a201266 0%, transparent 75%);
+}
+.pj-award.suspense .pj-feature .pj-name {
+  letter-spacing: 0.04em !important;
+  opacity: 1;
+  margin-top: 1vh !important;
+}
+.pj-award.suspense .pj-step.lit::before {
+  width: 170%;
+  background: linear-gradient(180deg, #fff3d000 0%, #fff3d00d 40%, #fff3d033 100%);
+  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
+}
