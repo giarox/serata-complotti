@@ -1373,13 +1373,10 @@ function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
             <h1 className="pj-name">{a.winners.length ? list(a.winners.map(displayName)) : 'Nessuno.'}</h1>
             {winner?.role && <p className="pj-role">{winner.role}</p>}
             {a.winners.length > 0 ? (
-              <>
-                <p className="pj-score">
-                  {fmt(a.value!)}
-                  <small>{unitOf(a.key)}</small>
-                </p>
-                <Stamp sub="Verdetto insindacabile">Confermato</Stamp>
-              </>
+              <p className="pj-score">
+                {fmt(a.value!)}
+                <small>{unitOf(a.key)}</small>
+              </p>
             ) : (
               <p className="pj-sub">
                 {a.rows.length

@@ -6695,3 +6695,24 @@ label,
     animation: none !important;
   }
 }
+/* Winner without the stamp: a touch more presence for name and score, wreath sized to the text */
+.pj-award.done .pj-name {
+  font-size: clamp(48px, min(6.8vw, 13vh), 150px) !important;
+}
+.pj-award.done .pj-role {
+  margin-top: 1.4vh;
+}
+.pj-award.done .pj-score {
+  margin-top: 2vh;
+  font-size: clamp(28px, min(3.4vw, 6vh), 68px) !important;
+}
+.pj-award.done .pj-laurel {
+  height: min(38vh, 420px);
+}
+.pj-award.done .pj-podium-steps {
+  margin-top: 5vh;
+}
+/* room for two-line names above the side steps, clear of the laurel */
+.pj-award.done .pj-podium-steps {
+  margin-top: 10vh;
+}
