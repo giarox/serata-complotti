@@ -1255,7 +1255,7 @@ function ProjectorSlide({ s }: { s: State }) {
         <br />
         il congresso sta per cominciare.
       </p>
-      <p className="pj-aside">Spegnete i telefoni. Tanto vi ascoltano lo stesso.</p>
+      <p className="pj-aside">Tenete i telefoni accesi: vi serviranno. Tanto vi ascoltano lo stesso.</p>
       <p className="pj-foot">Tranquilli: il Palacomplotti è stato bonificato da cima a fondo. Niente cimici, forse.</p>
     </div>
   );
