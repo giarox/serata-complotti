@@ -30,7 +30,7 @@ import {
   type Talk,
 } from './verdict';
 import { Fit } from './fit';
-import { Head, Kicker, Label, Rule } from './slide';
+import { Head, Kicker, Rule } from './slide';
 import { ConfettiBurst, Laurel } from './ceremony';
 import { Button, Mark } from './ui';
 
@@ -625,7 +625,7 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         <Head left={number} right="BUSTA SIGILLATA" />
         <Kicker>{m.prize === 'cappello' ? 'E ora il premio più ambito' : 'E il prossimo premio è'}</Kicker>
         <h1 className="pj-title">{info.name}</h1>
-        <Label>{info.reason}</Label>
+        <p className="pj-sub pj-reason">{info.reason}</p>
         <div className="pj-big-stamp">
           <StampMark k={info.stamp ?? 'cappello'} />
         </div>
@@ -634,7 +634,6 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
             ? 'Consegnato al relatore salito più in alto sui quattro podi della serata.'
             : `Consegnato al relatore che ha collezionato più timbri ${stamp(info.stamp!).title}.`}
         </p>
-        <p className="pj-sub">{info.opener}</p>
         <Rule />
       </div>
     );
