@@ -13,7 +13,7 @@ export const defaultMock: Mock = {
   name: 'Giovanni Moroni',
   role: 'Ricercatore di coincidenze presso il MIT (Osimo, Massachusetts)',
   mode: 'slides',
-  partnerName: '',
+  partnerName: 'Camilla Morbidoni',
   viewer: 'Antonio',
   revealed: 2,
 };
@@ -29,7 +29,12 @@ export const previewScreens: PreviewScreen[] = [
     label: 'Presentazione con slide',
     note: 'Si vede un attimo, poi l’helper apre le slide sopra.',
   },
-  { id: 'p-dalvivo', kind: 'projector', label: 'Presentazione dal vivo', note: 'Resta a schermo per tutto il turno.' },
+  {
+    id: 'p-dalvivo',
+    kind: 'projector',
+    label: 'Presentazione dal vivo',
+    note: 'Senza tecnologia: niente slide, resta a schermo per tutto il turno.',
+  },
   { id: 'p-domande', kind: 'projector', label: 'Question time', note: 'Dopo la presentazione.' },
   { id: 'p-voto', kind: 'projector', label: 'Votazione', note: 'Mentre la sala vota dal telefono.' },
   {

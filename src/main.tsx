@@ -1248,63 +1248,128 @@ function GmOwnTurn({
     );
   return null;
 }
+/** The projector: one slide per moment of the evening, read from afar, never scrolling. */
 function Projector({ s }: { s: State }) {
-  const p = presenter(s);
-  return (
-    <div className="projector">
-      <div className="projector-top">
-        <span className="mono">SERATA COMPLOTTI / CONGRESSO N. 001</span>
-        <button
-          className="icon-button"
-          aria-label="Schermo intero"
-          onClick={() => void document.documentElement.requestFullscreen().catch(() => {})}
-        >
-          <Maximize size={20} />
-        </button>
+  const p = presenter(s),
+    held = s.rounds.filter((r) => !r.cancelled),
+    fasc = 'FASC. ' + String(Math.max(held.length, 1)).padStart(3, '0'),
+    last = [...held].reverse().find((r) => r.closed),
+    lastP = last && s.participants.find((x) => x.id === last.presenterId);
+  const top = (
+    <div className="projector-top">
+      <span className="mono">SERATA COMPLOTTI / 1° CONGRESSO DEI RICERCATORI INDIPENDENTI</span>
+      <button
+        className="icon-button"
+        aria-label="Schermo intero"
+        onClick={() => void document.documentElement.requestFullscreen().catch(() => {})}
+      >
+        <Maximize size={20} />
+      </button>
+    </div>
+  );
+  if (s.phase === 'results')
+    return (
+      <div className="projector">
+        {top}
+        <p className="eyebrow">IL MOMENTO DELLA VERITÀ</p>
+        <h1>Il verdetto.</h1>
+        <Results s={s} />
       </div>
-      {s.phase === 'results' ? (
-        <>
-          <p className="eyebrow">IL MOMENTO DELLA VERITÀ</p>
-          <h1>Il verdetto.</h1>
-          <Results s={s} />
-        </>
-      ) : (
-        <>
-          {s.phase === 'waiting' && <Stamp sub="Non divulgare">Top secret</Stamp>}
-          <Mark large />
-          <p className="eyebrow">{phaseNames[s.phase].toUpperCase()}</p>
-          <div className="codeline">
-            <span>FASC. {String(s.rounds.length).padStart(3, '0')}</span>
-            <i />
-            <span>RISERVATO</span>
-          </div>
-          <h1>
-            {s.phase === 'waiting'
-              ? 'Nulla è come sembra.'
-              : s.phase === 'questions'
-                ? 'Fate le domande giuste.'
-                : s.phase === 'voting'
-                  ? 'Ai posteri il verdetto.'
-                  : p?.role || (p ? displayName(p) : '')}
-          </h1>
-          <div className="codeline">
-            <span>{p ? 'RELATORE' : 'IN ATTESA'}</span>
-            <i />
-            <span>CONGRESSO N. 001</span>
-          </div>
-          <p>
-            {p ? `${displayName(p)}${p.role ? ', ' + p.role.toLowerCase() : ''}` : 'Il congresso sta per cominciare.'}
+    );
+  // A presenter on stage: the lines follow how the host announces them.
+  if (p && s.phase !== 'waiting') {
+    const slide = {
+      presenting: {
+        eyebrow: 'Presentazione',
+        lead: 'Prende la parola',
+        punch: null,
+        foot:
+          p.mode === 'paper'
+            ? 'Presentazione dal vivo. Guardate il ricercatore, non lo schermo: lo schermo vi guarda già.'
+            : 'Le slide vanno in onda tra un attimo. Se non partono, sono stati loro.',
+      },
+      questions: {
+        eyebrow: 'Question time',
+        lead: 'Sotto interrogatorio',
+        punch: 'Fatevi delle domande. Poi fatele ad alta voce.',
+        foot: 'Alzate la mano. Le domande scomode sono le uniche ammesse.',
+      },
+      voting: {
+        eyebrow: 'Votazione aperta',
+        lead: 'Sotto giudizio',
+        punch: 'Credete a quello che volete. Ma votate.',
+        foot: null,
+      },
+    }[s.phase];
+    return (
+      <div className={'projector pj-stage pj-' + s.phase}>
+        {top}
+        <Mark />
+        <div className="codeline">
+          <span>{fasc}</span>
+          <i />
+          <span>{slide.eyebrow.toUpperCase()}</span>
+          <i />
+          <span>RISERVATO</span>
+        </div>
+        {slide.punch && <p className="pj-punch">{slide.punch}</p>}
+        <p className="pj-lead">{slide.lead}</p>
+        {p.role && <p className="pj-role">{p.role}</p>}
+        <h1 className="pj-name">{p.name}</h1>
+        {p.partner === 'copresenter' && p.partnerName && (
+          <p className="pj-co">
+            <span>co-relatore</span> {p.partnerName}
           </p>
-          {s.phase === 'presenting' && (
-            <p className="projector-note">
-              {p?.mode === 'paper'
-                ? 'Presentazione dal vivo. Guardate il ricercatore, non lo schermo: lo schermo vi guarda già.'
-                : 'Le slide vanno in onda tra un attimo.'}
-            </p>
-          )}
-          {s.phase === 'voting' && <span className="phase-badge">Vota dal tuo telefono</span>}
-        </>
-      )}
+        )}
+        {slide.foot && <p className="pj-foot">{slide.foot}</p>}
+        {s.phase === 'voting' && <span className="phase-badge">Vota dal tuo telefono</span>}
+      </div>
+    );
+  }
+  // Between two talks.
+  if (held.length > 0)
+    return (
+      <div className="projector pj-break">
+        {top}
+        <Mark large />
+        <div className="codeline">
+          <span>{fasc}</span>
+          <i />
+          <span>ARCHIVIATO</span>
+        </div>
+        <h1>Fascicolo archiviato.</h1>
+        <p className="pj-sub">Nessuno saprà mai niente. Il prossimo ricercatore è già sotto sorveglianza.</p>
+        <div className="codeline">
+          <span>{lastP ? 'ULTIMO RELATORE: ' + displayName(lastP).toUpperCase() : 'IN ATTESA'}</span>
+          <i />
+          <span>FASCICOLI DISCUSSI: {held.filter((r) => r.closed).length}</span>
+        </div>
+      </div>
+    );
+  // Before the first talk.
+  return (
+    <div className="projector pj-open">
+      {top}
+      <Stamp sub="Non divulgare">Top secret</Stamp>
+      <Mark large />
+      <p className="eyebrow">SALA D’ATTESA</p>
+      <p className="pj-motto">
+        Siccome non cielo dicono,
+        <br />
+        cielo diciamo noi.
+      </p>
+      <div className="codeline">
+        <span>FASC. 000</span>
+        <i />
+        <span>RISERVATO</span>
+      </div>
+      <h1>Nulla è come sembra.</h1>
+      <div className="codeline">
+        <span>IN ATTESA</span>
+        <i />
+        <span>CONGRESSO N. 001</span>
+      </div>
+      <p className="pj-sub">Il congresso sta per cominciare.</p>
     </div>
   );
 }
