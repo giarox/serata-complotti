@@ -63,7 +63,8 @@ const confettiColors = [
   '#ff9800',
   '#ff5722',
 ];
-export function ConfettiBurst() {
+const goldColors = ['#ffe39a', '#f3c75f', '#d9a441', '#b8862c', '#fff3d0', '#c9a063', '#ffffff'];
+export function ConfettiBurst({ delay = 250, gold = false }: { delay?: number; gold?: boolean }) {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   useEffect(() => {
     if (!canvas || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -80,7 +81,7 @@ export function ConfettiBurst() {
       oy = name ? name.top + name.height / 2 : H / 2,
       spread = name ? name.width / 2 : 100;
     const rnd = (a: number, b: number) => a + Math.random() * (b - a);
-    const parts = Array.from({ length: 320 }, () => {
+    const parts = Array.from({ length: gold ? 420 : 320 }, () => {
       const angle = rnd(-Math.PI * 0.92, -Math.PI * 0.08),
         speed = rnd(9, 25) * k;
       return {
@@ -91,7 +92,9 @@ export function ConfettiBurst() {
         friction: rnd(0.975, 0.99),
         size: Math.round(rnd(7, 17) * k),
         square: Math.random() < 0.5,
-        color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+        color: (gold ? goldColors : confettiColors)[
+          Math.floor(Math.random() * (gold ? goldColors : confettiColors).length)
+        ],
         wobble: rnd(-0.02, 0.02),
         wobbleAmp: rnd(0.01, 0.08),
         wobbleAngle: rnd(0, Math.PI * 2),
@@ -128,13 +131,13 @@ export function ConfettiBurst() {
       }
       if (left && alive) frame = requestAnimationFrame(tick);
     };
-    const start = window.setTimeout(() => (frame = requestAnimationFrame(tick)), 250);
+    const start = window.setTimeout(() => (frame = requestAnimationFrame(tick)), delay);
     return () => {
       alive = false;
       clearTimeout(start);
       cancelAnimationFrame(frame);
     };
-  }, [canvas]);
+  }, [canvas, delay, gold]);
   // On the body: no ancestor's layout or transform can move or clip it.
   return createPortal(<canvas ref={setCanvas} className="pj-confetti" aria-hidden="true" />, document.body);
 }

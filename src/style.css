@@ -6312,7 +6312,9 @@ label,
   transform: translate(-50%, -62%) rotate(-8deg);
   border-radius: 46% 54% 50% 48%;
   background: radial-gradient(circle at 38% 35%, #c6392b, #8c1c13 60%, #5e100b);
-  box-shadow: 0 0.4vh 1vh #0009, inset 0 0 0 0.6vh #0002;
+  box-shadow:
+    0 0.4vh 1vh #0009,
+    inset 0 0 0 0.6vh #0002;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6588,7 +6590,9 @@ label,
   opacity: 1;
   border-color: #f3dca4;
   background: linear-gradient(180deg, #4a3c24, #241d13);
-  box-shadow: 0 0 6vh #f3dca455, inset 0 1px 0 #fff5;
+  box-shadow:
+    0 0 6vh #f3dca455,
+    inset 0 1px 0 #fff5;
 }
 .pj-award.suspense .pj-step.lit b {
   color: #fff1c9;
@@ -6660,7 +6664,9 @@ label,
 .pj-award.done .pj-step.lit {
   border-color: #f3dca4;
   background: linear-gradient(180deg, #4a3c24, #241d13);
-  box-shadow: 0 0 7vh #f3dca466, inset 0 1px 0 #fff5;
+  box-shadow:
+    0 0 7vh #f3dca466,
+    inset 0 1px 0 #fff5;
 }
 .pj-award.done .pj-step.lit b {
   color: #fff1c9;
@@ -7637,4 +7643,876 @@ label,
 }
 .pj-open .pj-head {
   width: min(1150px, 50vw);
+}
+
+/* 28 Oct evening — phones v2: one shared stage layout (eye, tag, white headline, flavour ≤ 50% of the screen) */
+.guest-stage.v2 {
+  text-align: center;
+  padding: 18px 6px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.guest-stage.v2 .stage-top {
+  min-height: 34vh;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+}
+.guest-stage.v2 .mark {
+  width: 34px;
+  height: 34px;
+  opacity: 0.85;
+}
+.stage-tag {
+  display: inline-block;
+  font: 600 13px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f2d9d2;
+  background: #b5372b;
+  padding: 8px 12px 7px;
+  transform: rotate(-2deg);
+  box-shadow: 2px 3px 0 #00000080;
+}
+.guest-stage.v2 h1 {
+  color: var(--bone, #f3ecdf);
+  font-size: clamp(30px, 9vw, 44px);
+  line-height: 1.08;
+  max-width: 460px;
+  margin: 4px 0 0;
+}
+.stage-flavor {
+  font: 18px/1.45 var(--sans);
+  color: var(--dim);
+  max-width: 420px;
+  margin: 0;
+}
+.active-file {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  margin-top: 18px;
+  padding: 22px 20px 20px;
+  background: var(--fibres), var(--paper);
+  color: var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 16px 34px #000000b0;
+  transform: rotate(-1deg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 6px solid var(--stamp);
+}
+.active-file .mono {
+  color: var(--stamp);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.active-file strong {
+  font: 30px/1.1 var(--type);
+  overflow-wrap: anywhere;
+}
+.active-file em {
+  font: italic 16px/1.4 var(--sans);
+  color: var(--ink-soft);
+}
+.stage-next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 420px;
+  margin: 22px auto 0;
+  font: 600 15px/1.4 var(--sans);
+  color: var(--brass-hi);
+}
+.stage-next svg {
+  flex: none;
+}
+.stage-reopen {
+  margin-top: 18px;
+  background: none;
+  border: 0;
+  color: var(--dim);
+  font: 15px var(--sans);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  min-height: 44px;
+}
+.guest-stage.v2 .slide-remote {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 40px;
+  max-width: 460px;
+}
+.guest-stage.v2 .remote-btn {
+  min-height: 150px;
+  font-size: 18px;
+}
+.slide-remote {
+  grid-template-columns: 1fr 1fr;
+}
+.toast {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 60;
+  width: min(92vw, 440px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--fibres), var(--paper);
+  color: var(--ink);
+  font: 600 15px/1.4 var(--sans);
+  border-left: 6px solid #2f7d4f;
+  box-shadow: 0 14px 30px #000000c0;
+  animation: toast-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  cursor: pointer;
+}
+.toast svg {
+  flex: none;
+  color: #2f7d4f;
+  margin-top: 1px;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+}
+
+/* Ballot v2 */
+.stamp-ballot .ballot-title {
+  color: var(--bone, #f3ecdf);
+  font-size: clamp(30px, 8.6vw, 42px);
+  line-height: 1.08;
+  margin: 6px 0 0;
+}
+.stamp-ballot .ballot-person {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 6px solid var(--stamp);
+}
+.stamp-ballot .ballot-person .mono {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--stamp);
+}
+.stamp-ballot .ballot-person strong {
+  font: 28px/1.1 var(--type);
+  overflow-wrap: anywhere;
+}
+.stamp-ballot .ballot-person em {
+  font: italic 15px/1.4 var(--sans);
+  color: var(--ink-soft);
+}
+.stamp-ballot .ballot-intro {
+  font: 16px/1.5 var(--sans);
+  color: var(--dim);
+}
+.ballot-question {
+  margin: 26px 0 18px;
+  padding: 20px 0 0;
+  border-top: 1px dashed var(--rule);
+  display: grid;
+  gap: 10px;
+}
+.ballot-question h2 {
+  color: var(--brass-hi);
+  font: 26px/1.15 var(--type);
+  margin: 0;
+}
+.ballot-question p {
+  font: 16px/1.5 var(--sans);
+  color: var(--dim);
+  margin: 0;
+}
+.ballot-question p strong {
+  color: var(--bone, #f3ecdf);
+}
+.ballot-question .stamp-count {
+  justify-self: start;
+}
+.ballot-later {
+  text-align: center;
+  font: 14px/1.4 var(--sans);
+  color: var(--muted);
+  margin-top: 12px;
+}
+.pj-aside {
+  font: italic 0.9em/1.3 var(--type);
+  color: var(--bone, #f3ecdf);
+  opacity: 0.85;
+}
+
+/* 28 Oct evening — projector v4 */
+/* Every new moment fades in from the dark; stamps are imprinted, never just shown */
+.projector.pj-stage,
+.projector.pj-break,
+.projector.pj-open,
+.projector.pj-closing,
+.projector.pj-vote {
+  animation: pj-enter 0.7s ease-out both;
+}
+@keyframes pj-enter {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+@keyframes ink-imprint {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(var(--r, -6deg));
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.94) rotate(var(--r, -6deg));
+  }
+  75% {
+    transform: scale(1.04) rotate(var(--r, -6deg));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(var(--r, -6deg));
+  }
+}
+@keyframes pj-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.6vh);
+  }
+}
+.pj-dots {
+  display: inline-block;
+  animation: pj-dots 1.6s steps(4, end) infinite;
+  overflow: hidden;
+  vertical-align: bottom;
+  width: 1.1em;
+  white-space: nowrap;
+}
+.pj-dots.slow {
+  animation-duration: 2.4s;
+}
+@keyframes pj-dots {
+  from {
+    width: 0;
+  }
+}
+
+/* Vote: names small on top, the question big and white, four stamps imprinted one by one */
+.pj-vote-who {
+  font-family: var(--type);
+  font-size: clamp(16px, min(1.6vw, 2.9vh), 32px);
+  color: var(--brass-hi);
+  margin: 0 0 2vh;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.3em 0.5em;
+}
+.pj-vote-who .pj-label {
+  font-size: 0.62em !important;
+  margin: 0 !important;
+}
+.pj-vote-who b {
+  font-weight: 400;
+}
+.pj-vote h1.pj-question {
+  color: var(--bone) !important;
+  font-size: clamp(34px, min(4.4vw, 7.6vh), 96px) !important;
+  line-height: 1.12 !important;
+  max-width: 22ch;
+  margin: 0 auto !important;
+  letter-spacing: 0.01em !important;
+}
+.pj-vote .pj-vote-limit {
+  margin: 2vh 0 3.4vh !important;
+}
+.pj-vote .pj-stamps {
+  text-align: center;
+  width: min(1300px, 82vw);
+  gap: 3vh 6vw;
+}
+.pj-vote .pj-stamp-card {
+  justify-items: center;
+  gap: 1vh;
+}
+.pj-vote .pj-stamp-card .ink-stamp {
+  font-size: clamp(13px, min(1.5vw, 2.7vh), 30px);
+  --r: -4deg;
+  animation: ink-imprint 0.55s calc(0.6s + var(--i) * 0.5s) cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.pj-vote .pj-stamp-card:nth-child(even) .ink-stamp {
+  --r: 4deg;
+}
+.pj-vote .pj-stamp-card > span,
+.pj-vote .pj-stamp-card > em {
+  animation: pj-fade-up 0.5s calc(0.85s + var(--i) * 0.5s) ease-out both;
+}
+.pj-vote .pj-stamp-card > span {
+  color: var(--bone);
+  font-size: clamp(13px, min(1.25vw, 2.3vh), 26px);
+}
+.pj-ballots {
+  margin-top: 4vh;
+  display: grid;
+  justify-items: center;
+  gap: 1.2vh;
+  width: min(760px, 60vw);
+  font-family: var(--sans);
+  font-size: clamp(13px, min(1.2vw, 2.2vh), 24px);
+  color: var(--bone);
+  letter-spacing: 0.04em;
+}
+.pj-ballots b {
+  color: var(--brass-hi);
+  font-size: 1.3em;
+}
+.pj-ballots i {
+  display: block;
+  width: 100%;
+  height: 0.6vh;
+  min-height: 4px;
+  background: linear-gradient(90deg, var(--stamp) calc(var(--p) * 100%), #ffffff1a 0);
+  transition: background 0.6s;
+}
+.pj-ballots em {
+  font-family: var(--type);
+  font-style: normal;
+  color: var(--dim);
+  animation: pj-hurry 2.2s ease-in-out infinite;
+}
+@keyframes pj-hurry {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Review: the counter is the slide */
+.pj-review h1.pj-title {
+  color: var(--bone) !important;
+}
+.pj-tally {
+  margin: 4vh 0 2vh;
+  display: grid;
+  justify-items: center;
+  gap: 1vh;
+}
+.pj-tally strong {
+  font: 400 clamp(64px, min(9vw, 17vh), 210px) / 1 var(--type);
+  color: var(--brass-hi);
+}
+.pj-tally strong small {
+  font-size: 0.4em;
+  color: var(--dim);
+  vertical-align: middle;
+}
+.pj-tally span {
+  font: clamp(16px, min(1.6vw, 2.9vh), 32px) / 1.3 var(--sans);
+  color: var(--bone);
+}
+
+/* Prize opening: the stamp is the key to the prize */
+.pj-open-prize .pj-big-stamp .ink-stamp {
+  --r: -6deg;
+  animation: ink-imprint 0.6s 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.pj-link {
+  font-family: var(--sans);
+  font-size: clamp(16px, min(1.7vw, 3vh), 34px);
+  color: var(--bone);
+  margin: 2.6vh 0 0;
+  animation: pj-fade-up 0.6s 1.3s ease-out both;
+}
+.pj-link::before {
+  content: '↑ ';
+  color: var(--stamp);
+}
+
+/* Podium: first the spotlight, then the name */
+.pj-award.suspense .pj-feature {
+  animation: none;
+}
+.pj-award.suspense .pj-feature .pj-name,
+.pj-award.suspense .pj-feature .pj-role,
+.pj-award.suspense .pj-feature .pj-sub,
+.pj-award.suspense .pj-step.lit .pj-step-name {
+  animation: pj-name-in 0.8s 1.1s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+@keyframes pj-name-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(8px);
+  }
+}
+/* The winner: spotlight → name → the stamp slammed on it */
+.pj-award.done .pj-wreath-in {
+  animation: none;
+}
+.pj-award.done .pj-laurel {
+  animation: pj-fade-up 0.8s 0.5s ease-out both;
+}
+.pj-award.done .pj-wreath-in .pj-name {
+  animation: pj-name-in 0.9s 1.2s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+.pj-award.done .pj-wreath-in .pj-role,
+.pj-award.done .pj-wreath-in .pj-sub,
+.pj-award.done .pj-medals {
+  animation: pj-fade-up 0.6s 1.8s ease-out both;
+}
+.pj-award.done .pj-stamp-drop .ink-stamp {
+  --r: -6deg;
+  animation: ink-imprint 0.6s 2.4s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+/* The Cappello: gold rays behind, the room in gold */
+.pj-award.cappello.done {
+  background: radial-gradient(ellipse 60% 70% at 50% 40%, #4a381766 0%, transparent 70%);
+}
+.pj-rays {
+  position: absolute;
+  inset: -40vh -40vw;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, #f3c75f14 0deg 6deg, transparent 6deg 18deg);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 55%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 55%);
+  animation:
+    pj-fade-up 1.2s 0.9s ease-out both,
+    pj-spin 60s linear infinite;
+}
+@keyframes pj-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.pj-award.cappello.done .pj-wreath,
+.pj-award.cappello.done .pj-podium-steps,
+.pj-award.cappello.done .pj-head {
+  position: relative;
+  z-index: 1;
+}
+.pj-award.cappello.done .pj-wreath-in .pj-name {
+  color: #ffe39a !important;
+  text-shadow: 0 0 4vh #f3c75f66;
+}
+.pj-award.cappello.done .pj-laurel {
+  color: #e9c879;
+}
+
+/* Closing: four prizes, the Cappello, thanks, and a sequel */
+.pj-closing .pj-head {
+  margin-bottom: 2vh;
+}
+.pj-recap {
+  list-style: none;
+  padding: 0;
+  margin: 2.4vh 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2vw;
+  width: min(1500px, 88vw);
+}
+.pj-recap li {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 1.2vh;
+  padding: 2.2vh 1vw;
+  border-top: 1px solid var(--rule);
+  animation: pj-fade-up 0.6s calc(0.4s + var(--i) * 0.25s) ease-out both;
+}
+.pj-recap .ink-stamp {
+  --r: -4deg;
+  font-size: clamp(11px, min(1.1vw, 2vh), 22px);
+  animation: ink-imprint 0.5s calc(0.5s + var(--i) * 0.25s) both;
+}
+.pj-recap li:nth-child(even) .ink-stamp {
+  --r: 4deg;
+}
+.pj-recap span {
+  font: clamp(12px, min(1.1vw, 2vh), 22px) / 1.2 var(--sans);
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pj-recap strong {
+  font: 400 clamp(16px, min(1.7vw, 3vh), 34px) / 1.15 var(--type);
+  color: var(--brass-hi);
+}
+.pj-recap-crown {
+  margin-top: 3vh;
+  display: grid;
+  justify-items: center;
+  gap: 1vh;
+  padding: 2.4vh 4vw;
+  border: 1px solid #e9c87988;
+  box-shadow:
+    0 0 6vh #f3c75f22,
+    inset 0 0 4vh #f3c75f14;
+  width: min(1000px, 70vw);
+  animation: pj-name-in 0.9s 1.6s ease-out both;
+}
+.pj-recap-crown span {
+  font: clamp(13px, min(1.3vw, 2.4vh), 26px) / 1 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e9c879;
+}
+.pj-recap-crown strong {
+  font: 400 clamp(34px, min(4.4vw, 8vh), 96px) / 1.05 var(--type);
+  color: #ffe39a;
+}
+.pj-closing .pj-thanks {
+  margin-top: 3vh;
+  font: clamp(14px, min(1.4vw, 2.5vh), 28px) / 1.4 var(--sans);
+  color: var(--bone);
+  max-width: 60ch;
+}
+.pj-continua {
+  margin: 2vh 0 0;
+  font: 400 clamp(40px, min(5vw, 9vh), 110px) / 1 var(--type);
+  color: var(--bone);
+  animation: pj-fade-up 1s 2.6s ease-out both;
+}
+.pj-closing .pj-foot {
+  margin-top: 1.4vh;
+}
+
+/* Phones: a stamp pressed on the ballot is imprinted too */
+.stamp-choice.pressed .ink-stamp {
+  --r: -4deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projector,
+  .projector *,
+  .toast {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Certificate v2: a real certificate, made for a screenshot */
+.certificate.v2 {
+  padding: 10px;
+  gap: 0;
+  transform: none;
+  border-radius: 2px;
+  background: radial-gradient(ellipse at 50% 0%, #fffaf0aa, transparent 60%), var(--fibres), var(--paper);
+  box-shadow:
+    0 20px 40px #000c,
+    inset 0 0 40px #8a6a3e33;
+}
+.cert-frame {
+  position: relative;
+  border: 2px solid #8a6a3e;
+  outline: 1px solid #8a6a3e;
+  outline-offset: -7px;
+  padding: 30px 20px 22px;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 10px;
+}
+.cert-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #8a6a3e;
+}
+.cert-corner.tl {
+  top: 10px;
+  left: 10px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.cert-corner.tr {
+  top: 10px;
+  right: 10px;
+  border-left: 0;
+  border-bottom: 0;
+}
+.cert-corner.bl {
+  bottom: 10px;
+  left: 10px;
+  border-right: 0;
+  border-top: 0;
+}
+.cert-corner.br {
+  bottom: 10px;
+  right: 10px;
+  border-left: 0;
+  border-top: 0;
+}
+.cert-kicker {
+  margin: 0;
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--stamp);
+}
+.cert-frame > .mark {
+  width: 40px;
+  height: 40px;
+  color: #6b4f2a;
+}
+.cert-type {
+  margin: 0;
+  font: 400 44px/1 var(--type);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b4f2a;
+}
+.cert-of {
+  margin: -2px 0 6px;
+  font: italic 14px/1.35 var(--sans);
+  color: var(--ink-soft);
+}
+.cert-given {
+  margin: 4px 0 0;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.certificate.v2 h1 {
+  font-size: clamp(28px, 8vw, 36px);
+  line-height: 1.1;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #8a6a3e88;
+  overflow-wrap: anywhere;
+}
+.certificate.v2 .cert-role {
+  font: italic 15px/1.4 var(--sans);
+  color: var(--ink-soft);
+}
+.cert-lead {
+  margin: 4px 0 0;
+  font: 15px/1.5 var(--sans);
+  color: var(--ink);
+}
+.cert-crown {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px 10px;
+  background: linear-gradient(180deg, #f3dca455, #e9c87922);
+  border: 1px solid #b8862c;
+}
+.cert-crown strong {
+  font: 400 22px/1.15 var(--type);
+  color: #7a5a1e;
+}
+.cert-crown span {
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cert-rows {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  width: 100%;
+  display: grid;
+}
+.cert-rows li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'stamp times' 'stamp place';
+  align-items: center;
+  column-gap: 12px;
+  text-align: left;
+  padding: 10px 2px;
+  border-top: 1px dashed #8a6a3e88;
+}
+.cert-rows li:last-child {
+  border-bottom: 1px dashed #8a6a3e88;
+}
+.cert-rows .ink-stamp {
+  grid-area: stamp;
+  transform: rotate(-3deg);
+}
+.cert-rows li:nth-child(even) .ink-stamp {
+  transform: rotate(3deg);
+}
+.cert-rows li.none {
+  opacity: 0.45;
+}
+.cert-times {
+  grid-area: times;
+  font: 14px/1.3 var(--sans);
+  color: var(--ink);
+}
+.cert-times strong {
+  font: 400 22px/1 var(--type);
+}
+.cert-place {
+  grid-area: place;
+  font: 600 12px/1.3 var(--mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cert-place.p1 {
+  color: var(--stamp);
+}
+.cert-rows li.won .cert-place::before {
+  content: '★ ';
+}
+.certificate.v2 .cert-mention {
+  font: 600 12px/1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cert-sign {
+  margin-top: 14px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.cert-seal {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #d0463a, #8e1d14 70%);
+  box-shadow:
+    0 3px 6px #0006,
+    inset 0 0 0 4px #ffffff22;
+  transform: rotate(-12deg);
+}
+.cert-seal .mark {
+  width: 30px;
+  height: 30px;
+  color: #f6d9c9;
+  opacity: 0.85;
+}
+.cert-sign > div {
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+.cert-sign i {
+  display: block;
+  height: 28px;
+  border-bottom: 1px solid var(--ink);
+  background: no-repeat right 4px bottom 4px / 70% 80%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40'%3E%3Cpath d='M4 30c18-24 26-26 22-6s14-18 24-14-6 18 6 14 18-22 30-18-8 20 4 18 26-20 40-14 18 14 30 6' fill='none' stroke='%232a2218' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.cert-sign small {
+  font: 600 10px/1.2 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cert-protocol {
+  margin: 8px 0 0;
+  font: 10px/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+.certificate.v2.crowned .cert-frame {
+  border-color: #b8862c;
+  outline-color: #b8862c;
+}
+.certificate.v2 + .cert-foot {
+  margin-top: 16px;
+  text-align: center;
+  font: 14px/1.5 var(--sans);
+  color: var(--dim);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 12px;
+}
+.certificate.v2 + .cert-foot .text-button {
+  background: none;
+  border: 1px solid var(--brass);
+  color: var(--brass-hi);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font: 600 14px var(--sans);
+  cursor: pointer;
+}
+/* vote slide v4: fit in one screen */
+.pj-vote-who,
+.pj-vote-who b {
+  font-family: var(--type) !important;
+  color: var(--brass-hi) !important;
+  font-size: clamp(15px, min(1.4vw, 2.6vh), 30px) !important;
+  margin: 0 0 1.4vh !important;
+}
+.pj-vote-who b {
+  margin: 0 !important;
+}
+.pj-vote-who .pj-label {
+  font-size: clamp(10px, min(0.9vw, 1.7vh), 20px) !important;
+}
+.pj-vote h1.pj-question {
+  font-size: clamp(28px, min(3.5vw, 6.2vh), 80px) !important;
+  max-width: 30ch;
+}
+.pj-vote .pj-vote-limit {
+  margin: 1.4vh 0 2.4vh !important;
+}
+.pj-vote .pj-stamps {
+  gap: 2vh 5vw;
+  margin-top: 0;
+}
+.pj-vote .pj-stamp-card {
+  gap: 0.6vh;
+}
+.pj-vote .pj-stamp-card .ink-stamp {
+  font-size: clamp(12px, min(1.25vw, 2.2vh), 26px);
+  margin-bottom: 0.4vh;
+}
+.pj-vote .pj-stamp-card > span {
+  font-size: clamp(12px, min(1.05vw, 1.9vh), 22px);
+}
+.pj-vote .pj-stamp-card > em {
+  font-size: clamp(11px, min(0.95vw, 1.75vh), 20px);
+}
+.pj-ballots {
+  margin-top: 2.6vh;
+  gap: 0.8vh;
+}
+.pj-open .pj-aside {
+  font-family: var(--type) !important;
+  font-style: italic !important;
+  font-size: clamp(14px, min(1.3vw, 2.3vh), 26px) !important;
+  color: var(--bone) !important;
+  margin-top: 1.6vh !important;
+}
+.pj-closing .pj-continua {
+  font-family: var(--type) !important;
+  font-size: clamp(40px, min(5vw, 9vh), 110px) !important;
+  color: var(--bone) !important;
+  margin-top: 2.4vh !important;
+}
+.pj-recap li {
+  gap: 1.8vh;
 }

@@ -21,7 +21,6 @@ import {
 import {
   certificate,
   prizeOrder,
-  registro,
   revealMoment,
   revealOver,
   revealedPrizes,
@@ -100,7 +99,20 @@ export function StampMark({
 /* ------------------------------------------------------------------ phones ------------------------------------------------------------------ */
 
 /** The ballot: four stamps, at most two. The vote is valid only once the server confirms it. */
-export function StampBallot({ s, actor, busy, perform }: { s: State; actor: Actor; busy: boolean; perform: Perform }) {
+export function StampBallot({
+  s,
+  actor,
+  busy,
+  perform,
+  onDone,
+}: {
+  s: State;
+  actor: Actor;
+  busy: boolean;
+  perform: Perform;
+  /** Called once the server has the ballot: the phone moves on to the waiting screen. */
+  onDone?: () => void;
+}) {
   const r = activeRound(s)!,
     p = presenter(s)!,
     saved = s.votes.find((v) => v.roundId === r.id && v.voterId === actor.participantId);
@@ -126,26 +138,27 @@ export function StampBallot({ s, actor, busy, perform }: { s: State; actor: Acto
     if (await perform({ type: 'vote', roundId: r.id, ballot: draft })) {
       setDirty(false);
       setAskEmpty(false);
+      onDone?.();
     }
   }
   return (
     <form className="voting-form stamp-ballot" onSubmit={submit}>
-      <p className="eyebrow">TIMBRA IL FASCICOLO / VOTO RISERVATO</p>
+      <p className="eyebrow">TIMBRATURA RISERVATA</p>
+      <h1 className="ballot-title">Il fascicolo è nelle tue mani ora.</h1>
       <div className="ballot-person">
-        <span>
-          Stai timbrando <strong>{displayName(p)}</strong>
-        </span>
-        {p.role && <h2>{p.role}</h2>}
+        <span className="mono">FASCICOLO DI</span>
+        <strong>{displayName(p)}</strong>
+        {p.role && <em>«{p.role}»</em>}
       </div>
       <p className="ballot-intro">
-        <strong>Il fascicolo è nelle tue mani ora.</strong> Abbiamo bisogno dei tuoi timbri di approvazione per
-        catalogarlo accuratamente. Ci fidiamo di te, più o meno.
+        Abbiamo bisogno dei tuoi timbri di approvazione per catalogarlo accuratamente. Ci fidiamo di te, più o meno.
       </p>
-      <div className="ballot-hint">
-        <div>
-          <strong>Il Congresso vuole sapere: cosa ti ha colpito?</strong>
-          <span>Nessun timbro, uno o al massimo due. L’inchiostro costa.</span>
-        </div>
+      <div className="ballot-question">
+        <h2>Il Congresso vuole sapere: cosa ti ha colpito?</h2>
+        <p>
+          Timbra quello che ti ha colpito: <strong>nessun timbro, uno o al massimo due</strong>. Non ti ha colpito
+          niente? Consegnalo senza timbri. L’inchiostro costa.
+        </p>
         <strong className={'stamp-count' + (full ? ' full' : '')}>Timbri: {n}/2</strong>
       </div>
       <div className={'stamp-grid' + (full ? ' shake' : '')} role="group" aria-label="I timbri">
@@ -172,8 +185,8 @@ export function StampBallot({ s, actor, busy, perform }: { s: State; actor: Acto
         <p className="saved-banner" role="status">
           <Check size={17} />
           {dirty
-            ? 'Fascicolo consegnato. Hai modifiche da consegnare.'
-            : 'Fascicolo consegnato. Puoi cambiarlo fino alla chiusura.'}
+            ? 'Fascicolo già consegnato. Hai modifiche da consegnare.'
+            : 'Fascicolo consegnato. Puoi ancora cambiare i timbri.'}
         </p>
       )}
       {askEmpty && (
@@ -188,9 +201,10 @@ export function StampBallot({ s, actor, busy, perform }: { s: State; actor: Acto
             ? 'Consegna senza timbri'
             : saved
               ? 'Consegna le modifiche'
-              : 'Consegna il fascicolo'}
+              : 'Consegna il fascicolo timbrato'}
         <Check size={18} />
       </Button>
+      <p className="ballot-later">Niente panico: prima del verdetto potrai rivedere i tuoi timbri.</p>
     </form>
   );
 }
@@ -234,9 +248,11 @@ export function ReviewBoard({ s, actor, busy, perform }: { s: State; actor: Acto
   useEffect(() => setDraft({}), [s.revision]);
   return (
     <section className="review-board">
-      <p className="eyebrow">REVISIONE DEI FASCICOLI</p>
-      <h1>Rivedi le tue timbrature.</h1>
-      <p className="review-lede">Ora che hai visto tutti, puoi spostare i timbri. Massimo due per fascicolo.</p>
+      <p className="eyebrow">REVISIONE DEI TIMBRI</p>
+      <h1>Ricontrolla i tuoi timbri.</h1>
+      <p className="review-lede">
+        Ora che hai visto tutti, puoi annullare un timbro e rimetterlo dove serve. Massimo due per fascicolo.
+      </p>
       <ol className="review-list">
         {all.map((t) => {
           const mine = ownerOf(me) === t.presenter.id,
@@ -277,11 +293,11 @@ export function ReviewBoard({ s, actor, busy, perform }: { s: State; actor: Acto
       <div className="review-confirm">
         {confirmed ? (
           <p className="saved-banner" role="status">
-            <Check size={17} /> Confermato. Puoi ancora cambiare finché la regia non chiude.
+            <Check size={17} /> Controfirmato. Puoi ancora ritoccare finché la regia non chiude.
           </p>
         ) : (
           <Button disabled={busy} onClick={() => void perform({ type: 'confirmReview' })}>
-            Confermo le mie timbrature <Check size={18} />
+            Controfirmo i miei timbri <Check size={18} />
           </Button>
         )}
       </div>
@@ -289,16 +305,74 @@ export function ReviewBoard({ s, actor, busy, perform }: { s: State; actor: Acto
   );
 }
 
+/**
+ * The phone between actions: a small eye, a tag saying what is going on, a big white line and the flavour
+ * text — together never more than half the screen — then what matters (the active file, the remote…).
+ */
+export function GuestStage({
+  tag,
+  title,
+  flavor,
+  children,
+}: {
+  tag: string;
+  title: string;
+  flavor?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section className="guest-stage v2">
+      <div className="stage-top">
+        <Mark />
+        <span className="stage-tag">{tag}</span>
+        <h1>{title}</h1>
+        {flavor && <p className="stage-flavor">{flavor}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+/** The talk on stage, made obvious, and what comes next for you. */
+export function ActiveFile({ s, next }: { s: State; next?: string }) {
+  const p = presenter(s);
+  if (!p) return null;
+  return (
+    <>
+      <div className="active-file">
+        <span className="mono">FASCICOLO ATTIVO · SUL PALCO ORA</span>
+        <strong>{displayName(p)}</strong>
+        {p.role && <em>«{p.role}»</em>}
+      </div>
+      {next && (
+        <p className="stage-next">
+          <StampIcon size={17} /> {next}
+        </p>
+      )}
+    </>
+  );
+}
+/** A confirmation that slides in and leaves by itself. */
+export function Toast({ text, onClose }: { text: string; onClose: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onClose, 5000);
+    return () => window.clearTimeout(t);
+  }, [text, onClose]);
+  return (
+    <div className="toast" role="status" onClick={onClose}>
+      <Check size={18} /> <span>{text}</span>
+    </div>
+  );
+}
+
 /** During the reveal the phone asks you to look up; at the end it hands you your certificate. */
 export function GuestReveal({ s, actor }: { s: State; actor: Actor }) {
   if (!revealOver(s))
     return (
-      <section className="guest-stage reveal-wait">
-        <span className="phase-badge">Il verdetto</span>
-        <Mark large />
-        <h1>Guardate il proiettore.</h1>
-        <p>Il telefono potrebbe essere intercettato. Alla fine qui arriverà il tuo attestato.</p>
-      </section>
+      <GuestStage
+        tag="Verdetto in corso"
+        title="Guarda il proiettore."
+        flavor="Il telefono potrebbe essere intercettato. E comunque ti sta già guardando."
+      />
     );
   return <Certificate s={s} actor={actor} />;
 }
@@ -309,51 +383,111 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
   const witness = v?.companion && v.owner.partner === 'witness';
   const c = v && !witness ? certificate(s, v.owner.id) : null;
   const name = v ? (v.companion ? v.name : displayName(v.owner)) : '';
+  const placeOf = (k: PrizeKey) => (c?.prizes.includes(k) ? 1 : (c?.mentions.find((m) => m.prize === k)?.place ?? 0));
+  const crown = c ? placeOf('cappello') : 0;
+  const won = c ? c.prizes.map((k) => prizes[k].name) : [];
+  async function share() {
+    const text = won.length
+      ? `Al 1° Congresso dei ricercatori indipendenti ho vinto: ${list(won)}. Siccome non cielo dicono…`
+      : 'Ho partecipato al 1° Congresso dei ricercatori indipendenti. Ho visto troppo.';
+    try {
+      await navigator.share?.({ title: 'Attestato · Serata Complotti', text });
+    } catch {
+      /* the guest closed the sheet */
+    }
+  }
   return (
-    <article className="certificate">
-      <p className="mono">ATTESTATO DI PARTECIPAZIONE · 1° CONGRESSO DEI RICERCATORI INDIPENDENTI</p>
-      <h1>{name}</h1>
-      {c?.talk.presenter.role && <p className="cert-role">«{c.talk.presenter.role}»</p>}
-      {!c ? (
-        <p className="cert-body">
-          {witness ? 'Testimone oculare' : 'Membro del pubblico'}: hai visto tutto e non dirai niente. Il Congresso ti
-          ringrazia per la vigilanza.
-        </p>
-      ) : (
-        <>
-          {c.prizes.map((k) => (
-            <p key={k} className="cert-prize">
-              <StampIcon size={18} /> {prizes[k].name} <small>{prizes[k].reason}</small>
+    <>
+      <article className={'certificate v2' + (crown === 1 ? ' crowned' : '')}>
+        <div className="cert-frame">
+          <span className="cert-corner tl" aria-hidden="true" />
+          <span className="cert-corner tr" aria-hidden="true" />
+          <span className="cert-corner bl" aria-hidden="true" />
+          <span className="cert-corner br" aria-hidden="true" />
+          <p className="cert-kicker">Palacomplotti · 31 ottobre 2026</p>
+          <Mark />
+          <p className="cert-type">Attestato</p>
+          <p className="cert-of">del 1° Congresso dei ricercatori indipendenti</p>
+          <p className="cert-given">Si certifica che</p>
+          <h1>{name}</h1>
+          {c?.talk.presenter.role && <p className="cert-role">«{c.talk.presenter.role}»</p>}
+          {!c ? (
+            <p className="cert-lead">
+              ha assistito ai lavori come {witness ? 'testimone oculare' : 'membro del pubblico'}. Ha visto tutto e non
+              dirà niente. Il Congresso ringrazia per la vigilanza.
             </p>
-          ))}
-          {c.mentions.map((m) => (
-            <p key={m.prize} className="cert-mention">
-              {m.place}° posto · {prizes[m.prize].name}
-            </p>
-          ))}
-          {stampKeysWith(c.talk).length ? (
-            <ul className="cert-stamps">
-              {stamps.map((x) =>
-                c.talk.counts[x.key] > 0 ? (
-                  <li key={x.key}>
-                    <StampMark k={x.key} small />
-                    <span>
-                      Il popolo ti ha timbrato <strong>{c.talk.counts[x.key]}</strong>{' '}
-                      {c.talk.counts[x.key] === 1 ? 'volta' : 'volte'}.
-                    </span>
-                  </li>
-                ) : null,
-              )}
-            </ul>
           ) : (
-            <p className="cert-body">
-              Nessun timbro: il tuo fascicolo è così segreto che nemmeno il pubblico ha osato toccarlo.
-            </p>
+            <>
+              <p className="cert-lead">
+                {v?.companion ? `con ${displayName(c.talk.presenter)}, ` : ''}ha presentato il suo fascicolo al
+                Congresso. {stampKeysWith(c.talk).length ? 'Il Congresso lo ha timbrato così:' : ''}
+              </p>
+              {crown === 1 && (
+                <div className="cert-crown">
+                  <StampMark k="cappello" />
+                  <strong>{prizes.cappello.name}</strong>
+                  <span>{prizes.cappello.reason}</span>
+                </div>
+              )}
+              {stampKeysWith(c.talk).length ? (
+                <ul className="cert-rows">
+                  {stamps.map((x) => {
+                    const n = c.talk.counts[x.key],
+                      place = placeOf(x.key);
+                    return (
+                      <li key={x.key} className={(n ? '' : 'none') + (place === 1 ? ' won' : '')}>
+                        <StampMark k={x.key} small on={n > 0} />
+                        <span className="cert-times">
+                          {n ? (
+                            <>
+                              <strong>{n}</strong> {n === 1 ? 'volta' : 'volte'}
+                            </>
+                          ) : (
+                            'nessun timbro'
+                          )}
+                        </span>
+                        {place > 0 && (
+                          <em className={'cert-place p' + place}>
+                            {place === 1 ? prizes[x.key].name : `${place}° posto`}
+                          </em>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="cert-lead">
+                  Nessun timbro: il fascicolo è così segreto che nemmeno il pubblico ha osato toccarlo.
+                </p>
+              )}
+              {crown > 1 && (
+                <p className="cert-mention">
+                  {crown}° posto · {prizes.cappello.name}
+                </p>
+              )}
+            </>
           )}
-        </>
-      )}
-      <p className="cert-foot">Questo attestato è riservato: lo vedi solo tu.</p>
-    </article>
+          <div className="cert-sign">
+            <span className="cert-seal" aria-hidden="true">
+              <Mark />
+            </span>
+            <div>
+              <i />
+              <small>Il Gran Maestro di cerimonie</small>
+            </div>
+          </div>
+          <p className="cert-protocol">Prot. n. 001/2026 · Copia conforme · Non divulgare (o sì)</p>
+        </div>
+      </article>
+      <p className="cert-foot">
+        Fai uno screenshot e condividilo: tanto lo sanno già.
+        {typeof navigator !== 'undefined' && 'share' in navigator && (
+          <button type="button" className="text-button" onClick={() => void share()}>
+            Condividi
+          </button>
+        )}
+      </p>
+    </>
   );
 }
 const stampKeysWith = (t: Talk) => stamps.filter((x) => t.counts[x.key] > 0);
@@ -362,46 +496,71 @@ const stampKeysWith = (t: Talk) => stamps.filter((x) => t.counts[x.key] > 0);
 
 /** Vote open: who is being judged, and what each stamp means (in big type, for the first talk above all). */
 export function VotingSlide({ s, top }: { s: State; top: ReactNode }) {
-  const p = presenter(s);
+  const p = presenter(s),
+    r = activeRound(s),
+    co = p?.partner === 'copresenter' && p.partnerName ? p.partnerName : '';
+  // Time pressure: how many ballots are in, out of everyone who can stamp this file.
+  const can = r ? voters(s).filter((v) => ownerOf(v.id) !== r.presenterId).length : 0,
+    got = r ? s.votes.filter((v) => v.roundId === r.id).length : 0;
   return (
     <div className="projector pj-stage pj-vote">
       {top}
       <Head left="VOTAZIONE APERTA" right="TIMBRATE DAL TELEFONO" />
-      <Kicker>Sotto giudizio</Kicker>
       {p && (
-        <Fit as="h1" className="pj-name" lines={1} min={0.45}>
-          {displayName(p)}
-        </Fit>
+        <p className="pj-vote-who">
+          <span className="pj-label">Relatore</span> <b>{p.name}</b>
+          {co && (
+            <>
+              {' '}
+              <span className="pj-label">&amp; co-relatore</span> <b>{co}</b>
+            </>
+          )}
+        </p>
       )}
-      <p className="pj-sub">Il Congresso vuole sapere: cosa vi ha colpito?</p>
+      <h1 className="pj-title pj-question">Il Congresso vuole sapere: cosa vi ha colpito?</h1>
       <p className="pj-foot pj-vote-limit">Nessun timbro, uno o al massimo due. L’inchiostro costa.</p>
       <div className="pj-stamps">
-        {stamps.map((c) => (
-          <div key={c.key} className="pj-stamp-card">
+        {stamps.map((c, i) => (
+          <div key={c.key} className="pj-stamp-card" style={{ '--i': i } as React.CSSProperties}>
             <StampMark k={c.key} />
             <span>{c.line}</span>
             <em>{c.joke}</em>
           </div>
         ))}
       </div>
-      <Rule />
+      {can > 0 && (
+        <div className="pj-ballots" style={{ '--p': Math.min(1, got / can) } as React.CSSProperties}>
+          <span>
+            Schede consegnate <b>{Math.min(got, can)}</b> su {can}
+          </span>
+          <i aria-hidden="true" />
+          <em>
+            {got >= can ? 'Tutte dentro. Si chiude.' : 'La regia chiude a breve. I ritardatari verranno schedati.'}
+          </em>
+        </div>
+      )}
     </div>
   );
 }
 
 export function ReviewSlide({ s, top }: { s: State; top: ReactNode }) {
-  const done = (s.reviewed ?? []).length;
+  const { confirmed, voters: all } = reviewTally(s);
   return (
     <div className="projector pj-break pj-review">
       {top}
-      <Head left="REVISIONE" right="RISERVATO" large />
-      <Kicker>Revisione dei fascicoli</Kicker>
-      <h1 className="pj-title">Revisione in corso.</h1>
-      <Rule />
-      <p className="pj-sub">Ora che avete visto tutti, potete spostare i timbri dal telefono. Poi si delibera.</p>
-      <p className="pj-confirmed">
-        <strong>{done}</strong> {done === 1 ? 'persona ha confermato' : 'persone hanno confermato'}
+      <Head left="REVISIONE" right="RISERVATO" />
+      <Kicker>Revisione dei timbri</Kicker>
+      <h1 className="pj-title">Ultima occasione per ripensarci.</h1>
+      <p className="pj-sub">
+        Ricontrollate i timbri dal telefono: un timbro sbagliato si annulla e si rimette. Poi si delibera.
       </p>
+      <div className="pj-tally">
+        <strong>
+          {confirmed} <small>su</small> {all}
+        </strong>
+        <span>partecipanti del congresso hanno controfirmato i loro timbri</span>
+      </div>
+      <Rule />
     </div>
   );
 }
@@ -415,13 +574,17 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
       <div className="projector pj-break pj-interlude">
         {top}
         <Head left="GRAN FINALE" right="RISERVATO" large />
-        <Kicker>Gran finale</Kicker>
-        <h1 className="pj-title">Ora, per il gran finale.</h1>
+        <Kicker>Resta un’ultima busta</Kicker>
+        <h1 className="pj-title">
+          Ora<span className="pj-dots">…</span> per il gran finale.
+        </h1>
         <Rule />
-        <p className="pj-sub">Il vincitore assoluto della serata.</p>
+        <p className="pj-sub">
+          Nessuno sa cosa c’è dentro. Nemmeno noi. <span className="pj-dots slow">…</span>
+        </p>
       </div>
     );
-  if (m.kind === 'registro') return <RegistroSlide s={s} top={top} />;
+  if (m.kind === 'registro') return <ClosingSlide s={s} top={top} />;
   const v = verdict(s)[m.prize],
     info = prizes[m.prize],
     number = m.prize === 'cappello' ? 'PREMIO SPECIALE' : `PREMIO 0${prizeOrder.indexOf(m.prize as never) + 1} DI 04`;
@@ -430,18 +593,17 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
       <div className={'projector pj-stage pj-open-prize' + (m.prize === 'cappello' ? ' gold' : '')}>
         {top}
         <Head left={number} right="BUSTA SIGILLATA" />
-        <Kicker>E il prossimo premio è</Kicker>
+        <Kicker>{m.prize === 'cappello' ? 'E ora il premio più ambito' : 'E il prossimo premio è'}</Kicker>
         <h1 className="pj-title">{info.name}</h1>
         <Label>{info.reason}</Label>
-        {info.stamp ? (
-          <div className="pj-big-stamp">
-            <StampMark k={info.stamp} />
-          </div>
-        ) : (
-          <div className="pj-big-stamp">
-            <StampMark k="cappello" />
-          </div>
-        )}
+        <div className="pj-big-stamp">
+          <StampMark k={info.stamp ?? 'cappello'} />
+        </div>
+        <p className="pj-link">
+          {m.prize === 'cappello'
+            ? 'Lo vince chi è salito più in alto sui quattro podi della serata.'
+            : 'Lo vince chi ha collezionato più timbri come questo.'}
+        </p>
         <p className="pj-sub">{info.opener}</p>
         <Rule />
       </div>
@@ -464,13 +626,25 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
   return (
     <div className={'projector pj-stage pj-award ' + m.prize + (done ? ' done' : ' suspense')}>
       {top}
-      {done && first.length > 0 && <ConfettiBurst key={m.prize} />}
+      {done && first.length > 0 && <ConfettiBurst key={m.prize} delay={1300} gold={m.prize === 'cappello'} />}
+      {done && first.length > 0 && m.prize === 'cappello' && <ConfettiBurst key="second" delay={2900} gold />}
+      {done && m.prize === 'cappello' && <div className="pj-rays" aria-hidden="true" />}
       <Head left={number} right={info.name.toUpperCase()} />
       {done ? (
         <div className="pj-wreath">
           <Laurel />
           <div className="pj-wreath-in">
-            <Kicker>{first.length ? (v.shared ? 'Pari merito' : `${info.name} va a`) : info.name}</Kicker>
+            <Kicker>
+              {first.length
+                ? m.prize === 'cappello'
+                  ? v.shared
+                    ? 'Gran Maestri del Congresso, pari merito'
+                    : 'Il Gran Maestro del Congresso è'
+                  : v.shared
+                    ? 'Pari merito'
+                    : `${info.name} va a`
+                : info.name}
+            </Kicker>
             <Fit as="h1" className="pj-name" lines={2}>
               {first.length ? namesOf(first) : 'Premio insabbiato.'}
             </Fit>
@@ -523,38 +697,39 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
   );
 }
 
-/** Everyone who presented, with the stamps they received at least once. No counts, evening order. */
-export function RegistroSlide({ s, top }: { s: State; top: ReactNode }) {
-  const rows = registro(s);
+/** The closing slide: the four prizes in a row, the Cappello below, thanks, and a sequel nobody promised. */
+export function ClosingSlide({ s, top }: { s: State; top: ReactNode }) {
+  const v = verdict(s);
+  const who = (k: PrizeKey) => (v[k].podium[1].length ? namesOf(v[k].podium[1]) : 'Insabbiato');
   return (
-    <div className="projector pj-registro">
+    <div className="projector pj-closing">
       {top}
-      <Kicker>Il Congresso ha parlato</Kicker>
-      <h1 className="pj-title">Il Registro dei Timbri.</h1>
-      <ol className="pj-registro-grid" style={{ '--n': rows.length } as React.CSSProperties}>
-        {rows.map(({ talk, stamps: got }) => (
-          <li key={talk.round.id}>
+      <Head left="FASCICOLI CHIUSI" right="CONGRESSO N. 001" />
+      <Kicker>Il Congresso ha parlato (e si è esposto)</Kicker>
+      <ol className="pj-recap">
+        {stamps.map((c, i) => (
+          <li key={c.key} style={{ '--i': i } as React.CSSProperties}>
+            <StampMark k={c.key} small />
+            <span>{prizes[c.key].name}</span>
             <Fit as="strong" lines={2} min={0.55}>
-              {displayName(talk.presenter)}
+              {who(c.key)}
             </Fit>
-            {got.length ? (
-              <span className="pj-registro-stamps">
-                {got.map((k) => (
-                  <StampMark key={k} k={k} small />
-                ))}
-              </span>
-            ) : (
-              <em>Fascicolo secretato</em>
-            )}
           </li>
         ))}
       </ol>
-      <p className="pj-sub pj-thanks">
-        Grazie a tutti i ricercatori, ai co-relatori, ai testimoni e al pubblico. Avete visto troppo: ora siete dei
-        nostri. Controllate il telefono: c’è il vostro attestato.
+      <div className="pj-recap-crown">
+        <span>{prizes.cappello.name}</span>
+        <Fit as="strong" lines={1} min={0.45}>
+          {who('cappello')}
+        </Fit>
+      </div>
+      <p className="pj-thanks">
+        Grazie a ricercatori, co-relatori, testimoni e pubblico. Avete visto troppo: ora siete dei nostri.
       </p>
-      <p className="pj-foot">Fascicolo chiuso · Continua… Congresso N. 002</p>
-      <Rule />
+      <p className="pj-continua">
+        Continua<span className="pj-dots">…</span>?
+      </p>
+      <p className="pj-foot">Prossima convocazione: Congresso N. 002. Data e luogo verranno smentiti.</p>
     </div>
   );
 }
@@ -564,9 +739,9 @@ export function RegistroSlide({ s, top }: { s: State; top: ReactNode }) {
 /** What the next tap shows on the projector — never the names, so the GM enjoys the surprise too. */
 export function nextStepLabel(s: State) {
   const next = revealMoment({ phase: 'results', revealed: s.revealed + 1 });
-  if (!next || s.revealed >= 22) return 'Fine: il Registro è sul proiettore.';
+  if (!next || s.revealed >= 22) return 'Fine: la chiusura con i premi è sul proiettore.';
   if (next.kind === 'interlude') return 'Prossimo: il gran finale';
-  if (next.kind === 'registro') return 'Prossimo: il Registro dei Timbri';
+  if (next.kind === 'registro') return 'Prossimo: la chiusura con il riepilogo dei premi';
   const name = prizes[next.prize].name;
   return next.kind === 'open' ? `Prossimo: apertura · ${name}` : `Prossimo: ${next.place}° posto · ${name}`;
 }
@@ -574,7 +749,8 @@ export function nowLabel(s: State) {
   const m = revealMoment(s);
   if (!m) return '';
   if (m.kind === 'interlude') return 'Sul proiettore: il passaggio al gran finale.';
-  if (m.kind === 'registro') return 'Sul proiettore: il Registro dei Timbri. Ognuno ha l’attestato sul telefono.';
+  if (m.kind === 'registro')
+    return 'Sul proiettore: la chiusura. Ognuno ha l’attestato sul telefono (non l’abbiamo detto: è una sorpresa).';
   const name = prizes[m.prize].name;
   return m.kind === 'open' ? `Sul proiettore: apertura · ${name}.` : `Sul proiettore: ${m.place}° posto · ${name}.`;
 }
@@ -591,7 +767,7 @@ export function RulesSummary() {
       </div>
       <ul className="rules-list">
         <li>Dopo ogni talk ognuno dà da 0 a 2 timbri. Mai sul proprio fascicolo.</li>
-        <li>Prima del verdetto c’è la revisione: si possono spostare i timbri su tutti i talk.</li>
+        <li>Prima del verdetto c’è la revisione dei timbri: su ogni talk si può annullare un timbro e rimetterlo.</li>
         <li>
           Quattro premi-timbro, uno a testa: chi ha già vinto “scala” e il premio va al successivo con più timbri. Due
           pari in testa lo condividono; se non resta nessuno libero, il primo vince un secondo premio.

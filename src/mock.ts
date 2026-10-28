@@ -67,12 +67,24 @@ export const previewScreens: PreviewScreen[] = [
     note: 'Il vincitore, con l’esplosione di coriandoli.',
   },
   {
+    id: 'p-cappello-apertura',
+    kind: 'projector',
+    label: 'Cappello: apertura',
+    note: 'Il premio più ambito: busta sigillata.',
+  },
+  {
+    id: 'p-cappello',
+    kind: 'projector',
+    label: 'Cappello: il Gran Maestro',
+    note: 'Riflettore, raggi, doppia pioggia d’oro.',
+  },
+  {
     id: 'p-interludio',
     kind: 'projector',
     label: 'Verdetto: gran finale',
     note: 'Il passaggio prima del Cappello di Stagnola.',
   },
-  { id: 'p-registro', kind: 'projector', label: 'Il Registro dei Timbri', note: 'Chiude la serata. Nessun numero.' },
+  { id: 'p-registro', kind: 'projector', label: 'Chiusura', note: 'Riepilogo dei premi, grazie e «Continua…?».' },
   { id: 'g-ascolta', kind: 'phone', label: 'Ascolta', note: 'Telefono di chi è in sala mentre un altro presenta.' },
   { id: 'g-tocca', kind: 'phone', label: 'Tocca a te', note: 'Telefono di chi presenta: il telecomando.' },
   { id: 'g-domande', kind: 'phone', label: 'Question time', note: 'Telefono di chi è in sala.' },
@@ -144,6 +156,15 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
     s.phase = phaseOf[id];
     s.rounds = [earlier, now];
     s.activeRoundId = now.id;
+    if (id === 'p-voto')
+      s.votes = ['mock-1', 'mock-2', 'mock-3'].map((v) => ({
+        roundId: now.id,
+        voterId: v,
+        idea: true,
+        ricerca: false,
+        performance: false,
+        qa: false,
+      }));
     if (id === 'g-votato')
       s.votes = [{ roundId: now.id, voterId: viewer.id, idea: true, ricerca: false, performance: true, qa: false }];
   } else if (id === 'p-pausa' || id === 'g-pausa') {
@@ -192,11 +213,15 @@ export function mockState(id: string, m: Mock): { s: State; actor: Actor } {
           ? 22
           : id === 'p-interludio'
             ? 17
-            : id === 'g-verdetto'
-              ? 6
-              : n === 5
-                ? 18 + sub
-                : 4 * (n - 1) + 1 + sub;
+            : id === 'p-cappello-apertura'
+              ? 18
+              : id === 'p-cappello'
+                ? 21
+                : id === 'g-verdetto'
+                  ? 6
+                  : n === 5
+                    ? 18 + sub
+                    : 4 * (n - 1) + 1 + sub;
     }
   }
   const actor: Actor =

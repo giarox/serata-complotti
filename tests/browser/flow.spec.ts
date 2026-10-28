@@ -22,7 +22,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await row.getByRole('button', { name: 'Scegli' }).click();
     await page.getByRole('button', { name: 'Inizia con ' + name }).click();
     if (name === 'Paolo') {
-      await expect(speaker.getByRole('heading', { name: 'La parola è tua. Svegliali.' })).toBeVisible();
+      await expect(speaker.getByRole('heading', { name: 'Tocca a te. Svegliali.' })).toBeVisible();
       // The presenter's phone is the remote: taps go through without errors.
       await speaker.getByRole('button', { name: 'Avanti →' }).click();
       await speaker.getByRole('button', { name: '← Indietro' }).click();
@@ -33,15 +33,18 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await page.getByRole('button', { name: 'Apri il voto per ' + name }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
     if (name === 'Paolo')
-      await expect(speaker.getByRole('heading', { name: 'Il popolo sta timbrando il tuo fascicolo.' })).toBeVisible();
+      await expect(speaker.getByRole('heading', { name: 'Il Congresso sta timbrando il tuo fascicolo.' })).toBeVisible();
     const stampBtn = (title: string) => voter.getByRole('button', { name: new RegExp('^' + title) });
     await stampBtn('COMPLOTTO D’AUTORE').click();
     await stampBtn('FASCICOLO SCOTTANTE').click();
     await stampBtn('PERSUASORE OCCULTO').click(); // a third stamp is refused
     await expect(voter.getByRole('alert')).toContainText('Due timbri al massimo');
-    await voter.getByRole('button', { name: 'Consegna il fascicolo' }).click();
-    await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
+    await voter.getByRole('button', { name: 'Consegna il fascicolo timbrato' }).click();
+    // Straight to the waiting screen, with a toast; the file can be reopened until the vote closes.
+    await expect(voter.getByRole('status')).toContainText('Fascicolo timbrato e consegnato');
     await voter.reload();
+    await expect(voter.getByRole('heading', { name: 'Timbri consegnati.' })).toBeVisible();
+    await voter.getByRole('button', { name: 'Ho cambiato idea: riapri il fascicolo' }).click();
     await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
     await stampBtn('FASCICOLO SCOTTANTE').click();
     await stampBtn('DIFESA IMPENETRABILE').click();
@@ -49,23 +52,23 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
     await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-    await expect(voter.getByRole('heading', { name: 'Apri la mente. Non troppo, che entra il 5G.' })).toBeVisible();
+    await expect(voter.getByRole('heading', { name: 'Prossimo fascicolo in arrivo.' })).toBeVisible();
   }
-  // Review: everyone can move stamps, then the GM closes it and the verdict starts.
+  // Review: everyone can annul and re-stamp, then the GM closes it and the verdict starts.
   await page.getByRole('button', { name: 'Il verdetto', exact: true }).click();
   await page.getByRole('button', { name: 'Apri la revisione' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  await expect(voter.getByRole('heading', { name: 'Rivedi le tue timbrature.' })).toBeVisible();
+  await expect(voter.getByRole('heading', { name: 'Ricontrolla i tuoi timbri.' })).toBeVisible();
   await voter
     .getByRole('group', { name: 'Timbri per Marco' })
     .getByRole('button', { name: /^PERSUASORE OCCULTO/ })
     .click();
-  await voter.getByRole('button', { name: 'Confermo le mie timbrature' }).click();
-  await expect(voter.getByRole('status')).toContainText('Confermato');
+  await voter.getByRole('button', { name: 'Controfirmo i miei timbri' }).click();
+  await expect(voter.getByRole('status')).toContainText('Controfirmato');
   await expect(page.locator('.verdict-now')).toContainText('1 su');
   await page.getByRole('button', { name: 'Chiudi la revisione e vai al verdetto' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
-  await expect(voter.getByRole('heading', { name: 'Guardate il proiettore.' })).toBeVisible();
+  await expect(voter.getByRole('heading', { name: 'Guarda il proiettore.' })).toBeVisible();
   // The regia sees only the next step, never the names ahead of the projector.
   await expect(page.locator('.verdict-next')).toContainText('Prossimo: 3° posto');
   await expect(page.locator('.revealed-list')).toHaveCount(0);
@@ -74,11 +77,11 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await page.getByRole('button', { name: 'Indietro' }).click();
   await expect(page.locator('.revealed-list')).toHaveCount(0);
   for (let i = 0; i < 19; i++) await page.getByRole('button', { name: 'Avanti' }).click();
-  await expect(page.locator('.verdict-now')).toContainText('Registro dei Timbri');
+  await expect(page.locator('.verdict-now')).toContainText('la chiusura');
   await expect(page.getByRole('button', { name: 'Avanti' })).toHaveCount(0);
   // At the end everyone gets a private certificate.
-  await expect(voter.locator('.certificate')).toContainText('ATTESTATO');
-  await expect(speaker.locator('.certificate')).toContainText('Il popolo ti ha timbrato');
+  await expect(voter.locator('.certificate')).toContainText('Attestato');
+  await expect(speaker.locator('.certificate')).toContainText('Il Congresso lo ha timbrato così');
 });
 test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -109,7 +112,7 @@ test('GM with a name stamps from the regia and can skip the review', async ({ pa
   await page.getByRole('button', { name: 'Apri il voto per Sara' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
   await page.getByRole('button', { name: /^COMPLOTTO D’AUTORE/ }).click();
-  await page.getByRole('button', { name: 'Consegna il fascicolo' }).click();
+  await page.getByRole('button', { name: 'Consegna il fascicolo timbrato' }).click();
   await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
   await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();

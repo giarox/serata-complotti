@@ -67,8 +67,11 @@ import { Entry } from './invite';
 import { Fit } from './fit';
 import { Head, Kicker, OnStage, Rule } from './slide';
 import {
+  ActiveFile,
   GuestReveal,
+  GuestStage,
   nextStepLabel,
+  Toast,
   nowLabel,
   RevealedList,
   RevealSlide,
@@ -493,7 +496,7 @@ function App() {
                             ) : s.phase === 'review' ? (
                               `${reviewTally(s).confirmed} su ${reviewTally(s).voters} votanti hanno confermato. Quando sei pronto, chiudi e vai al verdetto.`
                             ) : allDone ? (
-                              'Le presentazioni sono finite. Apri la revisione: ognuno potrà spostare i timbri prima del verdetto.'
+                              'Le presentazioni sono finite. Apri la revisione: ognuno potrà ricontrollare i suoi timbri prima del verdetto.'
                             ) : completed > 0 ? (
                               `Scegli il prossimo ricercatore (ne mancano ${left.length}), oppure chiudi i turni e passa al verdetto.`
                             ) : (
@@ -745,7 +748,7 @@ function App() {
                         <>
                           <p className="verdict-now">
                             {completed
-                              ? 'Quando tutti hanno parlato apri la revisione: ognuno potrà spostare i timbri prima del verdetto.'
+                              ? 'Quando tutti hanno parlato apri la revisione: ognuno potrà ricontrollare i suoi timbri prima del verdetto.'
                               : 'Il verdetto arriva dopo almeno un talk con il voto chiuso.'}
                           </p>
                           <div className="result-actions">
@@ -881,7 +884,7 @@ function App() {
                       : confirm.type === 'review'
                         ? left.length
                           ? `Mancano ancora ${left.length} relatori. Dopo la revisione si va al verdetto.`
-                          : 'Tutti potranno rivedere e spostare i timbri su ogni talk dal telefono. Poi chiudi tu.'
+                          : 'Dal telefono tutti potranno annullare e rimettere i timbri su ogni talk, poi controfirmare. Chiudi tu.'
                         : confirm.type === 'reveal'
                           ? s.phase === 'review'
                             ? 'La revisione si chiude: da qui in poi i timbri sono bloccati. Parte il reveal.'
@@ -1010,80 +1013,118 @@ function Guest({
   busy: boolean;
   perform: (a: Action) => Promise<boolean>;
 }) {
-  const p = presenter(s),
-    r = activeRound(s),
+  const r = activeRound(s),
     me = s.participants.find((p) => p.id === actor.participantId),
     voter = voterOf(s, actor.participantId),
-    onStage = !!r && voter && ownerOf(voter.id) === r.presenterId;
+    onStage = !!r && !!voter && ownerOf(voter.id) === r.presenterId,
+    [reopen, setReopen] = useState(''),
+    [toast, setToast] = useState('');
+  const closeToast = useCallback(() => setToast(''), []);
+  const toastEl = toast ? <Toast text={toast} onClose={closeToast} /> : null;
   if (s.phase === 'results') return <GuestReveal s={s} actor={actor} />;
   if (s.phase === 'review') return <ReviewBoard s={s} actor={actor} busy={busy} perform={perform} />;
-  const blocker = voteBlocker(s, actor.participantId);
-  if (s.phase === 'voting' && r && !blocker)
-    return <StampBallot key={r.id} s={s} actor={actor} busy={busy} perform={perform} />;
+  const blocker = voteBlocker(s, actor.participantId),
+    saved = !!r && s.votes.some((v) => v.roundId === r.id && v.voterId === actor.participantId);
+  if (s.phase === 'voting' && r && !blocker && (!saved || reopen === r.id))
+    return (
+      <StampBallot
+        key={r.id}
+        s={s}
+        actor={actor}
+        busy={busy}
+        perform={perform}
+        onDone={() => {
+          setReopen('');
+          setToast('Fascicolo timbrato e consegnato. Potrai cambiarlo prima del verdetto.');
+        }}
+      />
+    );
   // Before the first talk the page is the guest's registration dossier (companions get a short welcome).
   if (s.phase === 'waiting' && s.rounds.length === 0)
     return voter?.companion ? (
-      <section className="guest-stage">
-        <span className="phase-badge">Sala d’attesa</span>
-        <Mark large />
-        <h1>Benvenuto, {voter.name}.</h1>
-        <p>
-          Sei {voter.owner.partner === 'copresenter' ? 'co-relatore' : 'testimone'} di {voter.owner.name}. Durante la
-          serata timbrerai i fascicoli degli altri da questo telefono. Il vostro, no.
-        </p>
-      </section>
+      <GuestStage
+        tag="Sala d’attesa"
+        title={`Benvenuto, ${voter.name}.`}
+        flavor={`Sei ${voter.owner.partner === 'copresenter' ? 'co-relatore' : 'testimone'} di ${voter.owner.name}. Durante la serata timbrerai i fascicoli degli altri da questo telefono. Il vostro, no.`}
+      />
     ) : (
       <DossierHome s={s} actor={actor} busy={busy} perform={perform} />
     );
+  const paper = me?.mode === 'paper' || !!voter?.companion;
+  if (s.phase === 'presenting' && onStage)
+    return (
+      <GuestStage
+        tag="Sei sul palco"
+        title="Tocca a te. Svegliali."
+        flavor={
+          paper
+            ? 'Niente slide: tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo.'
+            : 'Avanti e indietro da qui: un tocco, un passo. Animazioni comprese.'
+        }
+      >
+        {!paper && <SlideRemote actor={actor} />}
+      </GuestStage>
+    );
+  if (s.phase === 'presenting')
+    return (
+      <GuestStage
+        tag="Presentazione in corso"
+        title="Ascolta."
+        flavor="Ascolta e metti tutto in dubbio, da buon ricercatore."
+      >
+        <ActiveFile s={s} next="Dopo le domande il fascicolo passa a te: potrai timbrarlo." />
+      </GuestStage>
+    );
+  if (s.phase === 'questions')
+    return onStage ? (
+      <GuestStage
+        tag="Sotto interrogatorio"
+        title="Difenditi."
+        flavor="Ogni domanda scomoda è un’occasione. Arrampicati con stile: c’è un timbro apposta."
+      />
+    ) : (
+      <GuestStage
+        tag="Question time"
+        title="Fatti delle domande."
+        flavor="Poi falle ad alta voce: alza la mano, le domande scomode sono le uniche ammesse."
+      >
+        <ActiveFile s={s} next="Tra poco il fascicolo arriva qui, pronto da timbrare." />
+      </GuestStage>
+    );
+  if (s.phase === 'voting')
+    return onStage ? (
+      <GuestStage
+        tag="Timbratura in corso"
+        title="Il Congresso sta timbrando il tuo fascicolo."
+        flavor="Nessun indizio sui timbri: lo scoprirai al verdetto. Respira."
+      />
+    ) : (
+      <>
+        {toastEl}
+        <GuestStage
+          tag="Fascicolo consegnato"
+          title="Timbri consegnati."
+          flavor={blocker ?? 'Ora tocca agli altri. Aspetta che la regia chiuda il turno.'}
+        >
+          <ActiveFile s={s} next="Prima del verdetto potrai rivedere tutti i tuoi timbri." />
+          {!blocker && (
+            <button type="button" className="text-button stage-reopen" onClick={() => r && setReopen(r.id)}>
+              Ho cambiato idea: riapri il fascicolo
+            </button>
+          )}
+        </GuestStage>
+      </>
+    );
   return (
     <>
-      <div className="guest-welcome">
-        <span className="eyebrow">SEI DENTRO. NON DIRLO A NESSUNO.</span>
-        <span className="guest-id">{voter?.companion ? voter.name : me ? displayName(me) : ''}</span>
-      </div>
-      <section className="guest-stage">
-        <span className="phase-badge">{phaseNames[s.phase]}</span>
-        <Mark large />
-        <h1>
-          {s.phase === 'waiting'
-            ? 'Apri la mente. Non troppo, che entra il 5G.'
-            : s.phase === 'questions'
-              ? 'Fatti delle domande.'
-              : s.phase === 'voting'
-                ? onStage
-                  ? 'Il popolo sta timbrando il tuo fascicolo.'
-                  : 'Ora parlano gli altri.'
-                : r?.presenterId === actor.participantId
-                  ? 'La parola è tua. Svegliali.'
-                  : 'Ascolta. Prendi appunti. Non fidarti di nessuno.'}
-        </h1>
-        <p>
-          {s.phase === 'waiting'
-            ? 'Il prossimo ricercatore sta per farsi avanti. Questa pagina si aggiorna da sola (sì, è inquietante).'
-            : s.phase === 'voting'
-              ? onStage
-                ? 'Nessun indizio sui timbri: lo scoprirai al verdetto. Respira.'
-                : `${blocker ?? ''} Aspetta che la regia chiuda il turno.`
-              : s.phase === 'questions'
-                ? 'Alza la mano e fai la tua domanda scomoda dal vivo. Il voto arriva dopo.'
-                : r?.presenterId === actor.participantId
-                  ? me?.mode === 'paper'
-                    ? 'Presenti dal vivo: niente slide, tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo.'
-                    : 'Stai presentando: avanti e indietro con i tasti qui sotto.'
-                  : 'Tra poco potrai emettere il tuo verdetto insindacabile.'}
-        </p>
-        {p && (
-          <div className="guest-dossier">
-            <span className="mono">FASCICOLO ATTIVO</span>
-            <h2>{displayName(p)}</h2>
-            <span>{p.role || 'Titolo top secret'}</span>
-          </div>
-        )}
-        {r?.presenterId === actor.participantId && s.phase === 'presenting' && me?.mode !== 'paper' && (
-          <SlideRemote actor={actor} />
-        )}
-      </section>
-      {s.phase === 'waiting' && <DossierHome s={s} actor={actor} busy={busy} perform={perform} compact />}
+      {toastEl}
+      <GuestStage
+        tag="Fascicolo archiviato"
+        title="Prossimo fascicolo in arrivo."
+        flavor="Non serve aggiornare la pagina: lo fa da sola. Non chiederci come fa a sapere quando."
+      >
+        <p className="stage-next">Quando il prossimo relatore sale sul palco, qui comparirà il suo fascicolo.</p>
+      </GuestStage>
     </>
   );
 }
@@ -1124,6 +1165,11 @@ function GmOwnTurn({
 }
 /** The projector: one slide per moment of the evening, read from afar, never scrolling. */
 function Projector({ s }: { s: State }) {
+  // A new key per moment: the slide remounts and plays its entrance (and its spotlights, stamps, confetti).
+  const k = [s.phase, s.activeRoundId ?? '', s.rounds.length, s.phase === 'results' ? s.revealed : ''].join(':');
+  return <ProjectorSlide key={k} s={s} />;
+}
+function ProjectorSlide({ s }: { s: State }) {
   const p = presenter(s),
     held = s.rounds.filter((r) => !r.cancelled),
     fasc = 'FASC. ' + String(Math.max(held.length, 1)).padStart(3, '0'),
@@ -1159,7 +1205,7 @@ function Projector({ s }: { s: State }) {
           }
         : {
             code: 'QUESTION TIME',
-            kicker: 'Sotto interrogatorio',
+            kicker: 'Il pubblico interroga',
             sub: 'Fatevi delle domande. Poi fatele ad alta voce.',
             foot: 'Alzate la mano. Le domande scomode sono le uniche ammesse.',
           };
@@ -1184,7 +1230,7 @@ function Projector({ s }: { s: State }) {
         <Kicker>Fascicolo archiviato</Kicker>
         <h1 className="pj-title">Nessuno saprà mai niente.</h1>
         <Rule />
-        <p className="pj-sub">Il prossimo ricercatore è già sotto sorveglianza.</p>
+        <p className="pj-sub">Sgranchitevi le gambe, ma non allontanatevi troppo: vi teniamo d’occhio.</p>
         <p className="pj-foot">
           {lastP ? 'Ultimo relatore: ' + displayName(lastP) + ' · ' : ''}Fascicoli discussi:{' '}
           {held.filter((r) => r.closed).length}
@@ -1196,7 +1242,7 @@ function Projector({ s }: { s: State }) {
     <div className="projector pj-open">
       {top}
       <Stamp sub="Non divulgare">Top secret</Stamp>
-      <Head left="FASC. 000" right="RISERVATO" large />
+      <Head left="ACCOGLIENZA" right="RISERVATO" large />
       <Kicker>1° Congresso dei ricercatori indipendenti</Kicker>
       <h1 className="pj-title">
         Siccome non cielo dicono,
@@ -1209,7 +1255,8 @@ function Projector({ s }: { s: State }) {
         <br />
         il congresso sta per cominciare.
       </p>
-      <p className="pj-foot">Tranquilli: il Palacomplotti è stato controllato da cima a fondo. Niente cimici, forse.</p>
+      <p className="pj-aside">Spegnete i telefoni. Tanto vi ascoltano lo stesso.</p>
+      <p className="pj-foot">Tranquilli: il Palacomplotti è stato bonificato da cima a fondo. Niente cimici, forse.</p>
     </div>
   );
 }

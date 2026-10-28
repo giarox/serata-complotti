@@ -286,7 +286,6 @@ export function SlideRemote({ actor }: { actor: import('./domain').Actor }) {
       >
         Avanti →
       </button>
-      <small>Le slide cambiano sul proiettore. Un tocco = un passo, animazioni comprese.</small>
       {error && (
         <p role="alert" className="field-error">
           {error}
