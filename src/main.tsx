@@ -65,6 +65,7 @@ import './style.css';
 import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { Fit } from './fit';
+import { Head, Kicker, OnStage, Rule } from './slide';
 import {
   GuestReveal,
   nextStepLabel,
@@ -1145,46 +1146,32 @@ function Projector({ s }: { s: State }) {
   if (s.phase === 'voting') return <VotingSlide s={s} top={top} />;
   // A presenter on stage: the lines follow how the host announces them.
   if (p && (s.phase === 'presenting' || s.phase === 'questions')) {
-    const slide = {
-      presenting: {
-        eyebrow: 'Presentazione',
-        lead: 'Prende la parola',
-        punch: null,
-        foot:
-          p.mode === 'paper'
-            ? 'Presentazione dal vivo. Guardate il ricercatore, non lo schermo: lo schermo vi guarda già.'
-            : 'Le slide vanno in onda tra un attimo. Se non partono, sono stati loro.',
-      },
-      questions: {
-        eyebrow: 'Question time',
-        lead: 'Sotto interrogatorio',
-        punch: 'Fatevi delle domande. Poi fatele ad alta voce.',
-        foot: 'Alzate la mano. Le domande scomode sono le uniche ammesse.',
-      },
-    }[s.phase];
+    const slide =
+      s.phase === 'presenting'
+        ? {
+            code: 'PRESENTAZIONE',
+            kicker: 'Presenta il fascicolo',
+            sub: null,
+            foot:
+              p.mode === 'paper'
+                ? 'Presentazione dal vivo. Guardate il ricercatore, non lo schermo: lo schermo vi guarda già.'
+                : 'Le slide vanno in onda tra un attimo. Se non partono, sono stati loro.',
+          }
+        : {
+            code: 'QUESTION TIME',
+            kicker: 'Sotto interrogatorio',
+            sub: 'Fatevi delle domande. Poi fatele ad alta voce.',
+            foot: 'Alzate la mano. Le domande scomode sono le uniche ammesse.',
+          };
     return (
       <div className={'projector pj-stage pj-' + s.phase}>
         {top}
-        <Mark />
-        <div className="codeline">
-          <span>{fasc}</span>
-          <i />
-          <span>{slide.eyebrow.toUpperCase()}</span>
-          <i />
-          <span>RISERVATO</span>
-        </div>
-        {slide.punch && <p className="pj-punch">{slide.punch}</p>}
-        <p className="pj-lead">{slide.lead}</p>
-        {p.role && <Fit className="pj-role">{p.role}</Fit>}
-        <Fit as="h1" className="pj-name" lines={2}>
-          {p.name}
-        </Fit>
-        {p.partner === 'copresenter' && p.partnerName && (
-          <Fit className="pj-co" lines={1} min={0.5}>
-            <span>co-relatore</span> {p.partnerName}
-          </Fit>
-        )}
-        {slide.foot && <p className="pj-foot">{slide.foot}</p>}
+        <Head left={fasc} right={slide.code} />
+        <Kicker>{slide.kicker}</Kicker>
+        <OnStage p={p} />
+        {slide.sub && <p className="pj-sub">{slide.sub}</p>}
+        <p className="pj-foot">{slide.foot}</p>
+        <Rule />
       </div>
     );
   }
@@ -1193,19 +1180,15 @@ function Projector({ s }: { s: State }) {
     return (
       <div className="projector pj-break">
         {top}
-        <Mark large />
-        <div className="codeline">
-          <span>{fasc}</span>
-          <i />
-          <span>ARCHIVIATO</span>
-        </div>
-        <h1>Fascicolo archiviato.</h1>
-        <p className="pj-sub">Nessuno saprà mai niente. Il prossimo ricercatore è già sotto sorveglianza.</p>
-        <div className="codeline">
-          <span>{lastP ? 'ULTIMO RELATORE: ' + displayName(lastP).toUpperCase() : 'IN ATTESA'}</span>
-          <i />
-          <span>FASCICOLI DISCUSSI: {held.filter((r) => r.closed).length}</span>
-        </div>
+        <Head left={fasc} right="ARCHIVIATO" large />
+        <Kicker>Fascicolo archiviato</Kicker>
+        <h1 className="pj-title">Nessuno saprà mai niente.</h1>
+        <Rule />
+        <p className="pj-sub">Il prossimo ricercatore è già sotto sorveglianza.</p>
+        <p className="pj-foot">
+          {lastP ? 'Ultimo relatore: ' + displayName(lastP) + ' · ' : ''}Fascicoli discussi:{' '}
+          {held.filter((r) => r.closed).length}
+        </p>
       </div>
     );
   // Before the first talk.
@@ -1213,25 +1196,20 @@ function Projector({ s }: { s: State }) {
     <div className="projector pj-open">
       {top}
       <Stamp sub="Non divulgare">Top secret</Stamp>
-      <Mark large />
-      <p className="eyebrow">SALA D’ATTESA</p>
-      <p className="pj-motto">
+      <Head left="FASC. 000" right="RISERVATO" large />
+      <Kicker>1° Congresso dei ricercatori indipendenti</Kicker>
+      <h1 className="pj-title">
         Siccome non cielo dicono,
         <br />
         cielo diciamo noi.
+      </h1>
+      <Rule />
+      <p className="pj-sub">
+        Benvenuti cari ricercatori,
+        <br />
+        il congresso sta per cominciare.
       </p>
-      <div className="codeline">
-        <span>FASC. 000</span>
-        <i />
-        <span>RISERVATO</span>
-      </div>
-      <h1>Nulla è come sembra.</h1>
-      <div className="codeline">
-        <span>IN ATTESA</span>
-        <i />
-        <span>CONGRESSO N. 001</span>
-      </div>
-      <p className="pj-sub">Il congresso sta per cominciare.</p>
+      <p className="pj-foot">Tranquilli: il Palacomplotti è stato controllato da cima a fondo. Niente cimici, forse.</p>
     </div>
   );
 }

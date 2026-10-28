@@ -31,6 +31,7 @@ import {
   type Talk,
 } from './verdict';
 import { Fit } from './fit';
+import { Head, Kicker, Label, Rule } from './slide';
 import { ConfettiBurst, Laurel } from './ceremony';
 import { Button, Mark } from './ui';
 
@@ -365,19 +366,15 @@ export function VotingSlide({ s, top }: { s: State; top: ReactNode }) {
   return (
     <div className="projector pj-stage pj-vote">
       {top}
-      <div className="codeline">
-        <span>VOTAZIONE APERTA</span>
-        <i />
-        <span>TIMBRATE DAL TELEFONO</span>
-      </div>
-      <p className="pj-lead">Sotto giudizio</p>
+      <Head left="VOTAZIONE APERTA" right="TIMBRATE DAL TELEFONO" />
+      <Kicker>Sotto giudizio</Kicker>
       {p && (
         <Fit as="h1" className="pj-name" lines={1} min={0.45}>
           {displayName(p)}
         </Fit>
       )}
-      <p className="pj-punch">Il Congresso vuole sapere: cosa vi ha colpito?</p>
-      <p className="pj-sub pj-vote-limit">Nessun timbro, uno o al massimo due. L’inchiostro costa.</p>
+      <p className="pj-sub">Il Congresso vuole sapere: cosa vi ha colpito?</p>
+      <p className="pj-foot pj-vote-limit">Nessun timbro, uno o al massimo due. L’inchiostro costa.</p>
       <div className="pj-stamps">
         {stamps.map((c) => (
           <div key={c.key} className="pj-stamp-card">
@@ -387,6 +384,7 @@ export function VotingSlide({ s, top }: { s: State; top: ReactNode }) {
           </div>
         ))}
       </div>
+      <Rule />
     </div>
   );
 }
@@ -396,13 +394,10 @@ export function ReviewSlide({ s, top }: { s: State; top: ReactNode }) {
   return (
     <div className="projector pj-break pj-review">
       {top}
-      <Mark large />
-      <div className="codeline">
-        <span>REVISIONE</span>
-        <i />
-        <span>RISERVATO</span>
-      </div>
-      <h1>Revisione dei fascicoli in corso.</h1>
+      <Head left="REVISIONE" right="RISERVATO" large />
+      <Kicker>Revisione dei fascicoli</Kicker>
+      <h1 className="pj-title">Revisione in corso.</h1>
+      <Rule />
       <p className="pj-sub">Ora che avete visto tutti, potete spostare i timbri dal telefono. Poi si delibera.</p>
       <p className="pj-confirmed">
         <strong>{done}</strong> {done === 1 ? 'persona ha confermato' : 'persone hanno confermato'}
@@ -419,13 +414,10 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     return (
       <div className="projector pj-break pj-interlude">
         {top}
-        <Mark large />
-        <div className="codeline">
-          <span>GRAN FINALE</span>
-          <i />
-          <span>RISERVATO</span>
-        </div>
-        <h1>Ora, per il gran finale.</h1>
+        <Head left="GRAN FINALE" right="RISERVATO" large />
+        <Kicker>Gran finale</Kicker>
+        <h1 className="pj-title">Ora, per il gran finale.</h1>
+        <Rule />
         <p className="pj-sub">Il vincitore assoluto della serata.</p>
       </div>
     );
@@ -437,14 +429,10 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     return (
       <div className={'projector pj-stage pj-open-prize' + (m.prize === 'cappello' ? ' gold' : '')}>
         {top}
-        <div className="codeline">
-          <span>{number}</span>
-          <i />
-          <span>BUSTA SIGILLATA</span>
-        </div>
-        <p className="pj-lead">E il prossimo premio è</p>
-        <h1>{info.name}</h1>
-        <p className="pj-sub">{info.reason}</p>
+        <Head left={number} right="BUSTA SIGILLATA" />
+        <Kicker>E il prossimo premio è</Kicker>
+        <h1 className="pj-title">{info.name}</h1>
+        <Label>{info.reason}</Label>
         {info.stamp ? (
           <div className="pj-big-stamp">
             <StampMark k={info.stamp} />
@@ -454,7 +442,8 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
             <StampMark k="cappello" />
           </div>
         )}
-        <p className="pj-punch">{info.opener}</p>
+        <p className="pj-sub">{info.opener}</p>
+        <Rule />
       </div>
     );
   // Podium: 3rd and 2nd under a spotlight, then the winner with the confetti.
@@ -476,16 +465,12 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
     <div className={'projector pj-stage pj-award ' + m.prize + (done ? ' done' : ' suspense')}>
       {top}
       {done && first.length > 0 && <ConfettiBurst key={m.prize} />}
-      <div className="codeline">
-        <span>{number}</span>
-        <i />
-        <span>{info.name.toUpperCase()}</span>
-      </div>
+      <Head left={number} right={info.name.toUpperCase()} />
       {done ? (
         <div className="pj-wreath">
           <Laurel />
           <div className="pj-wreath-in">
-            <p className="pj-lead">{first.length ? (v.shared ? 'Pari merito' : `${info.name} va a`) : info.name}</p>
+            <Kicker>{first.length ? (v.shared ? 'Pari merito' : `${info.name} va a`) : info.name}</Kicker>
             <Fit as="h1" className="pj-name" lines={2}>
               {first.length ? namesOf(first) : 'Premio insabbiato.'}
             </Fit>
@@ -517,9 +502,9 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         </div>
       ) : (
         <div className="pj-feature" key={place}>
-          <p className="pj-place">
+          <Kicker>
             {place}° posto{featured.length > 1 ? ' · pari merito' : ''}
-          </p>
+          </Kicker>
           <Fit as="h1" className="pj-name" lines={2}>
             {featured.length ? namesOf(featured) : 'Posto vacante.'}
           </Fit>
@@ -544,8 +529,8 @@ export function RegistroSlide({ s, top }: { s: State; top: ReactNode }) {
   return (
     <div className="projector pj-registro">
       {top}
-      <p className="eyebrow">IL CONGRESSO HA PARLATO</p>
-      <h1>Il Registro dei Timbri.</h1>
+      <Kicker>Il Congresso ha parlato</Kicker>
+      <h1 className="pj-title">Il Registro dei Timbri.</h1>
       <ol className="pj-registro-grid" style={{ '--n': rows.length } as React.CSSProperties}>
         {rows.map(({ talk, stamps: got }) => (
           <li key={talk.round.id}>
@@ -564,15 +549,12 @@ export function RegistroSlide({ s, top }: { s: State; top: ReactNode }) {
           </li>
         ))}
       </ol>
-      <p className="pj-thanks">
+      <p className="pj-sub pj-thanks">
         Grazie a tutti i ricercatori, ai co-relatori, ai testimoni e al pubblico. Avete visto troppo: ora siete dei
         nostri. Controllate il telefono: c’è il vostro attestato.
       </p>
-      <div className="codeline">
-        <span>FASCICOLO CHIUSO</span>
-        <i />
-        <span>CONTINUA… CONGRESSO N. 002</span>
-      </div>
+      <p className="pj-foot">Fascicolo chiuso · Continua… Congresso N. 002</p>
+      <Rule />
     </div>
   );
 }
