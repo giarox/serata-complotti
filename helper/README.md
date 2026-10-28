@@ -23,6 +23,9 @@ dal telefono di chi presenta.
 - Al question time (o se annulli il turno) l'helper esce dalla presentazione e chiude la scheda:
   torna la vista proiettore.
 - Non toccare il Mac mentre l'helper lavora: i tasti vanno alla finestra in primo piano.
+- Le slide si aprono come nuova scheda della stessa finestra; dopo l'apertura e la chiusura l'helper rimette
+  la finestra di Chrome a schermo intero. Usa lo schermo intero di macOS (Vista → Entra a schermo intero, ⌃⌘F),
+  non il tasto dentro la pagina.
 
 ## Consigli per i relatori
 - Link condiviso come "Chiunque abbia il link".

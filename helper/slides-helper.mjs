@@ -42,6 +42,14 @@ function presentUrl(deck) {
 }
 
 let deckOpen = false;
+const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+/** Keep Chrome's front window in macOS full screen (opening or closing a tab can drop it). */
+const keepFullScreen = () =>
+  osa(`tell application "System Events" to tell process "Google Chrome"
+  if (count of windows) > 0 then
+    if value of attribute "AXFullScreen" of front window is false then set value of attribute "AXFullScreen" of front window to true
+  end if
+end tell`).catch((err) => say(`Schermo intero: ${err.message}. Rimettilo con ⌃⌘F.`));
 const key = (code) =>
   osa(`tell application "Google Chrome" to activate
 delay 0.05
@@ -54,8 +62,15 @@ async function handle(entry) {
     if (!url) return say(`Link non valido, salto: ${deck}`);
     if (deckOpen) await close();
     say(`Apro le slide: ${url}`);
-    if (!dryRun) await run('open', ['-a', 'Google Chrome', url]);
+    // A new tab in the same (full-screen) window, not a new window: macOS would leave full screen.
+    await osa(`tell application "Google Chrome"
+  activate
+  if (count of windows) is 0 then make new window
+  tell front window to make new tab with properties {URL:"${esc(url)}"}
+end tell`);
     deckOpen = true;
+    await pause(800);
+    await keepFullScreen();
   } else if (cmd === 'next') {
     say('→ Avanti');
     await key(124);
@@ -73,6 +88,8 @@ async function close() {
   await pause(400);
   await osa(`tell application "Google Chrome" to close active tab of front window`);
   deckOpen = false;
+  await pause(400);
+  await keepFullScreen();
 }
 
 async function main() {
@@ -94,7 +111,8 @@ async function main() {
   const { error: joinErr } = await db.rpc('party_join', { passcode: pin, person_id: null, as_gm: true, sandbox });
   if (joinErr) throw new Error(joinErr.message);
   say(`Collegato come regia (${sandbox ? 'serata di prova' : 'serata vera'}). In ascolto dei comandi…`);
-  say('Tieni la vista proiettore aperta in Chrome, a schermo intero, in primo piano.');
+  say('Tieni la vista proiettore aperta in Chrome, a schermo intero (Vista → Entra a schermo intero), in primo piano.');
+  await keepFullScreen();
 
   const id = !sandbox;
   const first = await db.from('party_slide').select('seq').eq('id', id).maybeSingle();
