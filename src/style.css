@@ -5890,3 +5890,80 @@ label,
 .roster .roster-badge.person-avatar {
   margin-top: 2px;
 }
+
+/* 28 Oct — regia previews of the evening's screens */
+.preview-app {
+  min-height: 100vh;
+}
+.preview-app .topbar {
+  pointer-events: none;
+}
+.mock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px 18px;
+  margin: 8px 0 12px;
+}
+.mock-grid label {
+  display: grid;
+  gap: 6px;
+}
+.mock-grid .wide {
+  grid-column: 1 / -1;
+}
+.preview-tabs {
+  margin: 22px 0 14px;
+}
+.preview-grid {
+  display: grid;
+  gap: 22px;
+}
+.preview-grid.projector {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+}
+.preview-grid.phone {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+.preview-card {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.preview-card figcaption {
+  display: grid;
+  gap: 2px;
+}
+.preview-card figcaption strong {
+  font-family: var(--display);
+  font-size: 18px;
+}
+.preview-card figcaption span {
+  font-size: 13px;
+  color: var(--dim);
+}
+.preview-card figcaption .text-button {
+  justify-self: start;
+  margin-top: 4px;
+}
+.scaled {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #ffffff2e;
+  border-radius: 8px;
+  background: #0c0b0a;
+}
+.preview-grid.phone .scaled {
+  border-radius: 22px;
+  border-width: 2px;
+}
+.scaled iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+}
+.preview-card figcaption {
+  text-align: left;
+}

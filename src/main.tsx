@@ -65,6 +65,7 @@ import { Button, Mark, Stamp } from './ui';
 import { Entry } from './invite';
 import { DossierHome } from './dossier';
 import { Overview, RequestsBoard, SlideRemote, TestLab, GuestMirror } from './regia';
+import { defaultMock, mockHash, mockState, previewScreens, readMock, type Mock, type PreviewScreen } from './mock';
 const blank: Participant = {
   id: '',
   name: '',
@@ -227,6 +228,7 @@ function App() {
                 ['regia', Radio, 'Regia della serata'],
                 ['fascicoli', Users, 'I fascicoli'],
                 ['premi', Trophy, 'Il verdetto'],
+                ['anteprime', Eye, 'Anteprime schermate'],
               ].map(([id, Icon, label]) => (
                 <button key={String(id)} className={tab === id ? 'nav-active' : ''} onClick={() => setTab(String(id))}>
                   {React.createElement(Icon as typeof Radio, { size: iconSize })}
@@ -269,7 +271,9 @@ function App() {
                       ? 'I fascicoli'
                       : tab === 'premi'
                         ? 'Il verdetto'
-                        : 'Regia della serata'
+                        : tab === 'anteprime'
+                          ? 'Anteprime'
+                          : 'Regia della serata'
                     : s.participants.find((p) => p.id === actor.participantId)?.name}
               </strong>
             </span>
@@ -370,14 +374,18 @@ function App() {
                         ? 'Ogni teoria ha un volto.'
                         : tab === 'premi'
                           ? 'La verità viene a galla.'
-                          : 'Tieni insieme il complotto.'}
+                          : tab === 'anteprime'
+                            ? 'Prove generali, senza pubblico.'
+                            : 'Tieni insieme il complotto.'}
                     </h1>
                     <p>
                       {tab === 'fascicoli'
                         ? 'Prepara i ricercatori, le prove e i loro fascicoli.'
                         : tab === 'premi'
                           ? 'Quattro categorie. Nessun premio alla normalità.'
-                          : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
+                          : tab === 'anteprime'
+                            ? 'Le schermate della serata con dati inventati. Le stesse che vedrà la sala.'
+                            : 'Tu conduci la serata. Loro mettono in dubbio tutto il resto.'}
                     </p>
                   </div>
                   <Stamp sub="Strettamente confidenziale">Top secret</Stamp>
@@ -386,6 +394,7 @@ function App() {
                   <button onClick={() => setTab('regia')}>Regia</button>
                   <button onClick={() => setTab('fascicoli')}>Fascicoli</button>
                   <button onClick={() => setTab('premi')}>Verdetto</button>
+                  <button onClick={() => setTab('anteprime')}>Anteprime</button>
                   <button onClick={() => setScreen(true)}>Schermo</button>
                 </div>
                 {tab === 'regia' && (
@@ -625,6 +634,7 @@ function App() {
                   />
                 )}
                 {tab === 'fascicoli' && <GuestMirror s={s} />}
+                {tab === 'anteprime' && <Previews />}
                 {tab === 'premi' && (
                   <>
                     {s.phase !== 'results' && <AwardSettings s={s} busy={busy} perform={perform} />}
@@ -665,7 +675,7 @@ function App() {
                   </>
                 )}
                 {tab === 'regia' && <TestLab s={s} busy={busy} perform={perform} />}
-                {tab !== 'fascicoli' && (
+                {(tab === 'regia' || tab === 'premi') && (
                   <section className="panel reset-panel">
                     <div className="panel-heading">
                       <div>
@@ -1400,4 +1410,168 @@ function Editor({
     </Modal>
   );
 }
-createRoot(document.getElementById('root')!).render(<App />);
+const previewId = new URLSearchParams(location.search).get('anteprima');
+createRoot(document.getElementById('root')!).render(previewId ? <PreviewPage id={previewId} /> : <App />);
+
+/** One screen of the evening, rendered by the real components with invented data (inside the regia's previews). */
+function PreviewPage({ id }: { id: string }) {
+  const [mock, setMock] = useState<Mock>(() => readMock(location.hash));
+  useEffect(() => {
+    const on = () => setMock(readMock(location.hash));
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  const screenDef = previewScreens.find((p) => p.id === id);
+  if (!screenDef) return <p className="board-empty">Anteprima sconosciuta.</p>;
+  const { s, actor } = mockState(id, mock);
+  const perform = async () => false;
+  const projector = screenDef.kind === 'projector';
+  return (
+    <div className={projector ? 'app screen-mode preview-app' : 'app preview-app'}>
+      <div className="workspace">
+        <header className="topbar">
+          <span className="breadcrumb">
+            {projector ? 'Sala proiezione' : '1° Congresso'} <ChevronRight size={13} />{' '}
+            <strong>{projector ? 'Schermo' : s.participants.find((p) => p.id === actor.participantId)?.name}</strong>
+          </span>
+          <div className="top-actions">
+            <span className="connection">
+              <i className="dot" />
+              Collegato
+            </span>
+          </div>
+        </header>
+        <main className={projector ? 'content' : 'content guest-content'}>
+          {projector ? (
+            <Projector s={s} />
+          ) : (
+            // Only the ballot reacts to taps; everything else is look-only (the remote would send real commands).
+            <div inert={id !== 'g-voto' && id !== 'g-votato'}>
+              <Guest key={id + JSON.stringify(mock)} s={s} actor={actor} busy={false} perform={perform} />
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/** A real-size page scaled down to the card's width. */
+function Scaled({ src, w, h, title }: { src: string; w: number; h: number; title: string }) {
+  const [box, setBox] = useState<HTMLDivElement | null>(null),
+    [k, setK] = useState(0.3);
+  useEffect(() => {
+    if (!box) return;
+    const ro = new ResizeObserver(() => setK(box.clientWidth / w));
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [box, w]);
+  return (
+    <div className="scaled" ref={setBox} style={{ height: h * k }}>
+      <iframe title={title} src={src} width={w} height={h} style={{ transform: `scale(${k})` }} />
+    </div>
+  );
+}
+
+/** Regia tab: every screen that appears only at precise moments, fed with editable invented data. */
+function Previews() {
+  const [mock, setMock] = useState<Mock>(defaultMock),
+    [kind, setKind] = useState<PreviewScreen['kind']>('projector');
+  const base = location.origin + location.pathname + '?anteprima=';
+  const set = (patch: Partial<Mock>) => setMock({ ...mock, ...patch });
+  const shown = previewScreens.filter((p) => p.kind === kind);
+  return (
+    <>
+      <section className="panel preview-mock">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Dati finti</p>
+            <h2>Chi presenta, chi guarda</h2>
+          </div>
+          <button className="text-button" onClick={() => setMock(defaultMock)}>
+            Ripristina
+          </button>
+        </div>
+        <div className="mock-grid">
+          <label>
+            Nome del relatore
+            <input value={mock.name} onChange={(e) => set({ name: e.target.value })} />
+          </label>
+          <label>
+            Co-relatore (facoltativo)
+            <input value={mock.partnerName} onChange={(e) => set({ partnerName: e.target.value })} />
+          </label>
+          <label className="wide">
+            Qualifica
+            <input value={mock.role} onChange={(e) => set({ role: e.target.value })} />
+          </label>
+          <label>
+            Modalità
+            <select value={mock.mode} onChange={(e) => set({ mode: e.target.value as Mock['mode'] })}>
+              <option value="slides">Con tecnologia</option>
+              <option value="paper">Senza tecnologia</option>
+            </select>
+          </label>
+          <label>
+            Chi guarda dal telefono
+            <input value={mock.viewer} onChange={(e) => set({ viewer: e.target.value })} />
+          </label>
+          <label>
+            Premi svelati nel verdetto
+            <select value={mock.revealed} onChange={(e) => set({ revealed: Number(e.target.value) })}>
+              {[0, 1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>
+                  {n} su 4
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="footnote">
+          Nessun dato reale, niente viene salvato. Le schermate sono quelle vere della serata: se le cambiamo qui,
+          cambiano anche lì.
+        </p>
+      </section>
+      <div className="board-tabs preview-tabs" role="tablist" aria-label="Quali schermate">
+        {(
+          [
+            ['projector', 'Proiettore'],
+            ['phone', 'Telefoni in sala'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={kind === k}
+            className={kind === k ? 'on' : ''}
+            onClick={() => setKind(k)}
+          >
+            {label} <span>{previewScreens.filter((p) => p.kind === k).length}</span>
+          </button>
+        ))}
+      </div>
+      <div className={'preview-grid ' + kind}>
+        {shown.map((p) => {
+          const src = base + p.id + mockHash(mock);
+          return (
+            <figure className="preview-card" key={p.id}>
+              <figcaption>
+                <strong>{p.label}</strong>
+                <span>{p.note}</span>
+                <a className="text-button" href={src} target="_blank" rel="noreferrer">
+                  Apri a tutta pagina <ArrowUpRight size={14} />
+                </a>
+              </figcaption>
+              <Scaled
+                src={src}
+                title={p.label}
+                w={p.kind === 'projector' ? 1920 : 390}
+                h={p.kind === 'projector' ? 1080 : 844}
+              />
+            </figure>
+          );
+        })}
+      </div>
+    </>
+  );
+}
