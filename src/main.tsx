@@ -1017,7 +1017,6 @@ function Guest({
     me = s.participants.find((p) => p.id === actor.participantId),
     voter = voterOf(s, actor.participantId),
     onStage = !!r && !!voter && ownerOf(voter.id) === r.presenterId,
-    [reopen, setReopen] = useState(''),
     [toast, setToast] = useState('');
   const closeToast = useCallback(() => setToast(''), []);
   const toastEl = toast ? <Toast text={toast} onClose={closeToast} /> : null;
@@ -1025,7 +1024,7 @@ function Guest({
   if (s.phase === 'review') return <ReviewBoard s={s} actor={actor} busy={busy} perform={perform} />;
   const blocker = voteBlocker(s, actor.participantId),
     saved = !!r && s.votes.some((v) => v.roundId === r.id && v.voterId === actor.participantId);
-  if (s.phase === 'voting' && r && !blocker && (!saved || reopen === r.id))
+  if (s.phase === 'voting' && r && !blocker && !saved)
     return (
       <StampBallot
         key={r.id}
@@ -1034,7 +1033,6 @@ function Guest({
         busy={busy}
         perform={perform}
         onDone={() => {
-          setReopen('');
           setToast('Fascicolo timbrato e consegnato. Potrai cambiarlo prima del verdetto.');
         }}
       />
@@ -1058,8 +1056,8 @@ function Guest({
         title="Tocca a te. Svegliali."
         flavor={
           paper
-            ? 'Niente slide: tutto carisma. Sul proiettore ci sono il tuo nome e il tuo titolo.'
-            : 'Avanti e indietro da qui: un tocco, un passo. Animazioni comprese.'
+            ? 'Presenti dal vivo, senza slide. Sul proiettore ci sono il tuo nome e il tuo titolo.'
+            : 'Questo è il tuo telecomando: con i due tasti porti le tue slide avanti e indietro sul proiettore.'
         }
       >
         {!paper && <SlideRemote actor={actor} />}
@@ -1069,8 +1067,8 @@ function Guest({
     return (
       <GuestStage
         tag="Presentazione in corso"
-        title="Ascolta."
-        flavor="Ascolta e metti tutto in dubbio, da buon ricercatore."
+        title="Occhi sul relatore, orecchie tese."
+        flavor="Metti tutto in dubbio, da buon ricercatore."
       >
         <ActiveFile s={s} next="Dopo le domande il fascicolo passa a te: potrai timbrarlo." />
       </GuestStage>
@@ -1079,14 +1077,14 @@ function Guest({
     return onStage ? (
       <GuestStage
         tag="Sotto interrogatorio"
-        title="Difenditi."
-        flavor="Ogni domanda scomoda è un’occasione. Arrampicati con stile: c’è un timbro apposta."
+        title="Ora ti fanno le domande. Rispondi con stile."
+        flavor="Ogni domanda scomoda è un’occasione: c’è perfino un timbro per chi si arrampica bene."
       />
     ) : (
       <GuestStage
         tag="Question time"
-        title="Fatti delle domande."
-        flavor="Poi falle ad alta voce: alza la mano, le domande scomode sono le uniche ammesse."
+        title="Fatti delle domande. Poi falle ad alta voce."
+        flavor="Alza la mano: le domande scomode sono le uniche ammesse."
       >
         <ActiveFile s={s} next="Tra poco il fascicolo arriva qui, pronto da timbrare." />
       </GuestStage>
@@ -1102,16 +1100,11 @@ function Guest({
       <>
         {toastEl}
         <GuestStage
-          tag="Fascicolo consegnato"
-          title="Timbri consegnati."
-          flavor={blocker ?? 'Ora tocca agli altri. Aspetta che la regia chiuda il turno.'}
+          tag="Votazione in corso"
+          title="Fascicolo timbrato."
+          flavor={blocker ?? 'Il tuo verdetto è agli atti. Ora guarda il proiettore: si aspettano gli ultimi timbri.'}
         >
-          <ActiveFile s={s} next="Prima del verdetto potrai rivedere tutti i tuoi timbri." />
-          {!blocker && (
-            <button type="button" className="text-button stage-reopen" onClick={() => r && setReopen(r.id)}>
-              Ho cambiato idea: riapri il fascicolo
-            </button>
-          )}
+          <ActiveFile s={s} next="Prima del verdetto ci sarà la revisione: lì potrai rivedere tutti i tuoi timbri." />
         </GuestStage>
       </>
     );
@@ -1122,9 +1115,7 @@ function Guest({
         tag="Fascicolo archiviato"
         title="Prossimo fascicolo in arrivo."
         flavor="Non serve aggiornare la pagina: lo fa da sola. Non chiederci come fa a sapere quando."
-      >
-        <p className="stage-next">Quando il prossimo relatore sale sul palco, qui comparirà il suo fascicolo.</p>
-      </GuestStage>
+      />
     </>
   );
 }
@@ -1242,7 +1233,7 @@ function ProjectorSlide({ s }: { s: State }) {
     <div className="projector pj-open">
       {top}
       <Stamp sub="Non divulgare">Top secret</Stamp>
-      <Head left="ACCOGLIENZA" right="RISERVATO" large />
+      <Head left="SESSIONE INAUGURALE" right="RISERVATO" large />
       <Kicker>1° Congresso dei ricercatori indipendenti</Kicker>
       <h1 className="pj-title">
         Siccome non cielo dicono,

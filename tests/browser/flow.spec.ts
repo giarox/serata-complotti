@@ -40,15 +40,10 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
     await stampBtn('PERSUASORE OCCULTO').click(); // a third stamp is refused
     await expect(voter.getByRole('alert')).toContainText('Due timbri al massimo');
     await voter.getByRole('button', { name: 'Consegna il fascicolo timbrato' }).click();
-    // Straight to the waiting screen, with a toast; the file can be reopened until the vote closes.
+    // Straight to the waiting screen, with a toast; changes wait for the review.
     await expect(voter.getByRole('status')).toContainText('Fascicolo timbrato e consegnato');
     await voter.reload();
-    await expect(voter.getByRole('heading', { name: 'Timbri consegnati.' })).toBeVisible();
-    await voter.getByRole('button', { name: 'Ho cambiato idea: riapri il fascicolo' }).click();
-    await expect(voter.getByRole('status')).toContainText('Fascicolo consegnato');
-    await stampBtn('FASCICOLO SCOTTANTE').click();
-    await stampBtn('DIFESA IMPENETRABILE').click();
-    await voter.getByRole('button', { name: 'Consegna le modifiche' }).click();
+    await expect(voter.getByRole('heading', { name: 'Fascicolo timbrato.' })).toBeVisible();
     await expect(page.getByText('Schede consegnate: 1')).toBeVisible();
     await page.getByRole('button', { name: 'Chiudi la votazione' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Conferma' }).click();
@@ -81,7 +76,7 @@ test('GM, presenter, voter and projector complete two rounds', async ({ page, co
   await expect(page.getByRole('button', { name: 'Avanti' })).toHaveCount(0);
   // At the end everyone gets a private certificate.
   await expect(voter.locator('.certificate')).toContainText('Attestato');
-  await expect(speaker.locator('.certificate')).toContainText('Il Congresso lo ha timbrato così');
+  await expect(speaker.locator('.certificate')).toContainText('dove è stato valutato così');
 });
 test('mobile entry and GM dossier editor fit the screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

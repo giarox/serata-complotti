@@ -37,6 +37,41 @@ import { Button, Mark } from './ui';
 type Perform = (a: Action) => Promise<boolean>;
 export const list = (names: string[]) =>
   names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' e ' + names[names.length - 1];
+/** Everyone in a step, one name per line (speaker, then co-speaker), all at the same size. */
+export function NameLines({
+  step,
+  as = 'strong',
+  className = '',
+  min = 0.4,
+  empty = 'Insabbiato',
+}: {
+  step: Talk[];
+  as?: 'h1' | 'strong' | 'p';
+  className?: string;
+  min?: number;
+  empty?: string;
+}) {
+  const names = step.flatMap((t) => [
+    t.presenter.name,
+    ...(t.presenter.partner === 'copresenter' && t.presenter.partnerName ? [t.presenter.partnerName] : []),
+  ]);
+  if (!names.length)
+    return (
+      <Fit as={as} className={'name-lines ' + className} lines={1} min={min}>
+        {empty}
+      </Fit>
+    );
+  return (
+    <Fit as={as} className={'name-lines ' + className} lines={names.length} min={min}>
+      {names.map((n, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <br />}
+          {n}
+        </React.Fragment>
+      ))}
+    </Fit>
+  );
+}
 const namesOf = (step: Talk[]) => list(step.map((t) => displayName(t.presenter)));
 
 /** Prize names, reasons and the line that opens each one on the projector. */
@@ -150,14 +185,11 @@ export function StampBallot({
         <strong>{displayName(p)}</strong>
         {p.role && <em>«{p.role}»</em>}
       </div>
-      <p className="ballot-intro">
-        Abbiamo bisogno dei tuoi timbri di approvazione per catalogarlo accuratamente. Ci fidiamo di te, più o meno.
-      </p>
       <div className="ballot-question">
         <h2>Il Congresso vuole sapere: cosa ti ha colpito?</h2>
         <p>
-          Timbra quello che ti ha colpito: <strong>nessun timbro, uno o al massimo due</strong>. Non ti ha colpito
-          niente? Consegnalo senza timbri. L’inchiostro costa.
+          Timbra il fascicolo dove ti ha colpito: <strong>al massimo due timbri</strong>. Non ti ha colpito niente?
+          Consegnalo senza.
         </p>
         <strong className={'stamp-count' + (full ? ' full' : '')}>Timbri: {n}/2</strong>
       </div>
@@ -251,7 +283,7 @@ export function ReviewBoard({ s, actor, busy, perform }: { s: State; actor: Acto
       <p className="eyebrow">REVISIONE DEI TIMBRI</p>
       <h1>Ricontrolla i tuoi timbri.</h1>
       <p className="review-lede">
-        Ora che hai visto tutti, puoi annullare un timbro e rimetterlo dove serve. Massimo due per fascicolo.
+        Ora che hai visto tutti i fascicoli, puoi modificare i tuoi timbri un’ultima volta. Massimo due per fascicolo.
       </p>
       <ol className="review-list">
         {all.map((t) => {
@@ -384,7 +416,8 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
   const c = v && !witness ? certificate(s, v.owner.id) : null;
   const name = v ? (v.companion ? v.name : displayName(v.owner)) : '';
   const placeOf = (k: PrizeKey) => (c?.prizes.includes(k) ? 1 : (c?.mentions.find((m) => m.prize === k)?.place ?? 0));
-  const crown = c ? placeOf('cappello') : 0;
+  const crown = c ? placeOf('cappello') : 0,
+    pair = !!c && c.talk.presenter.partner === 'copresenter' && !!c.talk.presenter.partnerName;
   const won = c ? c.prizes.map((k) => prizes[k].name) : [];
   async function share() {
     const text = won.length
@@ -409,7 +442,7 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
           <p className="cert-type">Attestato</p>
           <p className="cert-of">del 1° Congresso dei ricercatori indipendenti</p>
           <p className="cert-given">Si certifica che</p>
-          <h1>{name}</h1>
+          {c ? <NameLines as="h1" step={[c.talk]} className="cert-name" min={0.45} /> : <h1>{name}</h1>}
           {c?.talk.presenter.role && <p className="cert-role">«{c.talk.presenter.role}»</p>}
           {!c ? (
             <p className="cert-lead">
@@ -419,8 +452,8 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
           ) : (
             <>
               <p className="cert-lead">
-                {v?.companion ? `con ${displayName(c.talk.presenter)}, ` : ''}ha presentato il suo fascicolo al
-                Congresso. {stampKeysWith(c.talk).length ? 'Il Congresso lo ha timbrato così:' : ''}
+                {pair ? 'hanno presentato il loro fascicolo' : 'ha presentato il suo fascicolo'} al 1° Congresso dei
+                ricercatori indipendenti, dove è stato valutato così.
               </p>
               {crown === 1 && (
                 <div className="cert-crown">
@@ -431,6 +464,7 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
               )}
               {stampKeysWith(c.talk).length ? (
                 <ul className="cert-rows">
+                  <li className="cert-rows-head">Timbri ricevuti dal pubblico e piazzamento nei premi</li>
                   {stamps.map((x) => {
                     const n = c.talk.counts[x.key],
                       place = placeOf(x.key);
@@ -440,17 +474,19 @@ export function Certificate({ s, actor }: { s: State; actor: Actor }) {
                         <span className="cert-times">
                           {n ? (
                             <>
-                              <strong>{n}</strong> {n === 1 ? 'volta' : 'volte'}
+                              Timbrato <strong>{n}</strong> {n === 1 ? 'volta' : 'volte'}
                             </>
                           ) : (
-                            'nessun timbro'
+                            'Nessun timbro'
                           )}
                         </span>
-                        {place > 0 && (
-                          <em className={'cert-place p' + place}>
-                            {place === 1 ? prizes[x.key].name : `${place}° posto`}
-                          </em>
-                        )}
+                        <em className={'cert-place p' + place}>
+                          {place === 1
+                            ? `Vince ${prizes[x.key].name}`
+                            : place
+                              ? `${place}° posto · ${prizes[x.key].name}`
+                              : prizes[x.key].name}
+                        </em>
                       </li>
                     );
                   })}
@@ -517,7 +553,11 @@ export function VotingSlide({ s, top }: { s: State; top: ReactNode }) {
           )}
         </p>
       )}
-      <h1 className="pj-title pj-question">Il Congresso vuole sapere: cosa vi ha colpito?</h1>
+      <h1 className="pj-title pj-question">
+        Il Congresso vuole sapere:
+        <br />
+        cosa vi ha colpito?
+      </h1>
       <p className="pj-foot pj-vote-limit">Nessun timbro, uno o al massimo due. L’inchiostro costa.</p>
       <div className="pj-stamps">
         {stamps.map((c, i) => (
@@ -552,7 +592,8 @@ export function ReviewSlide({ s, top }: { s: State; top: ReactNode }) {
       <Kicker>Revisione dei timbri</Kicker>
       <h1 className="pj-title">Ultima occasione per ripensarci.</h1>
       <p className="pj-sub">
-        Ricontrollate i timbri dal telefono: un timbro sbagliato si annulla e si rimette. Poi si delibera.
+        Ora che avete visto tutti i fascicoli, rivedete i vostri timbri dal telefono: magari qualcuno merita più di
+        quanto pensavate. Poi si delibera.
       </p>
       <div className="pj-tally">
         <strong>
@@ -576,12 +617,10 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         <Head left="GRAN FINALE" right="RISERVATO" large />
         <Kicker>Resta un’ultima busta</Kicker>
         <h1 className="pj-title">
-          Ora<span className="pj-dots">…</span> per il gran finale.
+          Ora, per il gran finale<span className="pj-dots">…</span>
         </h1>
         <Rule />
-        <p className="pj-sub">
-          Nessuno sa cosa c’è dentro. Nemmeno noi. <span className="pj-dots slow">…</span>
-        </p>
+        <p className="pj-sub">Nessuno sa cosa c’è dentro. Nemmeno noi.</p>
       </div>
     );
   if (m.kind === 'registro') return <ClosingSlide s={s} top={top} />;
@@ -601,8 +640,8 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
         </div>
         <p className="pj-link">
           {m.prize === 'cappello'
-            ? 'Lo vince chi è salito più in alto sui quattro podi della serata.'
-            : 'Lo vince chi ha collezionato più timbri come questo.'}
+            ? 'Consegnato al relatore salito più in alto sui quattro podi della serata.'
+            : 'Consegnato al relatore che ha collezionato più timbri come questo.'}
         </p>
         <p className="pj-sub">{info.opener}</p>
         <Rule />
@@ -645,9 +684,7 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
                     : `${info.name} va a`
                 : info.name}
             </Kicker>
-            <Fit as="h1" className="pj-name" lines={2}>
-              {first.length ? namesOf(first) : 'Premio insabbiato.'}
-            </Fit>
+            <NameLines as="h1" className="pj-name" step={first} empty="Premio insabbiato." />
             {first.length === 1 && first[0].presenter.role && <Fit className="pj-role">{first[0].presenter.role}</Fit>}
             <p className="pj-sub">{first.length ? info.reason : 'Il Congresso nega che sia mai esistito.'}</p>
             {first.length > 0 && info.stamp && (
@@ -697,10 +734,9 @@ export function RevealSlide({ s, top }: { s: State; top: ReactNode }) {
   );
 }
 
-/** The closing slide: the four prizes in a row, the Cappello below, thanks, and a sequel nobody promised. */
+/** The closing slide: four small awards in a row, the Cappello below, thanks, and a sequel nobody promised. */
 export function ClosingSlide({ s, top }: { s: State; top: ReactNode }) {
   const v = verdict(s);
-  const who = (k: PrizeKey) => (v[k].podium[1].length ? namesOf(v[k].podium[1]) : 'Insabbiato');
   return (
     <div className="projector pj-closing">
       {top}
@@ -708,28 +744,30 @@ export function ClosingSlide({ s, top }: { s: State; top: ReactNode }) {
       <Kicker>Il Congresso ha parlato (e si è esposto)</Kicker>
       <ol className="pj-recap">
         {stamps.map((c, i) => (
-          <li key={c.key} style={{ '--i': i } as React.CSSProperties}>
-            <StampMark k={c.key} small />
-            <span>{prizes[c.key].name}</span>
-            <Fit as="strong" lines={2} min={0.55}>
-              {who(c.key)}
-            </Fit>
+          <li key={c.key} className="pj-mini-award" style={{ '--i': i } as React.CSSProperties}>
+            <Laurel />
+            <div className="pj-mini-in">
+              <NameLines step={v[c.key].podium[1]} className="pj-mini-name" min={0.5} />
+              <StampMark k={c.key} small />
+              <span className="pj-prize-name">{prizes[c.key].name}</span>
+            </div>
+            <Laurel right />
           </li>
         ))}
       </ol>
-      <div className="pj-recap-crown">
-        <span>{prizes.cappello.name}</span>
-        <Fit as="strong" lines={1} min={0.45}>
-          {who('cappello')}
-        </Fit>
+      <div className="pj-mini-award crown">
+        <Laurel />
+        <div className="pj-mini-in">
+          <NameLines step={v.cappello.podium[1]} className="pj-mini-name" min={0.45} />
+          <StampMark k="cappello" small />
+          <span className="pj-prize-name">{prizes.cappello.name}</span>
+        </div>
+        <Laurel right />
       </div>
       <p className="pj-thanks">
         Grazie a ricercatori, co-relatori, testimoni e pubblico. Avete visto troppo: ora siete dei nostri.
       </p>
-      <p className="pj-continua">
-        Continua<span className="pj-dots">…</span>?
-      </p>
-      <p className="pj-foot">Prossima convocazione: Congresso N. 002. Data e luogo verranno smentiti.</p>
+      <p className="pj-tbc">To be continued</p>
     </div>
   );
 }
