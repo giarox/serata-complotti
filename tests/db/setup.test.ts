@@ -428,13 +428,24 @@ describe('self-registration and own dossier', () => {
     const testView = await as<S>(testGm, 'select public.party_snapshot() as r');
     expect(testView.sandbox).toBe(true);
     expect(testView.participants.map((p) => p.id)).toEqual([t.participantId]);
-    await act(testGm, { type: 'addBots', n: 3 });
+    await act(testGm, { type: 'addBots', n: 8 });
     await act(testGm, { type: 'start', participantId: t.participantId });
     const rid = (await as<S>(testGm, 'select public.party_snapshot() as r')).activeRoundId!;
     await act(testGm, { type: 'phase', phase: 'questions', roundId: rid });
     await act(testGm, { type: 'phase', phase: 'voting', roundId: rid });
     await act(testGm, { type: 'botVotes' });
-    expect((await as<S>(testGm, 'select public.party_snapshot() as r')).voteCount).toBe(3);
+    expect((await as<S>(testGm, 'select public.party_snapshot() as r')).voteCount).toBe(8);
+    // Through the review to the reveal: every screen then receives the ballots, so the podiums fill up.
+    await act(testGm, { type: 'phase', phase: 'waiting', roundId: rid });
+    await act(testGm, { type: 'review' });
+    await act(testGm, { type: 'botVotes' });
+    await act(testGm, { type: 'reveal' });
+    const revealed = await as<S>(testGm, 'select public.party_snapshot() as r');
+    expect(revealed.phase).toBe('results');
+    expect(revealed.votes.length).toBe(8);
+    // Each tester draws its own stamps (one shared draw left every podium empty or identical).
+    const kinds = new Set(revealed.votes.map((v) => JSON.stringify(v, ['idea', 'ricerca', 'performance', 'qa'])));
+    expect(kinds.size).toBeGreaterThan(1);
     await act(testGm, { type: 'reset', everyone: true });
     // The real evening did not move, and its guests are still linked.
     const realAfter = await as<S>(gm, 'select public.party_snapshot() as r');

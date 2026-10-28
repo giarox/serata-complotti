@@ -232,7 +232,9 @@ function App() {
       : s.phase === 'voting'
         ? 'Torna al question time'
         : s.phase === 'results'
-          ? 'Esci dal reveal (riapre la revisione)'
+          ? s.revealed <= 1
+            ? 'Esci dal reveal (riapre la revisione)'
+            : ''
           : s.phase === 'review'
             ? 'Chiudi la revisione senza verdetto'
             : s.phase === 'waiting' && lastRound?.closed
@@ -493,7 +495,11 @@ function App() {
                                 {person.role ? ` · ${person.role}` : ''}
                               </>
                             ) : s.phase === 'results' ? (
-                              'Il congresso ha parlato. Il reveal si guida da Il verdetto, un passo alla volta.'
+                              <>
+                                <strong>{nowLabel(s)}</strong>
+                                <br />
+                                {nextStepLabel(s)}
+                              </>
                             ) : s.phase === 'review' ? (
                               `${reviewTally(s).confirmed} su ${reviewTally(s).voters} votanti hanno confermato. Quando sei pronto, chiudi e vai al verdetto.`
                             ) : allDone ? (
@@ -570,10 +576,21 @@ function App() {
                               </>
                             )}
                             {s.phase === 'results' && (
-                              <Button onClick={() => setTab('premi')}>
-                                Vai al verdetto
-                                <Trophy size={18} />
-                              </Button>
+                              <>
+                                {s.revealed < REVEAL_STEPS && (
+                                  <Button
+                                    disabled={busy || !connected}
+                                    onClick={() => void perform({ type: 'nextAward' })}
+                                  >
+                                    Avanti <ArrowRight size={18} />
+                                  </Button>
+                                )}
+                                {s.revealed > 1 && (
+                                  <Button secondary disabled={busy} onClick={() => void perform({ type: 'prevAward' })}>
+                                    <ArrowLeft size={17} /> Indietro
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                           <div className="secondary-actions">
@@ -774,6 +791,7 @@ function App() {
                     {s.phase !== 'results' && <RulesSummary />}
                   </>
                 )}
+                {tab === 'regia' && s.phase === 'results' && <RevealedList s={s} />}
                 {tab === 'regia' && <TestLab s={s} busy={busy} perform={perform} />}
                 {(tab === 'regia' || tab === 'premi') && (
                   <section className="panel reset-panel">

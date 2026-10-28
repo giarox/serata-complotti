@@ -270,7 +270,7 @@ begin
      and exists(select 1 from jsonb_array_elements(s->'participants') b where b->>'id'=v->>'voterId' and coalesce((b->>'bot')::boolean,false)));
   select votes||coalesce(jsonb_agg(jsonb_build_object('idea',k=1 or k2=1,'ricerca',k=2 or k2=2,'performance',k=3 or k2=3,'qa',k=4 or k2=4,'roundId',x->>'id','voterId',b->>'id')),'[]'::jsonb)
    into votes from jsonb_array_elements(rounds) x, jsonb_array_elements(s->'participants') b,
-   lateral (select floor(random()*6)::int k, floor(random()*6)::int k2) z
+   lateral (select floor(random()*6)::int k, floor(random()*6)::int k2 where x is not null and b is not null) z -- correlated: a new draw per tester and talk
    where coalesce((b->>'bot')::boolean,false) and b->>'id'<>x->>'presenterId';
   s:=jsonb_set(s,'{votes}',votes);
   if phase='review' then
