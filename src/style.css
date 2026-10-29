@@ -8876,3 +8876,39 @@ label,
 .pj-award.cappello.done .pj-laurel {
   height: min(40vh, 460px);
 }
+
+/* Regia: slides check (status only, never the slides) */
+.slides-check-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 16px;
+  display: grid;
+  gap: 8px;
+}
+.slides-check-list li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--rule);
+}
+.slides-check-list li span {
+  font-size: 14px;
+  color: var(--dim);
+}
+.slides-check-list li.st-ok {
+  border-left-color: #3f9b65;
+}
+.slides-check-list li.st-ok span {
+  color: #7fc89c;
+}
+.slides-check-list li.st-fail,
+.slides-check-list li.st-missing,
+.slides-check-list li.st-invalid {
+  border-left-color: #c0392b;
+}
+.slides-check-list li.st-fail span,
+.slides-check-list li.st-missing span,
+.slides-check-list li.st-invalid span {
+  color: #e8806f;
+}

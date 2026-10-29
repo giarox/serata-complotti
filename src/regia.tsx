@@ -344,3 +344,98 @@ export function GuestMirror({ s }: { s: State }) {
     </section>
   );
 }
+
+/** The Google Slides deck id, if the link is a real Slides link (same rule as the helper). */
+const deckId = (url: string | undefined) =>
+  /^https:\/\/docs\.google\.com\/presentation\/d\/([A-Za-z0-9_-]{10,})/.exec((url ?? '').trim())?.[1] ?? null;
+/**
+ * Asks Google for a small picture of the deck without ever showing it: an image that loads means the deck
+ * opens for anyone with the link and has at least one slide. A private deck answers with a sign-in page,
+ * which is not an image, so it fails. Nothing is added to the page: no spoilers.
+ */
+function probeDeck(id: string): Promise<boolean> {
+  const tryImage = (src: string) =>
+    new Promise<boolean>((resolve) => {
+      const img = new Image();
+      const timer = window.setTimeout(() => resolve(false), 15000);
+      img.referrerPolicy = 'no-referrer';
+      img.onload = () => {
+        window.clearTimeout(timer);
+        resolve(img.naturalWidth > 0);
+      };
+      img.onerror = () => {
+        window.clearTimeout(timer);
+        resolve(false);
+      };
+      img.src = src;
+    });
+  const bust = Date.now();
+  return tryImage(`https://docs.google.com/presentation/d/${id}/export/png?cb=${bust}`).then(
+    (ok) => ok || tryImage(`https://drive.google.com/thumbnail?sz=w200&id=${id}&cb=${bust}`),
+  );
+}
+type DeckStatus = 'checking' | 'ok' | 'fail' | 'missing' | 'invalid';
+const deckCopy: Record<DeckStatus, string> = {
+  checking: 'Controllo in corso…',
+  ok: 'Si apre',
+  fail: 'Non si apre: link non condiviso con «Chiunque abbia il link», presentazione vuota o cancellata',
+  missing: 'Manca il link',
+  invalid: 'Non è un link di Google Slides',
+};
+/** The GM checks every Slides link before the evening, without seeing a single slide. */
+export function SlidesCheck({ s }: { s: State }) {
+  const decks = s.participants.filter((p) => p.mode === 'slides' && (!p.bot || api.sandbox));
+  const [status, setStatus] = useState<Record<string, DeckStatus>>({});
+  const [running, setRunning] = useState(false);
+  async function run() {
+    setRunning(true);
+    const next: Record<string, DeckStatus> = {};
+    for (const p of decks) next[p.id] = !p.deckUrl?.trim() ? 'missing' : deckId(p.deckUrl) ? 'checking' : 'invalid';
+    setStatus({ ...next });
+    await Promise.all(
+      decks.map(async (p) => {
+        const id = deckId(p.deckUrl);
+        if (!id) return;
+        const ok = await probeDeck(id);
+        setStatus((st) => ({ ...st, [p.id]: ok ? 'ok' : 'fail' }));
+      }),
+    );
+    setRunning(false);
+  }
+  return (
+    <section className="panel slides-check">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Prima della serata</p>
+          <h2>Controllo delle slide</h2>
+        </div>
+      </div>
+      <p className="footnote">
+        Verifica che ogni presentazione si apra per chiunque abbia il link. Nessuna slide viene mostrata: niente
+        spoiler.
+      </p>
+      {decks.length === 0 ? (
+        <p className="footnote">Nessuno ha scelto di presentare con le slide, per ora.</p>
+      ) : (
+        <>
+          <ul className="slides-check-list">
+            {decks.map((p) => {
+              const st = status[p.id];
+              return (
+                <li key={p.id} className={st ? 'st-' + st : ''}>
+                  <strong>{p.name}</strong>
+                  <span>{st ? deckCopy[st] : p.deckUrl ? 'Da controllare' : deckCopy.missing}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="result-actions">
+            <Button disabled={running} onClick={() => void run()}>
+              {running ? 'Controllo in corso…' : 'Controlla le slide'}
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}

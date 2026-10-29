@@ -84,7 +84,7 @@ import {
   VotingSlide,
 } from './stamps';
 import { DossierHome } from './dossier';
-import { Overview, RequestsBoard, SlideRemote, TestLab, GuestMirror } from './regia';
+import { Overview, RequestsBoard, SlideRemote, SlidesCheck, TestLab, GuestMirror } from './regia';
 import {
   defaultMock,
   edgeMock,
@@ -703,6 +703,7 @@ function App() {
                     isPresenting={(p) => presenter(s)?.id === p.id}
                   />
                 )}
+                {tab === 'fascicoli' && <SlidesCheck s={s} />}
                 {tab === 'fascicoli' && <GuestMirror s={s} />}
                 {tab === 'anteprime' && <Previews />}
                 {tab === 'premi' && (
